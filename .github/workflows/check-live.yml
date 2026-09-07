@@ -1,0 +1,19 @@
+name: Check Live Bundle
+on:
+  push:
+    paths:
+      - 'live_*.txt'
+      - 'main.js'
+      - '.github/workflows/check-live.yml'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild live bundle
+        run: cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/catlak-live.js
+      - name: Check JavaScript syntax
+        run: node --check /tmp/catlak-live.js
+      - name: Check loader syntax
+        run: node --check main.js
