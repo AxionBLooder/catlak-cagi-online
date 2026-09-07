@@ -1,0 +1,32 @@
+px;border-radius:12px;box-shadow:var(--shadow);white-space:pre-wrap}@media(max-width:1000px){.two,.two.compact,.three{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.hero{align-items:flex-start;flex-direction:column}.effects{grid-template-columns:repeat(3,1fr)}.feature-row{grid-template-columns:80px 1fr}.feature-row textarea{grid-column:1/-1}.feature-row button{grid-column:2}}@media(max-width:650px){main{padding:14px}.top{padding:10px 12px}.nav{padding:8px 10px}.card{padding:15px;border-radius:14px}.stats{grid-template-columns:repeat(2,1fr)}.effects,.form{grid-template-columns:1fr}.form .wide{grid-column:auto}.vitals{display:grid;grid-template-columns:repeat(2,1fr);width:100%}.vital{min-width:0}.char{align-items:flex-start;flex-direction:column}.roll{align-items:flex-start;flex-wrap:wrap}.roll .ruleedit{margin-left:0;min-width:0;width:100%}.section-title{flex-direction:column}.feature-row{grid-template-columns:1fr}.feature-row textarea,.feature-row button{grid-column:auto}}\n';const __style=document.createElement('style');__style.textContent=APP_CSS;document.head.appendChild(__style);
+import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';
+const S=createClient('https://ygbereitlhjvoqgqlwfe.supabase.co','sb_publishable_haPHSdfajhnaiHUZkVqN9Q_Yk6KrMMA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},realtime:{params:{eventsPerSecond:20}}});
+const A=['STR','DEX','CON','INT','WIS','CHA'];
+const VAMP_TRACK=['1: Vampir Fizyolojisi + KP','2: Gece Görüşü + Gelişmiş Koku','3: Vampir Yolu I','4: +1 KP','5: Vampir Refleksleri','6: Vampir Yolu II','7: Ölümsüz Beden','8: Gelişmiş Beslenme','9: Vampir Yolu III','10: Greater Vampire','11: Kan/Kırmızı Algısı','12: Vampir Yolu IV','13: Gece Avcısı','14: +2 KP','15: Vampir Yolu V','16: Elder Vampire','17: Açlık Kontrolü','18: Vampir Yolu VI','19: Ancient Vampire','20: Vampir Efendisi'];
+const VAMP_COMMON=['Gece Görüşü','Gelişmiş Koku','Vampir Gücü','Vampir Dişleri','Ölümsüz Beden'];
+const VAMP_WEAK=['Güneş','Sarımsak','Kutsal Su','Kalbe Kazık'];
+const VAMP_KP=['3+ KP: Tok','2 KP: Aç','1 KP: Çok Aç','0 KP: Feral — irade testi veya en yakın besine saldırı'];
+let st={ses:null,role:'player',tab:'sheet',chars:[],items:[],inv:[],rolls:[],notes:[],gmnotes:[],cat:{species:[],backgrounds:[],classes:[]},speciesRows:[],backgroundRows:[],classRows:[],paths:[],edit:null,speciesEdit:null,detailCharId:null,amode:'login',ruleMode:'species'};
+const T=document.querySelector('#toast');
+const h=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n=x=>Number(x||0),sg=x=>n(x)>=0?'+'+n(x):String(n(x)),md=x=>Math.floor((n(x)-10)/2);
+const msg=x=>{if(!T)return;T.textContent=x;T.classList.remove('hidden');clearTimeout(msg.t);msg.t=setTimeout(()=>T.classList.add('hidden'),4200)},err=e=>msg(e?.message||String(e));
+const guest=()=>!!st.ses?.user?.user_metadata?.catlak_guest;
+const slugify=s=>String(s||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'custom';
+async function catload(){try{let b=await(await fetch('https://raw.githubusercontent.com/AxionBLooder/catlak-cagi-online/main/catalog.b64?raw=1')).text(),u=Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0)),txt=await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text();st.cat=JSON.parse(txt)}catch(e){err(e)}}
+function canonicalSpecies(name){return st.cat.species.find(x=>x.name===name)||null}
+function speciesRow(name){return st.speciesRows.find(x=>x.name===name)||null}
+function speciesInfo(name){let c=canonicalSpecies(name)||{},r=speciesRow(name)||{},d=r.data||{};return{...c,...r,name:r.name||c.name||name,type:r.creature_type||c.type||'Humanoid',speed:n(r.speed||c.speed||30),description:d.description||c.description||'',bonus_text:d.bonus_text||'',custom:!!d.custom,data:d}}
+function bgInfo(name){let c=st.cat.backgrounds.find(x=>x.name===name)||{},r=st.backgroundRows.find(x=>x.name===name)||{},d=r.data||{};return{...c,...r,name:r.name||c.name||name,region:r.region||c.region||'',abilities:d.abilities||c.abilities||[],skills:d.skills||c.skills||[],tool:d.tool||c.tool||'',equipment:d.equipment||c.equipment||'',history:d.history||c.history||''}}
+function classInfo(name){let c=st.cat.classes.find(x=>x.name===name)||{},r=st.classRows.find(x=>x.name===name)||{};return{...c,...r,name:r.name||c.name||name,hit_die:n(r.hit_die||c.hit_die||c.hitDie||8)}}
+function speciesPowers(name){let c=(canonicalSpecies(name)?.levels||[]).map((p,i)=>({level:n(p.level),name:p.name,description:p.description||p.text||'',detail_note:'',sort_order:i,canonical:true,data:p}));let map=new Map(c.map(p=>[`${p.level}|${p.name}`,p]));for(let r of st.notes.filter(x=>x.species_name===name)){let k=`${n(r.unlock_level)}|${r.name}`,old=map.get(k)||{};map.set(k,{...old,level:n(r.unlock_level),name:r.name,description:r.short_description||old.description||'',detail_note:r.detail_note||'',sort_order:n(r.sort_order),canonical:!!old.canonical,data:{...(old.data||{}),...(r.data||{})}})}return[...map.values()].filter(x=>!x.data?.disabled).sort((a,b)=>a.level-b.level||a.sort_order-b.sort_order||a.name.localeCompare(b.name,'tr'))}
+function pathFor(spec,key){return st.paths.find(x=>x.species_name===spec&&x.path_key===key)||null}
+function charPath(c){let k=c?.data?.special_path;return k?pathFor(c.species_name,k):null}
+function pathFeatures(path,level=20){return(path?.data?.features||[]).filter(f=>n(f.level)<=n(level)).sort((a,b)=>n(a.level)-n(b.level))}
+function vampMax(level){return 3+(n(level)>=4?1:0)+(n(level)>=14?2:0)}
+function vampKP(c){return Math.max(0,Math.min(vampMax(c.level),n(c?.data?.vampire_kp??3)))}
+function der(c){let stats={...c.base_stats},race=speciesInfo(c.species_name),ac=n(c.base_ac),speed=n(race.speed||c.base_speed),hp=n(c.hp_max),rows=st.inv.filter(x=>x.character_id===c.id&&x.equipped),map=new Map(st.items.map(x=>[x.id,x])),sets=[],bonus=0;for(let r of rows){let i=map.get(r.item_id);if(!i)continue;let fx=i.effects||{};for(let a of A)stats[a]=n(stats[a])+n(fx[a]);speed+=n(fx.speed);hp+=n(fx.hp_max);if(i.item_type==='armor'){if(i.ac_mode==='set')sets.push(n(i.ac_value));if(i.ac_mode==='bonus')bonus+=n(i.ac_value)}}if(sets.length)ac=Math.max(ac,...sets);return{...c,ds:stats,ac:ac+bonus,speed,hp}}
+
+const app=document.querySelector('#app');
+const list=x=>Array.isArray(x)?x:[];
+function nav(){let gm=
