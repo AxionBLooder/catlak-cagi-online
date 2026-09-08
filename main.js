@@ -1,1 +1,12 @@
-(async()=>{const B='./';const N=['live_00.txt','live_01.txt','live_02.txt','live_03.txt','live_04.txt','live_05.txt','live_06.txt','live_07.txt','live_08.txt'];const nativeFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=typeof input==='string'?input:String(input?.url||input||'');if(url.startsWith('https://raw.githubusercontent.com/AxionBLooder/catlak-cagi-online/main/catalog.b64'))return nativeFetch('./catalog.b64?v=12',init);return nativeFetch(input,init)};try{const C=(await Promise.all(N.map(async n=>{const r=await nativeFetch(B+n+'?v=12',{cache:'no-store'});if(!r.ok)throw new Error(n+' HTTP '+r.status);return r.text()}))).join('');await import(URL.createObjectURL(new Blob([C],{type:'text/javascript'})))}catch(e){console.error(e);document.querySelector('#app').innerHTML='<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Site yüklenemedi: '+String(e.message||e)+'</p><p>Lütfen sayfayı yenile. Sorun sürerse yayın dosyaları eksiktir.</p></main>'}})();
+(async()=>{
+  const app=document.querySelector('#app');
+  const fail=(e)=>{
+    console.error(e);
+    if(app) app.innerHTML='<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Site yüklenemedi: '+String(e?.message||e)+'</p></main>';
+  };
+  try{
+    await import('./bundle.js?v=30');
+    await import('./ui-patch.js?v=30');
+    await import('./world-patch.js?v=30');
+  }catch(e){fail(e)}
+})();
