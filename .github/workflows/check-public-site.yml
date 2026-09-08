@@ -21,12 +21,13 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
-          grep -q '6b327c4c02237dfe162b542652c75038418aac03' /tmp/live-index.html
-          grep -q '29638d7f5d66' /tmp/live-index.html
-          echo 'PINNED FIXED LOADER OK'
-      - name: Open new live site with Playwright
+          grep -q '8a272bee5668c5f4370592aabf2a90e4b7bd801f' /tmp/live-index.html
+          grep -q '1ec7ba91a2de' /tmp/live-index.html
+          grep -q "CNL_PLAYER_HIDDEN=new Set(\['builder','races','rules'\])" nav-lite-patch.js
+          echo 'PINNED BULK-UPLOAD LOADER OK'
+      - name: Open live site with Playwright
         env:
-          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/?smoke=world-observer-fixed
+          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/?smoke=bulk-upload-player-lock
         run: |
           cat > .check-live.cjs <<'JS'
           const { chromium }=require('playwright-core');
@@ -46,21 +47,27 @@ jobs:
               const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')&&!t.includes('Uygulama yükleniyor')},{timeout:15000});
               const elapsed=Date.now()-started;
-              const probe=await page.evaluate(async()=>{const r=await fetch('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@6b327c4c02237dfe162b542652c75038418aac03/browser-app.js?probe='+Date.now(),{cache:'no-store'});const t=await r.text();return {status:r.status,len:t.length,loading:t.includes('data-cc-auth-loading'),recovery:t.includes('Oyun verileri yüklenemedi'),worldUpload:t.includes('Görsel Dosyası Seç'),worldDelete:t.includes('data-sw-delete')}});
-              const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
+              const probe=await page.evaluate(async()=>{const r=await fetch('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@8a272bee5668c5f4370592aabf2a90e4b7bd801f/browser-app.js?probe='+Date.now(),{cache:'no-store'});const t=await r.text();return {status:r.status,len:t.length,bulk:t.includes('Toplu Yükle'),rename:t.includes('Adı Değiştir'),multi:t.includes('Görselleri Seç'),perName:t.includes('Görsele ad ver'),worldDelete:t.includes('data-sw-delete')}});
+              const playerLock=await page.evaluate(async()=>{
+                const app=document.querySelector('#app');
+                app.innerHTML='<div class="role">PLAYER</div><div class="nav"><button data-tab="sheet">Oyuncu Masası</button><button data-tab="builder">Karakter Oluşturucu</button><button data-tab="races">Irk Atölyesi</button><button data-tab="rules">Kaynaklar</button></div><main></main>';
+                await new Promise(r=>setTimeout(r,250));
+                return [...app.querySelectorAll('.nav button[data-tab]')].map(b=>b.dataset.tab);
+              });
               console.log('NAV_STATUS:',response?.status());
               console.log('LOAD_MS:',elapsed);
               console.log('SCRIPT_URLS:',JSON.stringify(scriptUrls));
               console.log('BUNDLE_PROBE:',JSON.stringify(probe));
-              console.log('APP_TEXT:',text.slice(0,1200));
+              console.log('PLAYER_TABS_AFTER_GUARD:',JSON.stringify(playerLock));
               console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
               if(response?.status()!==200)throw new Error('Root status '+response?.status());
-              if(!scriptUrls.some(x=>x.includes('6b327c4c02237dfe162b542652c75038418aac03')))throw new Error('New fixed bundle was not loaded');
-              if(probe.status!==200||probe.len<300000||!probe.loading||!probe.recovery||!probe.worldUpload||!probe.worldDelete)throw new Error('Fixed production bundle markers missing');
+              if(!scriptUrls.some(x=>x.includes('8a272bee5668c5f4370592aabf2a90e4b7bd801f')))throw new Error('New bulk bundle was not loaded');
+              if(probe.status!==200||probe.len<300000||!probe.bulk||!probe.rename||!probe.multi||!probe.perName||!probe.worldDelete)throw new Error('Bulk upload markers missing');
+              if(playerLock.includes('builder')||playerLock.includes('races')||playerLock.includes('rules')||!playerLock.includes('sheet'))throw new Error('Player restricted tabs still visible');
               if(pageErrors.length||httpErrors.length||requestFailures.length)throw new Error('Browser/network errors detected');
-              console.log('NEW_STABLE_PAGE_OK');
+              console.log('BULK_UPLOAD_AND_PLAYER_LOCK_OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
