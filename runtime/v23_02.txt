@@ -1,0 +1,51 @@
+lected':''}>${hv(x.name)}</option>`).join('')}</select></label><label>Sınıf<select id="rb-class">${cl.map(x=>`<option ${x.name===d.className?'selected':''}>${hv(x.name)}</option>`).join('')}</select></label><label>Özel yol<select id="rb-path"><option value="">Yok / isteğe bağlı</option>${paths.map(x=>`<option value="${hv(x.path_key)}" ${x.path_key===d.path?'selected':''}>${hv(x.name)}</option>`).join('')}</select></label></div><h3>Başlangıç Statları</h3><div class="rb-stat-grid">${A.map(a=>`<label>${a}<input id="rb-${a}" type="number" min="3" max="30" value="${hv(d.stats[a])}"></label>`).join('')}</div><button class="primary widebtn" data-v14-ready="create">Hazır Karakteri Kaydet</button></section>`}
+document.addEventListener('input',e=>{if(e.target&&String(e.target.id||'').startsWith('rb-'))rbCapture()},true);
+document.addEventListener('change',e=>{if(!e.target)return;if(String(e.target.id||'').startsWith('rb-')){rbCapture();if(e.target.id==='rb-species'){let d=rbDefaults(),ps=st.paths.filter(x=>x.species_name===d.species);if(d.path&&!ps.some(x=>x.path_key===d.path))d.path='';render()}}},true);
+document.addEventListener('click',async e=>{let b=e.target.closest('button');if(!b)return;try{if(b.dataset.v14Sheet){window.__v14SheetTabs[b.dataset.id]=b.dataset.v14Sheet;render();return}if(b.dataset.v14Die){let{data,error}=await S.rpc('catlak_roll_die',{p_character_id:b.dataset.id,p_sides:Number(b.dataset.v14Die)});if(error)throw error;msg(`${data.label}: ${data.total}`);await refresh();return}if(b.dataset.v14Ready){let a=b.dataset.v14Ready;if(a==='toggle'){rbCapture();window.__v14ReadyOpen=!window.__v14ReadyOpen;render();return}if(a==='close'){window.__v14ReadyOpen=false;render();return}if(a==='create'){rbCapture();let d=rbDefaults(),name=String(d.name||'').trim();if(name.length<2)throw new Error('Karakter adı en az 2 karakter olmalı');let stats={};for(let x of A){let v=Number(d.stats[x]);if(!Number.isInteger(v)||v<3||v>30)throw new Error(x+' 3-30 arasında olmalı');stats[x]=v}let{error}=await S.rpc('catlak_gm_create_ready_character',{p_name:name,p_species:d.species,p_background:d.background,p_class:d.className,p_stats:stats,p_special_path:d.path||null});if(error)throw error;window.__v14ReadyDraft=null;window.__v14ReadyOpen=false;msg('Hazır karakter oluşturuldu. Hazır Karakter Daveti ile oyuncuya gönderebilirsin.');await refresh();return}}}catch(errx){err(errx)}},true);
+setTimeout(()=>{try{render()}catch(e){console.error(e)}},50);
+})();
+
+
+(function(){
+'use strict';
+if(window.__CATLAK_V23__)return;window.__CATLAK_V23__=true;
+function readyInvite(){
+ try{
+  if(!window.st||!st.ses||st.role==='gm')return false;
+  const meta=st.ses.user?.user_metadata||{};
+  const mode=String(meta.catlak_invite_mode||'');
+  if(mode==='character')return true;
+  if(mode==='builder')return false;
+  const label=String(meta.display_name||'');
+  return typeof guest==='function'&&guest()&&/ Oyuncusu$/i.test(label);
+ }catch(e){return false}
+}
+function playerCanBuild(){return !readyInvite()}
+const HQ={
+ 'ooo-map':'assets/ooo-map.webp',
+ 'catalkok-map':'assets/catalkok-map.webp',
+ 'liri':'assets/liri.webp',
+ 'demirci':'assets/demirci.webp',
+ 'muhafiz':'assets/muhafiz.webp',
+ 'tikir':'assets/tikir.webp',
+ 'bilge':'assets/bilge.webp',
+ 'ejderha':'assets/ejderha.webp'
+};
+try{
+ if(Array.isArray(STATIC_UNIVERSE)){
+  STATIC_UNIVERSE.forEach(x=>{if(HQ[x.id])x.src=HQ[x.id]});
+  if(!STATIC_UNIVERSE.some(x=>x.id==='grougaloragran'))STATIC_UNIVERSE.push({id:'grougaloragran',kind:'npc',type:'NPC',title:'Grougaloragran',note:'Çatlak Çağı NPC arşivi.',src:'assets/grougaloragran.webp'});
+  if(!STATIC_UNIVERSE.some(x=>x.id==='bilge-ejderha'))STATIC_UNIVERSE.push({id:'bilge-ejderha',kind:'npc',type:'NPC',title:'Kara Yıldız’da Bilge ve Ejderha',note:'Çatlak Çağı sahne/NPC arşivi.',src:'assets/bilge-ejderha.webp'});
+ }
+}catch(e){console.warn('HQ universe map',e)}
+nav=function(){
+ const gm=st.role==='gm';
+ const items=gm?
+  [['gm','GM Masası'],['characters','Oyuncu Masam'],['ready','Hazır Karakter Oluştur'],['races','Irk Atölyesi'],['items','Eşya Atölyesi'],['world','Harita & NPC'],['universe','Evren'],['rules','Kaynaklar'],['account','Hesap']]:
+  [['sheet','Karakterim'],...(playerCanBuild()?[['builder','Karakter Oluştur']]:[]),['world','Parti Görseli'],['rolls','Zarlarım']];
+ return `<header class="top"><div class="brand"><div class="mark">◇</div><div><b>Çatlak Çağı</b><div class="muted mini">${gm?'GM / DM Masası':guest()?'Misafir Oyuncu':'Oyuncu Masası'}</div></div></div><div class="row"><span class="role">${gm?'GM / DM':guest()?'MİSAFİR':'OYUNCU'}</span>${gm||!guest()?'<button data-a="logout" class="small">Çıkış</button>':''}</div></header><nav class="nav">${items.map(([i,l])=>`<button data-tab="${i}" class="${st.tab===i?'on':''}">${l}</button>`).join('')}</nav>`;
+};
+function lastRollFor(id){return st.rolls.find(r=>r.character_id===id)}
+function gmDesk(){
+ const dc=st.chars.find(x=>x.id===st.detailCharId);
+ const cards=st.chars.map(c=>{const d=der(c),lr=lastRollFor(c.id);return `<div class="char gm-char-card"><div class="gm-char-main"><b>${h(c.name)}</b><p class="muted">${h(c.species_name)} • ${h(c.class_name)} ${c.level} • ${c.owner_id?'Oyuncuya bağlı':'Hazır / Sahipsiz'}</p><span>HP ${c.hp_current}/${d.hp} • AC ${d.ac} • Hız ${d.speed}</span>${lr?`<div class="gm-last-roll"><small>SON ZAR</small><b>${h(lr.label||lr.roll_kind||'Zar')}: ${lr.total==null?'?':lr.total}</b><span>${h(lr.formula||'')}</span></div>`:'<div class="gm-last-roll muted">Henüz zar atılmadı.</div>'}</div><div class="actions"><button data-a="detailchar" data-id="${c.id}">Detay</button><button data-a="level" data-id="${c.id}" data-d="-1">Lv −</button><button data-a="level" data-id="${c.id}" data-d="1">Lv +</button><button data-a="hp" data-id="${c.id}" data-d="-1">HP −</button><button data-a="hp" data-id="${c.id}" data-d="1">HP +</button>${!c.owner_id?`<button class="primary" data-a="claimcode" data-id="${c.id}">Hazır Karakter Daveti</button>`:''}<button class="danger" data-a
