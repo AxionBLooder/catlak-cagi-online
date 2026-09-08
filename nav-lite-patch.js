@@ -71,3 +71,4 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
+// build trigger: auth refresh hardening
