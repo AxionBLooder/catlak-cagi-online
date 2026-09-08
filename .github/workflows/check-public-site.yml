@@ -61,24 +61,40 @@ jobs:
             if(!exe)throw new Error('Chrome binary missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             try{
-              async function run(path,expected){
+              async function runRoot(){
                 const page=await browser.newPage();
                 const errors=[];
                 page.on('pageerror',e=>errors.push(String(e.message||e)));
-                const response=await page.goto(process.env.LIVE_URL+path,{waitUntil:'domcontentloaded',timeout:30000});
-                if(response?.status()!==200)throw new Error(`Root status ${response?.status()} for ${path}`);
-                await page.waitForFunction((marker)=>{
-                  const t=document.querySelector('#app')?.textContent||'';
-                  return t.includes(marker)&&!t.includes('Uygulama yükleniyor');
-                },expected,{timeout:25000});
-                const text=(await page.locator('#app').innerText()).slice(0,1200);
-                console.log('PAGE_OK',path,JSON.stringify(text));
-                if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+                const response=await page.goto(process.env.LIVE_URL+'?smoke=root',{waitUntil:'domcontentloaded',timeout:30000});
+                if(response?.status()!==200)throw new Error(`Root status ${response?.status()}`);
+                await page.waitForFunction(()=>{
+                  const app=document.querySelector('#app')?.textContent||'';
+                  return app.includes('E-posta')&&!app.includes('Uygulama yükleniyor');
+                },{timeout:25000});
+                console.log('ROOT_OK',JSON.stringify((await page.locator('#app').innerText()).slice(0,1200)));
+                if(errors.length)throw new Error('Root page errors: '+errors.join(' | '));
                 await page.close();
               }
-              await run('?smoke=root','E-posta');
-              await run('?join=CHAR-INVALID-SMOKE-ONLY','Karakter daveti kullanılmış veya süresi dolmuş');
-              await run('?join=RECON-INVALID-SMOKE-ONLY','Yeniden bağlama');
+              async function runInvite(token,marker){
+                const page=await browser.newPage();
+                const errors=[];
+                page.on('pageerror',e=>errors.push(String(e.message||e)));
+                const response=await page.goto(process.env.LIVE_URL+'?join='+encodeURIComponent(token),{waitUntil:'domcontentloaded',timeout:30000});
+                if(response?.status()!==200)throw new Error(`Root status ${response?.status()} for ${token}`);
+                await page.waitForFunction((expected)=>{
+                  const toast=document.querySelector('#toast')?.textContent||'';
+                  const app=document.querySelector('#app')?.textContent||'';
+                  return toast.includes(expected)&&app.includes('E-posta')&&!app.includes('Uygulama yükleniyor');
+                },marker,{timeout:25000});
+                const toast=await page.locator('#toast').textContent();
+                const app=(await page.locator('#app').innerText()).slice(0,700);
+                console.log('INVITE_REJECTION_OK',token,JSON.stringify({toast,app}));
+                if(errors.length)throw new Error('Invite page errors: '+errors.join(' | '));
+                await page.close();
+              }
+              await runRoot();
+              await runInvite('CHAR-INVALID-SMOKE-ONLY','Karakter daveti kullanılmış veya süresi dolmuş');
+              await runInvite('RECON-INVALID-SMOKE-ONLY','Yeniden bağlama bağlantısı kullanılmış veya süresi dolmuş');
               console.log('GITHUB_PAGES_BROWSER_SMOKE_OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
