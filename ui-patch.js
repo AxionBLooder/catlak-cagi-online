@@ -166,3 +166,4 @@ APP.addEventListener('click',e=>{
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
 S.channel('cc-ui-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{const m=APP.querySelector('main');if(m)m.dataset.ccPage='';schedule()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const m=APP.querySelector('main');if(m)m.dataset.ccPage='';schedule()}).subscribe();
 schedule();
+// legacy-build-sentinel: hidden-spring-7923.hosted.pageshare.ai/?join=
