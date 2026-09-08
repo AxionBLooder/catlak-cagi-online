@@ -37,6 +37,13 @@ jobs:
           if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
               raise SystemExit('normal and prepared invite replacements missing')
           p.write_text(s,encoding='utf-8')
+
+          p=Path('.github/workflows/build-bundle.yml')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('hidden-spring-7923.hosted.pageshare.ai/?join=','ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=')
+          if 'ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=' not in s:
+              raise SystemExit('production static marker replacement missing')
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Validate syntax and gateway markers
         run: |
@@ -45,13 +52,14 @@ jobs:
           node --check /tmp/base.js
           grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi" ui-patch.js
           grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi" live_06.txt
+          grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" .github/workflows/build-bundle.yml
       - name: Commit Supabase invite gateway
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ui-patch.js live_06.txt
+          git add ui-patch.js live_06.txt .github/workflows/build-bundle.yml
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Hazır karakter davetlerini Supabase gateway'e taşı"
+            git commit -m "Production davet testini Supabase gateway'e geçir"
             git pull --rebase origin main
             git push
           fi
