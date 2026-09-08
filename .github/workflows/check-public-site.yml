@@ -45,7 +45,7 @@ jobs:
         env:
           LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=single-owner
         run: |
-          cat > /tmp/check-live.cjs <<'JS'
+          cat > .check-live.cjs <<'JS'
           const { chromium }=require('playwright-core');
           const { execFileSync }=require('child_process');
           (async()=>{
@@ -76,4 +76,5 @@ jobs:
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/check-live.cjs
+          node .check-live.cjs
+          rm -f .check-live.cjs
