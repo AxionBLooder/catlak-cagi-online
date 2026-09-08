@@ -42,7 +42,7 @@ jobs:
           if src.count("const app=document.querySelector('#app');") != 1:
               raise SystemExit('Legacy kaynakta app tanımı tam olarak bir kez olmalı')
           manifest=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))
-          if manifest.get('format') not in ('iife-es2018-browser-verified','iife-es2018-browser-verified-single-owner'):
+          if manifest.get('format') not in ('iife-es2018-browser-verified','iife-es2018-browser-verified-single-owner','iife-es2018-browser-verified-single-owner-minified'):
               raise SystemExit('Doğrulanmış browser build manifesti bulunamadı')
           artifact=Path('browser-app.js').read_text(encoding='utf-8')
           if not artifact:
