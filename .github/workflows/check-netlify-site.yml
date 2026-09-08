@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'index.html'
+      - 'browser-app.js'
+      - '_headers'
       - '.github/workflows/check-netlify-site.yml'
   workflow_dispatch:
 concurrency:
@@ -14,6 +17,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
+      - name: Verify cache headers
+        run: |
+          curl -fsSI https://catlak-cagi-online.netlify.app/ | tee /tmp/root.headers
+          curl -fsSI 'https://catlak-cagi-online.netlify.app/browser-app.js?v=bootwatch-171c9773' | tee /tmp/js.headers
+          grep -qi 'cache-control:.*no-store' /tmp/root.headers
+          grep -qi 'cache-control:.*no-store' /tmp/js.headers
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify Netlify production with Chrome
@@ -37,8 +46,8 @@ jobs:
             page.on('requestfailed',r=>requestFailures.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
             try{
               const started=Date.now();
-              const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN')||t.includes('Oturum kontrolü yanıt vermedi')},{timeout:30000});
+              const response=await page.goto(process.env.LIVE_URL+'?smoke='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return !t.includes('Uygulama yükleniyor')&&(t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN')||t.includes('Başlangıç tamamlanamadı')||t.includes('Uygulama dosyası yüklenemedi'))},{timeout:20000});
               const elapsed=Date.now()-started;
               const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
               console.log('NAV_STATUS:',response?.status());
@@ -49,11 +58,10 @@ jobs:
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
               if(response?.status()!==200)throw new Error('Netlify HTTP status '+response?.status());
-              if(text.includes('Uygulama yükleniyor'))throw new Error('Netlify app initial loading screen did not clear');
+              if(text.includes('Uygulama yükleniyor'))throw new Error('Initial loading screen did not clear');
               if(httpErrors.length||requestFailures.length||pageErrors.length)throw new Error('Netlify browser errors detected');
-              console.log('NETLIFY LIVE PAGE OK');
+              console.log('NETLIFY LIVE BOOT OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node .check-netlify.cjs
-# auth boot timeout recovery verification
