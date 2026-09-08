@@ -12,14 +12,19 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify gateway markup
+      - name: Verify gateway and same-origin app asset
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?verify=1' -o /tmp/gateway.html
-          grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/gateway.html
+          BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          curl -fsSL --retry 3 "$BASE?verify=1" -o /tmp/gateway.html
+          grep -q 'asset=app' /tmp/gateway.html
+          grep -q 'c769c41383b7' /tmp/gateway.html
+          curl -fsSL --retry 3 "$BASE?asset=app&v=c769c41383b7" -o /tmp/app.js
+          test "$(wc -c < /tmp/app.js)" -gt 300000
+          grep -q 'ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi' /tmp/app.js
           curl -fsSL --retry 3 'https://hidden-spring-7923.hosted.pageshare.ai/?verify=1' -o /tmp/pageshare.html
           grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/pageshare.html
-          echo 'GATEWAY_MARKUP_OK'
+          echo 'SAME_ORIGIN_GATEWAY_OK'
       - name: Open gateway in Chrome
         run: |
           cat > .check-invite.cjs <<'JS'
@@ -39,16 +44,15 @@ jobs:
               let r=await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')},{timeout:15000});
               console.log('ROOT_STATUS:',r?.status());
-              const rootText=await page.locator('#app').innerText();
-              console.log('ROOT_TEXT:',rootText.slice(0,250));
+              console.log('ROOT_TEXT:',(await page.locator('#app').innerText()).slice(0,250));
               if(r?.status()!==200)throw new Error('Gateway root status '+r?.status());
               if(errs.length||fails.length)throw new Error('Root browser errors: '+JSON.stringify({errs,fails}));
               errs.length=0;fails.length=0;
               r=await page.goto(base+'?join=CHAR-INVALID-SMOKE-ONLY',{waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForTimeout(4500);
+              await page.waitForTimeout(6000);
               const inviteText=await page.locator('body').innerText();
               console.log('INVITE_STATUS:',r?.status());
-              console.log('INVITE_TEXT:',inviteText.slice(0,500));
+              console.log('INVITE_TEXT:',inviteText.slice(0,600));
               console.log('INVITE_PAGE_ERRORS:',JSON.stringify(errs));
               console.log('INVITE_REQUEST_FAILURES:',JSON.stringify(fails));
               if(r?.status()!==200)throw new Error('Invite gateway document status '+r?.status());
