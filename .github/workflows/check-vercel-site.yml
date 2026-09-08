@@ -17,7 +17,7 @@ jobs:
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Open Vercel production with Chrome
         env:
-          LIVE_URL: https://catlak-cagi-online-canr3556-5365.vercel.app/
+          LIVE_URL: https://catlak-cagi-online-xw08f859u-canr3556-5365.vercel.app/
         run: |
           cat > .check-vercel.cjs <<'JS'
           const { chromium }=require('playwright-core');
@@ -30,13 +30,21 @@ jobs:
             if(!exe)throw new Error('Chrome binary missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             const page=await browser.newPage();
-            const pageErrors=[],httpErrors=[],requestFailures=[];
+            const pageErrors=[],httpErrors=[],requestFailures=[],consoleErrors=[];
             page.on('pageerror',e=>pageErrors.push(String(e.message||e)));
             page.on('response',r=>{if(r.status()>=400)httpErrors.push(`${r.status()} ${r.url()}`)});
             page.on('requestfailed',r=>requestFailures.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
+            page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
             try{
               const started=Date.now();
-              await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
+              const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
+              console.log('NAV_STATUS:',response?.status());
+              console.log('FINAL_URL:',page.url());
+              console.log('TITLE:',await page.title());
+              console.log('EARLY_BODY:',(await page.locator('body').innerText().catch(()=>'' )).replace(/\s+/g,' ').slice(0,1200));
+              console.log('EARLY_HTTP_ERRORS:',JSON.stringify(httpErrors));
+              console.log('EARLY_REQUEST_FAILURES:',JSON.stringify(requestFailures));
+              console.log('EARLY_CONSOLE_ERRORS:',JSON.stringify(consoleErrors));
               await page.waitForFunction(()=>{
                 const t=document.querySelector('#app')?.textContent||'';
                 return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN');
@@ -48,7 +56,6 @@ jobs:
               console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
-              if(!text.includes('Giriş Yap')&&!text.includes('Hesap Aç')&&!text.includes('TEK EVREN'))throw new Error('Login UI görünmedi');
               if(pageErrors.some(x=>/SyntaxError|Invalid or unexpected token|Unexpected token/i.test(x)))throw new Error('Browser syntax error');
               console.log('VERCEL LIVE PAGE OK');
             }finally{await browser.close()}
