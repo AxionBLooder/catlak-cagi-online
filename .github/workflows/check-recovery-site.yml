@@ -34,7 +34,7 @@ jobs:
             const res=await page.goto(process.env.LIVE_URL+'?recovery='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
             await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')&&!t.includes('Uygulama yükleniyor')},{timeout:15000});
             const bootMs=Date.now()-started;
-            const js=await page.evaluate(async()=>{const r=await fetch('./browser-app.js?probe='+Date.now(),{cache:'no-store'});return {status:r.status,type:r.headers.get('content-type'),cache:r.headers.get('cache-control'),len:(await r.text()).length}});
+            const js=await page.evaluate(async()=>{const r=await fetch('./browser-app.js?probe='+Date.now(),{cache:'no-store'});const txt=await r.text();return {status:r.status,type:r.headers.get('content-type'),cache:r.headers.get('cache-control'),len:txt.length,hasRefreshTimeout:txt.includes('Oyun verileri zaman aşımına uğradı'),hasRefreshRecovery:txt.includes('Oyun verileri yüklenemedi')}});
             await page.locator('#aemail').fill('catlak-smoke-nonexistent@example.invalid');
             await page.locator('#apass').fill('definitely-wrong-password');
             const clickAt=Date.now();
@@ -53,11 +53,13 @@ jobs:
             if(res?.status()!==200)throw new Error('Root status '+res?.status());
             if(!/application\/javascript/i.test(js.type||''))throw new Error('Bad JS MIME '+js.type);
             if(js.status!==200||js.len<300000)throw new Error('JS asset incomplete');
+            if(!js.hasRefreshTimeout||!js.hasRefreshRecovery)throw new Error('Final refresh hardening missing from live bundle');
             if(body.includes('Uygulama yükleniyor'))throw new Error('Boot screen stuck');
             if(pageErrors.length||httpErrors.length||fails.length)throw new Error('Browser/network errors detected');
             if(authElapsed>=15000)throw new Error('Auth failure path hung');
-            console.log('RECOVERY_SITE_OK');
+            console.log('RECOVERY_SITE_FINAL_OK');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node .check-recovery.cjs
+# final hardened recovery verification
