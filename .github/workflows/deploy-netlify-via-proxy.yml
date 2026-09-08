@@ -30,6 +30,5 @@ jobs:
         run: |
           npx -y @netlify/mcp@latest \
             --site-id f08d5c89-8c67-470c-9a35-013839260f6d \
-            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..kpGFMhsL3UOvqa4g.5QMRWaxg_ZLsUojvu1cJ2nL7eJGXmLB3tUdpKVuhXvFjieRCLez5CNgp7z21zIuJa3mGu4p6aNGMi-O8x-OXNsXxKoYuuVCdq-mJ85xFUbT-0pGP3zGGpLUOFPuZIlRV_eDZFnMHw18Slq0m2AEtWBjz114kYPiNtuxGS871ftcqnw8Ej-dQnCjLJ-vk6CUc1YnsKSekvKrIY-Ps1HamWwdMV4ijk1SYu8zVgnv7FzGPP7g-2cGu6sGsfcys4kZ_kuAaAbjJzBaFaKJUlpeMsTvXtol6nE7E0y0ojcH04nRsLp7KZBOO2pgEVgW6Nn00GAYcrBJ6GggS_la7PwwHrFju9qAFPWl5wBS1YyFlbIoDK9wH6RIbmXetHrOGf9jUsmg9zX1-.A7e9oFK8wflwaGu5Xn_qTQ" \
+            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..fqcPh8jF7Kt5Q0rj.I1-oHr8FzEPqGmjfaRHvW4KZHUOScATKGdLPcJl6p4gpAHPscj5T_7X-SdgpZoysAp_G-lANvMIj6xmc_2mxcPaH7WRO60x9uv3hyFAtbVMbFtHZ74Uddl1BKFlJUzAfFGrohPV8qsdFpn6qFXJP1Tfm_wuGZhl1GNqUhA-ZaoXDc3eENHtQ0_UplgO-qKyoQYqUzrp4fTQ2gzufe5lWp5v8VpDNRhMeJvBFSTnREslwKRT2i8oCAzZ78tsBbmNCDVvvU3B79fPa7LXqp4y0y08rA5qS2-0SB9P4FFeeXZpuHT79fM9k_Q0mqQ_Sg75_E6uftZLOzjd3sTZEpXaSd_4gBWF3lI-XPgYvclC6UzSL3-_hSXGgGZIF0je6hidj_eV-CPEd.aLATgVk1MEjJNJGhgdCENw" \
             --no-wait
-# production redeploy trigger: auth deadlock fix
