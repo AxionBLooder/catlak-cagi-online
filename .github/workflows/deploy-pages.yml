@@ -1,0 +1,55 @@
+name: Deploy GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'browser-app.js'
+      - 'browser-build.json'
+      - 'catalog.b64'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: catlak-github-pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Prepare static site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir _site
+          cp index.html browser-app.js catalog.b64 _site/
+          touch _site/.nojekyll
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('_site/browser-app.js')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'https://cdn\.jsdelivr\.net/gh/AxionBLooder/catlak-cagi-online@[0-9a-f]+/catalog\.b64','./catalog.b64',s)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check _site/browser-app.js
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
