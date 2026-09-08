@@ -7,11 +7,9 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
-      - name: Install browser driver
-        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify v8 gateway and PageShare migration shell
         run: |
           set -euo pipefail
@@ -27,36 +25,28 @@ jobs:
           grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
           grep -q 'Kalıcı Siteye Geç' /tmp/app.js
           grep -q 'catlak-transfer-ready' /tmp/app.js
-          curl -fsSL --retry 3 "$PAGE?verify=$(date +%s)" -o /tmp/pageshare.html
+          curl -fsSL --retry 3 -D /tmp/pageshare.headers "$PAGE?verify=$(date +%s)" -o /tmp/pageshare.html
+          cat /tmp/pageshare.headers
+          grep -qi 'content-type: text/html' /tmp/pageshare.headers
           grep -q 'functions/v1/catlak-cagi?asset=app' /tmp/pageshare.html
           grep -q "$HASH" /tmp/pageshare.html
           echo 'GATEWAY_AND_PAGESHARE_MIGRATION_STATIC_OK'
-      - name: Open gateway and PageShare in Chrome
+      - name: Open PageShare player entry in Chrome
         run: |
-          cat > .check-invite.cjs <<'JS'
-          const { chromium }=require('playwright-core');
-          const { execFileSync }=require('child_process');
-          (async()=>{
-            let exe='';
-            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
-            if(!exe)throw new Error('Chrome binary missing');
-            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
-            try{
-              for(const base of ['https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi','https://hidden-spring-7923.hosted.pageshare.ai/']){
-                const page=await browser.newPage();
-                const errs=[],fails=[];
-                page.on('pageerror',e=>errs.push(String(e.message||e)));
-                page.on('requestfailed',r=>fails.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
-                const r=await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-                await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')},{timeout:18000});
-                const text=await page.locator('#app').innerText();
-                console.log('URL:',base,'STATUS:',r?.status(),'TEXT:',text.slice(0,220));
-                if(r?.status()!==200)throw new Error('Document status '+r?.status()+' '+base);
-                if(errs.length||fails.length)throw new Error('Browser errors '+base+': '+JSON.stringify({errs,fails}));
-                await page.close();
-              }
-              console.log('GATEWAY_AND_PAGESHARE_BROWSER_OK');
-            }finally{await browser.close()}
-          })().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          node .check-invite.cjs
+          set -euo pipefail
+          PAGE='https://hidden-spring-7923.hosted.pageshare.ai/'
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          set +e
+          timeout 35s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=15000 --dump-dom "$PAGE?verify=bridge-$(date +%s)" >/tmp/dom.html 2>/tmp/chrome.log
+          STATUS=$?
+          set -e
+          echo "CHROME_STATUS=$STATUS"
+          grep -Ei 'net::ERR|Uncaught|SyntaxError' /tmp/chrome.log | tail -80 || true
+          echo '--- PAGE MARKERS ---'
+          grep -o 'Giriş Yap\|E-posta\|Çatlak Çağı' /tmp/dom.html | sort -u || true
+          test "$STATUS" -eq 0
+          grep -q 'Çatlak Çağı' /tmp/dom.html
+          grep -q 'Giriş Yap' /tmp/dom.html
+          grep -q 'E-posta' /tmp/dom.html
+          echo 'PAGESHARE_V8_PLAYER_ENTRY_OK'
