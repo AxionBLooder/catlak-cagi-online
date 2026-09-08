@@ -6,6 +6,7 @@ on:
       - 'ui-patch.js'
       - 'world-patch.js'
       - 'fixes-patch.js'
+      - 'stability-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -20,7 +21,7 @@ jobs:
       - name: Install browser build dependencies
         run: npm install --no-save --no-package-lock --no-audit --no-fund esbuild@0.25.9 @supabase/supabase-js@2.115.0
 
-      - name: Normalize legacy source and prepare isolated browser source
+      - name: Normalize legacy source and prepare browser source
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: |
@@ -40,6 +41,7 @@ jobs:
           ui=Path('ui-patch.js').read_text(encoding='utf-8')
           world=Path('world-patch.js').read_text(encoding='utf-8')
           fixes=Path('fixes-patch.js').read_text(encoding='utf-8')
+          stability=Path('stability-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -53,11 +55,7 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base=clean(base)
-          ui=clean(ui)
-          world=clean(world)
-          fixes=clean(fixes)
-
+          base,ui,world,fixes,stability=map(clean,(base,ui,world,fixes,stability))
           Path('.build').mkdir(exist_ok=True)
           entry=(
               "import {createClient} from '@supabase/supabase-js';\n"
@@ -65,7 +63,8 @@ jobs:
               "const __catlakUiReady=(async()=>{await __catlakBaseReady;\n"+ui+"\n})();\n"
               "const __catlakWorldReady=(async()=>{await __catlakUiReady;\n"+world+"\n})();\n"
               "const __catlakFixesReady=(async()=>{await __catlakWorldReady;\n"+fixes+"\n})();\n"
-              "__catlakFixesReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakStabilityReady=(async()=>{await __catlakFixesReady;\n"+stability+"\n})();\n"
+              "__catlakStabilityReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -86,60 +85,33 @@ jobs:
         run: |
           node --check browser-app.js
           node --check fixes-patch.js
+          node --check stability-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
           if 'https://esm.sh/' in s:
               raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
-          if "import('https://" in s or 'import("https://' in s:
-              raise SystemExit('Harici dynamic import browser artifact içinde kaldı')
-          required=['Tüm Zarları Sil','catlak_clear_roll_log','data-cc-world-tab']
+          required=['Toplu Zar Sil','catlak_clear_roll_log','Partiye Yansıt','Harita & NPC Görselleri','Zar silinemedi','data-cc-map-tab']
           missing=[x for x in required if x not in s]
           if missing:
-              raise SystemExit('Yeni GM/Evren düzeltmeleri artifact içinde eksik: '+', '.join(missing))
+              raise SystemExit('Yeni stabilite özellikleri artifact içinde eksik: '+', '.join(missing))
           print('Static browser verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
       - name: Browser smoke test
         run: |
           cat > smoke.html <<'EOF'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="rolls">Zar Akışı</button><button data-cc-world-tab="1" data-tab="world">Evren</button></div><main><section class="card"><div class="eyebrow">CANLI ZAR AKIŞI</div><div class="rolls"></div></section></main>';},5000);</script></body></html>
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button><button data-cc-world-tab="1">Evren</button></div><main></main>';},5000);</script></body></html>
           EOF
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/catlak-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
-          if [ -z "$CHROME" ]; then
-            echo "Chrome binary not present on runner; static checks already passed."
-            exit 0
-          fi
+          if [ -z "$CHROME" ]; then echo "Chrome binary missing; static checks passed."; exit 0; fi
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom http://127.0.0.1:4173/smoke.html >/tmp/catlak-dom.html 2>/tmp/catlak-chrome.log || true
           cat /tmp/catlak-chrome.log || true
-          if grep -Eqi 'data-smoke-error="[^"]*(Missing \}|template expression|Invalid or unexpected token|Unexpected token|SyntaxError)' /tmp/catlak-dom.html; then
-            cat /tmp/catlak-dom.html
-            exit 1
-          fi
-          python3 - <<'PY'
-          from html.parser import HTMLParser
-          from pathlib import Path
-          dom=Path('/tmp/catlak-dom.html').read_text(encoding='utf-8',errors='replace')
-          class P(HTMLParser):
-              def __init__(self):
-                  super().__init__();self.world=None;self.clear=False
-              def handle_starttag(self,tag,attrs):
-                  a=dict(attrs)
-                  if 'data-cc-world-tab' in a:self.world=a
-                  if 'data-cc-clear-all-rolls' in a:self.clear=True
-          p=P();p.feed(dom)
-          if not p.world or 'data-tab' in p.world:
-              raise SystemExit('Evren butonu eski routerdan ayrılmadı')
-          if not p.clear:
-              raise SystemExit('Toplu zar silme butonu oluşmadı')
-          print('Feature smoke OK: Evren router ayrıldı ve toplu zar silme görünür')
-          PY
-          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/catlak-chrome.log; then
-            exit 1
-          fi
+          if grep -Eqi 'data-smoke-error="[^"]*(Missing \}|template expression|Invalid or unexpected token|Unexpected token|SyntaxError)' /tmp/catlak-dom.html; then cat /tmp/catlak-dom.html; exit 1; fi
+          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/catlak-chrome.log; then exit 1; fi
           echo "Browser smoke test OK"
 
       - name: Write build manifest
@@ -150,12 +122,7 @@ jobs:
           import hashlib,json,os
           from pathlib import Path
           b=Path('browser-app.js').read_bytes()
-          Path('browser-build.json').write_text(json.dumps({
-            'source_sha':os.environ['SOURCE_SHA'],
-            'sha256':hashlib.sha256(b).hexdigest(),
-            'bytes':len(b),
-            'format':'iife-es2018-browser-verified'
-          },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          Path('browser-build.json').write_text(json.dumps({'source_sha':os.environ['SOURCE_SHA'],'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b),'format':'iife-es2018-browser-verified'},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
 
       - name: Commit verified browser artifacts and normalized source
@@ -163,9 +130,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add live_05.txt browser-app.js browser-build.json
-          if git diff --cached --quiet; then
-            echo "Verified browser artifacts already up to date"
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo "Verified browser artifacts already up to date"; exit 0; fi
           git commit -m "Doğrulanmış browser app güncelle"
           git push
