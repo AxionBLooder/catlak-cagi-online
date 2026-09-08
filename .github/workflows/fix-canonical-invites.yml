@@ -12,35 +12,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pin all invite links to verified PageShare host
+      - name: Pin all invite links to permanent Netlify host
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          bad='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
-          good='https://hidden-spring-7923.hosted.pageshare.ai/'
+          gateway='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          old='https://hidden-spring-7923.hosted.pageshare.ai/'
+          good='https://catlak-cagi-online.netlify.app/'
 
           p=Path('ui-patch.js')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(bad+'?join=',good+'?join=')
-          s=s.replace("window.__catlakLegacyInviteSentinel='hidden-spring-7923.hosted.pageshare.ai/?join=';",'')
+          s=s.replace(gateway+'?join=',good+'?join=')
+          s=s.replace(old+'?join=',good+'?join=')
           s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(good+'?join=')+'+')
           if good+'?join=' not in s:
-              raise SystemExit('ui-patch PageShare invite replacement missing')
-          if bad+'?join=' in s:
-              raise SystemExit('ui-patch still contains Supabase invite target')
+              raise SystemExit('ui-patch Netlify invite replacement missing')
+          if old+'?join=' in s or gateway+'?join=' in s:
+              raise SystemExit('ui-patch still contains obsolete invite target')
           p.write_text(s,encoding='utf-8')
 
           p=Path('live_06.txt')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(f"const CATLAK_PUBLIC_BASE='{bad}';",f"const CATLAK_PUBLIC_BASE='{good}';")
+          s=s.replace(f"const CATLAK_PUBLIC_BASE='{old}';",f"const CATLAK_PUBLIC_BASE='{good}';")
+          s=s.replace(f"const CATLAK_PUBLIC_BASE='{gateway}';",f"const CATLAK_PUBLIC_BASE='{good}';")
           s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
           s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
           if f"const CATLAK_PUBLIC_BASE='{good}';" not in s:
-              raise SystemExit('live_06 PageShare base replacement missing')
+              raise SystemExit('live_06 Netlify base replacement missing')
           if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
               raise SystemExit('normal and prepared invite replacements missing')
-          if bad in s:
-              raise SystemExit('live_06 still contains Supabase invite target')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('.github/workflows/build-bundle.yml')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("'hidden-spring-7923.hosted.pageshare.ai/?join='","'catlak-cagi-online.netlify.app/?join='")
+          if "forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join='" not in s:
+              s=s.replace("forbidden=['https://esm.sh/'","forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','https://esm.sh/'",1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate syntax and invite markers
@@ -48,20 +55,18 @@ jobs:
           node --check ui-patch.js
           cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
           node --check /tmp/base.js
-          grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
-          grep -q "CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'" live_06.txt
+          grep -q "catlak-cagi-online.netlify.app/?join=" ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE='https://catlak-cagi-online.netlify.app/'" live_06.txt
+          grep -q "'catlak-cagi-online.netlify.app/?join='" .github/workflows/build-bundle.yml
+          ! grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
           ! grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
-      - name: Commit verified invite host
+      - name: Commit permanent invite host
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ui-patch.js live_06.txt
+          git add ui-patch.js live_06.txt .github/workflows/build-bundle.yml
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Hazır karakter davetlerini doğrulanmış PageShare adresine bağla"
+            git commit -m "Davetleri kalıcı Netlify adresine bağla"
             git pull --rebase origin main
             git push
           fi
-      - name: Rebuild production browser app
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run build-bundle.yml --ref main
