@@ -1,37 +1,13 @@
-name: Deploy Netlify via Proxy
+name: Deploy Netlify Production
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'browser-app.js'
-      - 'catalog.b64'
-      - '_headers'
-      - '.github/workflows/deploy-netlify-via-proxy.yml'
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: catlak-netlify-production
-  cancel-in-progress: true
 jobs:
-  deploy:
+  guidance:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v6
-      - name: Prepare production package
+      - name: Deployment note
         run: |
-          mkdir -p netlify-site
-          cp index.html browser-app.js catalog.b64 _headers netlify-site/
-          touch netlify-site/.nojekyll
-          node --check netlify-site/browser-app.js
-          grep -q 'catlak-cagi-online.netlify.app/?join=' netlify-site/browser-app.js
-          grep -q 'Kalıcı Siteye Geç' netlify-site/browser-app.js
-          grep -q 'catlak-transfer-ready' netlify-site/browser-app.js
-      - name: Deploy to Netlify production
-        working-directory: netlify-site
-        run: |
-          npx -y @netlify/mcp@latest \
-            --site-id f08d5c89-8c67-470c-9a35-013839260f6d \
-            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..WHupqVn_2dLb_rV8.V__6xl7qGPz2dshoYybxHqFGzDpWMqSzBrEt1jEXJG5jLuQrc5jV72m0Zij-7eNWZ0VvREBjp0Uj8VXxmlJMFIK57JlRMjmMoj2f5QRZi2z-CFT7McHlF4VViEIBeT0DhiEw4HL2CPSFBKo-f7L6GbF0ah6JrU6VUXF2kmxO3VmCs1kvGx6SjDzDeD-Gz8Pg9G3UvekyEiVErINrlZgT2DfNZb5pVPTXv4JD0mTBc1sJTKO6nFLVDDty26_x9H6Erx5OSYERJ7WwYu41VBGrzocGcrBs2MUXamAon987bLR_KP-KnkYXAReVkbTO_bECFbO8asaVbEtMYQarasqXx9VL-qpar0ytMbDUg3Kn9ACScwqNLuHSbdo9hwn8LQLgKuiDcgok.a7Gjds0KVnf3WOMDnGE7_A"
+          echo 'Production deploys use a fresh short-lived Netlify deployment authorization.'
+          echo 'No reusable Netlify deployment credential is stored in this public repository.'
