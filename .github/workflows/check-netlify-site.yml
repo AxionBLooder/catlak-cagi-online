@@ -38,7 +38,7 @@ jobs:
             try{
               const started=Date.now();
               const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN')},{timeout:30000});
+              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN')||t.includes('Oturum kontrolü yanıt vermedi')},{timeout:30000});
               const elapsed=Date.now()-started;
               const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
               console.log('NAV_STATUS:',response?.status());
@@ -49,9 +49,11 @@ jobs:
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
               if(response?.status()!==200)throw new Error('Netlify HTTP status '+response?.status());
+              if(text.includes('Uygulama yükleniyor'))throw new Error('Netlify app initial loading screen did not clear');
               if(httpErrors.length||requestFailures.length||pageErrors.length)throw new Error('Netlify browser errors detected');
               console.log('NETLIFY LIVE PAGE OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node .check-netlify.cjs
+# auth boot timeout recovery verification
