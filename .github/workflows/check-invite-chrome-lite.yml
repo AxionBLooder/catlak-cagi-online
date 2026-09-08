@@ -10,22 +10,25 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
-      - name: Dump Supabase gateway DOM
+      - name: Verify static invite entry
         run: |
           set -euo pipefail
+          BASE='https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@c363e89abcfba71ccbb81a16f8d42206a2bcded3/invite-entry.html'
+          curl -fsSL -D /tmp/headers.txt "$BASE?join=CHAR-INVALID-SMOKE-ONLY" -o /tmp/invite.html
+          cat /tmp/headers.txt
+          grep -qi 'content-type: text/html' /tmp/headers.txt
+          grep -q 'catlak-cagi?asset=app' /tmp/invite.html
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
-          URL='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?diag=1'
           set +e
-          timeout 25s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=12000 --enable-logging=stderr --v=1 --dump-dom "$URL" >/tmp/dom.html 2>/tmp/chrome.log
+          timeout 25s "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "$BASE?join=CHAR-INVALID-SMOKE-ONLY" >/tmp/dom.html 2>/tmp/chrome.log
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
-          echo '--- DOM ---'
           head -c 5000 /tmp/dom.html || true
           echo
-          echo '--- RELEVANT LOGS ---'
-          grep -Ei 'error|fail|supabase|catlak|javascript|script|net::' /tmp/chrome.log | tail -120 || true
+          grep -Ei 'error|fail|net::' /tmp/chrome.log | tail -80 || true
           echo '--- MARKERS ---'
-          grep -o 'Giriş Yap\|Oyun masası yükleniyor\|Uygulama başlatılamadı\|CATLAK_BOOT\|CATLAK_AUTH_BOOT_TIMEOUT' /tmp/dom.html | sort -u || true
-          grep -q 'Giriş Yap' /tmp/dom.html
+          grep -o 'Giriş Yap\|Çatlak Çağı\|Oyun masası yükleniyor\|Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html | sort -u || true
+          grep -q 'Çatlak Çağı' /tmp/dom.html
+          if grep -q '&lt;!doctype html&gt;' /tmp/dom.html; then echo 'HTML_RENDERED_AS_TEXT'; exit 1; fi
