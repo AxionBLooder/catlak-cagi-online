@@ -7,6 +7,7 @@ on:
       - 'fixes-patch.js'
       - 'stability-patch.js'
       - 'world-extra-patch.js'
+      - 'gallery-quality-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -42,6 +43,7 @@ jobs:
           fixes=Path('fixes-patch.js').read_text(encoding='utf-8')
           stability=Path('stability-patch.js').read_text(encoding='utf-8')
           extra=Path('world-extra-patch.js').read_text(encoding='utf-8')
+          quality=Path('gallery-quality-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -55,15 +57,13 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base,ui,fixes,stability,extra=map(clean,(base,ui,fixes,stability,extra))
+          base,ui,fixes,stability,extra,quality=map(clean,(base,ui,fixes,stability,extra,quality))
 
-          # GM canlı masasının tek sahibi stability katmanı olsun.
           needle='async function renderLiveTable(){'
           if ui.count(needle)!=1:
               raise SystemExit('renderLiveTable beklenen biçimde bulunamadı')
           ui=ui.replace(needle,"async function renderLiveTable(){if(window.__catlakStableLiveOwner)return;",1)
 
-          # Harita'ya geçerken eski ara GM tıklamasını tamamen kaldır.
           old="if(worldOn){const gm=CC_APP.querySelector('.nav [data-tab=\"gm\"]');if(gm)gm.click()}"
           new="if(worldOn){worldOn.classList.remove('on')}"
           if old not in stability:
@@ -78,7 +78,8 @@ jobs:
               "const __catlakFixesReady=(async()=>{await __catlakUiReady;\n"+fixes+"\n})();\n"
               "const __catlakStabilityReady=(async()=>{await __catlakFixesReady;\n"+stability+"\n})();\n"
               "const __catlakExtraReady=(async()=>{await __catlakStabilityReady;\n"+extra+"\n})();\n"
-              "__catlakExtraReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakQualityReady=(async()=>{await __catlakExtraReady;\n"+quality+"\n})();\n"
+              "__catlakQualityReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -101,12 +102,13 @@ jobs:
           node --check fixes-patch.js
           node --check stability-patch.js
           node --check world-extra-patch.js
+          node --check gallery-quality-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
           if 'https://esm.sh/' in s:
               raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','catlak_gm_update_character_sheet','EVREN GÖRSELLERİ','data-ccx-delete','ccx-media-frame','__catlakStableLiveOwner']
+          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','catlak_gm_update_character_sheet','EVREN GÖRSELLERİ','data-ccx-delete','ccx-media-frame','data-ccq-party-other','ccq-quality-note','__catlakStableLiveOwner']
           missing=[x for x in required if x not in s]
           if missing:
               raise SystemExit('Yeni özellikler artifact içinde eksik: '+', '.join(missing))
