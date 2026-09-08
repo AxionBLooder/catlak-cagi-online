@@ -5,6 +5,7 @@ on:
       - 'live_*.txt'
       - 'ui-patch.js'
       - 'world-patch.js'
+      - 'fixes-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -38,6 +39,7 @@ jobs:
           base=''.join(Path(name).read_text(encoding='utf-8') for name in files)
           ui=Path('ui-patch.js').read_text(encoding='utf-8')
           world=Path('world-patch.js').read_text(encoding='utf-8')
+          fixes=Path('fixes-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -54,14 +56,16 @@ jobs:
           base=clean(base)
           ui=clean(ui)
           world=clean(world)
+          fixes=clean(fixes)
 
           Path('.build').mkdir(exist_ok=True)
           entry=(
               "import {createClient} from '@supabase/supabase-js';\n"
-              "const __catlakBaseReady=(async()=>{\n"+base+"\n})();\n"
+              "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\n})();\n"
               "const __catlakUiReady=(async()=>{await __catlakBaseReady;\n"+ui+"\n})();\n"
               "const __catlakWorldReady=(async()=>{await __catlakUiReady;\n"+world+"\n})();\n"
-              "__catlakWorldReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakFixesReady=(async()=>{await __catlakWorldReady;\n"+fixes+"\n})();\n"
+              "__catlakFixesReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -81,6 +85,7 @@ jobs:
       - name: Static verification
         run: |
           node --check browser-app.js
+          node --check fixes-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
@@ -88,13 +93,17 @@ jobs:
               raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
           if "import('https://" in s or 'import("https://' in s:
               raise SystemExit('Harici dynamic import browser artifact içinde kaldı')
+          required=['Tüm Zarları Sil','catlak_clear_roll_log','data-cc-world-tab']
+          missing=[x for x in required if x not in s]
+          if missing:
+              raise SystemExit('Yeni GM/Evren düzeltmeleri artifact içinde eksik: '+', '.join(missing))
           print('Static browser verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
       - name: Browser smoke test
         run: |
           cat > smoke.html <<'EOF'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script></body></html>
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="rolls">Zar Akışı</button><button data-cc-world-tab="1" data-tab="world">Evren</button></div><main><section class="card"><div class="eyebrow">CANLI ZAR AKIŞI</div><div class="rolls"></div></section></main>';setTimeout(function(){var w=a.querySelector('[data-cc-world-tab]');var c=a.querySelector('[data-cc-clear-all-rolls]');document.documentElement.setAttribute('data-feature-smoke',w&&!w.hasAttribute('data-tab')&&c?'ok':'fail');},800);},5000);</script></body></html>
           EOF
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/catlak-http.log 2>&1 &
           SERVER_PID=$!
@@ -107,6 +116,11 @@ jobs:
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom http://127.0.0.1:4173/smoke.html >/tmp/catlak-dom.html 2>/tmp/catlak-chrome.log || true
           cat /tmp/catlak-chrome.log || true
           if grep -Eqi 'data-smoke-error="[^"]*(Missing \}|template expression|Invalid or unexpected token|Unexpected token|SyntaxError)' /tmp/catlak-dom.html; then
+            cat /tmp/catlak-dom.html
+            exit 1
+          fi
+          if ! grep -q 'data-feature-smoke="ok"' /tmp/catlak-dom.html; then
+            echo 'Evren router / toplu zar smoke testi başarısız'
             cat /tmp/catlak-dom.html
             exit 1
           fi
