@@ -5,6 +5,7 @@ on:
       - 'live_*.txt'
       - 'main.js'
       - 'ui-patch.js'
+      - 'world-patch.js'
       - 'index.html'
       - '.github/workflows/check-live.yml'
   workflow_dispatch:
@@ -21,3 +22,5 @@ jobs:
         run: node --check main.js
       - name: Check UI patch syntax
         run: node --check ui-patch.js
+      - name: Check world patch syntax
+        run: node --check world-patch.js
