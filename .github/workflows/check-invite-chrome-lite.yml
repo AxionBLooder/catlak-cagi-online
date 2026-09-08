@@ -1,0 +1,31 @@
+name: Check Invite Chrome Lite
+on:
+  push:
+    paths:
+      - '.github/workflows/check-invite-chrome-lite.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Dump Supabase gateway DOM
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          URL='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?diag=1'
+          set +e
+          timeout 25s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=12000 --enable-logging=stderr --v=1 --dump-dom "$URL" >/tmp/dom.html 2>/tmp/chrome.log
+          STATUS=$?
+          set -e
+          echo "CHROME_STATUS=$STATUS"
+          echo '--- DOM ---'
+          head -c 5000 /tmp/dom.html || true
+          echo
+          echo '--- RELEVANT LOGS ---'
+          grep -Ei 'error|fail|supabase|catlak|javascript|script|net::' /tmp/chrome.log | tail -120 || true
+          echo '--- MARKERS ---'
+          grep -o 'Giriş Yap\|Oyun masası yükleniyor\|Uygulama başlatılamadı\|CATLAK_BOOT\|CATLAK_AUTH_BOOT_TIMEOUT' /tmp/dom.html | sort -u || true
+          grep -q 'Giriş Yap' /tmp/dom.html
