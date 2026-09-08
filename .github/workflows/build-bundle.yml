@@ -103,7 +103,7 @@ jobs:
       - name: Browser smoke test
         run: |
           cat > smoke.html <<'EOF'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="rolls">Zar Akışı</button><button data-cc-world-tab="1" data-tab="world">Evren</button></div><main><section class="card"><div class="eyebrow">CANLI ZAR AKIŞI</div><div class="rolls"></div></section></main>';setTimeout(function(){var w=a.querySelector('[data-cc-world-tab]');var c=a.querySelector('[data-cc-clear-all-rolls]');document.documentElement.setAttribute('data-feature-smoke',w&&!w.hasAttribute('data-tab')&&c?'ok':'fail');},800);},5000);</script></body></html>
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="rolls">Zar Akışı</button><button data-cc-world-tab="1" data-tab="world">Evren</button></div><main><section class="card"><div class="eyebrow">CANLI ZAR AKIŞI</div><div class="rolls"></div></section></main>';},5000);</script></body></html>
           EOF
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/catlak-http.log 2>&1 &
           SERVER_PID=$!
@@ -119,11 +119,24 @@ jobs:
             cat /tmp/catlak-dom.html
             exit 1
           fi
-          if ! grep -q 'data-feature-smoke="ok"' /tmp/catlak-dom.html; then
-            echo 'Evren router / toplu zar smoke testi başarısız'
-            cat /tmp/catlak-dom.html
-            exit 1
-          fi
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          dom=Path('/tmp/catlak-dom.html').read_text(encoding='utf-8',errors='replace')
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__();self.world=None;self.clear=False
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if 'data-cc-world-tab' in a:self.world=a
+                  if 'data-cc-clear-all-rolls' in a:self.clear=True
+          p=P();p.feed(dom)
+          if not p.world or 'data-tab' in p.world:
+              raise SystemExit('Evren butonu eski routerdan ayrılmadı')
+          if not p.clear:
+              raise SystemExit('Toplu zar silme butonu oluşmadı')
+          print('Feature smoke OK: Evren router ayrıldı ve toplu zar silme görünür')
+          PY
           if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/catlak-chrome.log; then
             exit 1
           fi
