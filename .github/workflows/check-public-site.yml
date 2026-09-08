@@ -26,28 +26,19 @@ jobs:
           from pathlib import Path
 
           dom=Path('/tmp/live-dom.html').read_text(encoding='utf-8',errors='replace')
+          start=dom.find('<div id="app"')
+          end=dom.find('<div id="toast"',start)
+          if start < 0 or end < 0:
+              raise SystemExit('Could not isolate #app in rendered DOM')
+          fragment=dom[start:end]
 
-          class AppText(HTMLParser):
+          class TextOnly(HTMLParser):
               def __init__(self):
-                  super().__init__()
-                  self.depth=0
-                  self.parts=[]
-              def handle_starttag(self,tag,attrs):
-                  attrs=dict(attrs)
-                  if self.depth:
-                      self.depth+=1
-                  elif attrs.get('id')=='app':
-                      self.depth=1
-              def handle_startendtag(self,tag,attrs):
-                  pass
-              def handle_endtag(self,tag):
-                  if self.depth:
-                      self.depth-=1
+                  super().__init__(); self.parts=[]
               def handle_data(self,data):
-                  if self.depth:
-                      self.parts.append(data)
+                  self.parts.append(data)
 
-          p=AppText(); p.feed(dom)
+          p=TextOnly(); p.feed(fragment)
           app_text=' '.join(' '.join(p.parts).split())
           print('APP_TEXT:',app_text[:2500])
           bad=[
