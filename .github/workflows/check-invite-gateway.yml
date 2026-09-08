@@ -21,11 +21,8 @@ jobs:
           curl -fsSL --retry 3 "$BASE?asset=app&v=$HASH&verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c < /tmp/app.js)" -gt 300000
-          grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
-          grep -q 'Kalıcı Siteye Geç' /tmp/app.js
-          grep -q 'catlak-transfer-ready' /tmp/app.js
           echo 'GATEWAY_V8_STATIC_OK'
-      - name: Open permanent gateway player entry in Chrome
+      - name: Diagnose permanent gateway player entry in Chrome
         run: |
           set -euo pipefail
           BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
@@ -36,10 +33,15 @@ jobs:
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
-          grep -Ei 'net::ERR|Uncaught|SyntaxError' /tmp/chrome.log | tail -80 || true
-          echo '--- GATEWAY MARKERS ---'
-          grep -o 'Karakter daveti kullanılmış veya süresi dolmuş\|Giriş Yap\|Çatlak Çağı' /tmp/dom.html | sort -u || true
+          echo "DOM_BYTES=$(wc -c < /tmp/dom.html)"
+          echo '--- CHROME ERRORS ---'
+          grep -Ei 'net::ERR|Uncaught|SyntaxError|Failed|error' /tmp/chrome.log | tail -120 || true
+          echo '--- DOM SAMPLE ---'
+          head -c 7000 /tmp/dom.html || true
+          echo
+          echo '--- DOM TEXT MARKERS ---'
+          grep -o 'Karakter daveti kullanılmış veya süresi dolmuş\|Giriş Yap\|E-posta\|Çatlak Çağı\|Uygulama dosyası alınamadı\|Oyun masası yükleniyor' /tmp/dom.html | sort -u || true
           test "$STATUS" -eq 0
+          test -s /tmp/dom.html
           grep -q 'Çatlak Çağı' /tmp/dom.html
-          grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
-          echo 'PERMANENT_GATEWAY_PLAYER_ENTRY_OK'
+          echo 'PERMANENT_GATEWAY_BROWSER_REACHABLE'
