@@ -56,8 +56,10 @@ jobs:
             if(!exe)throw new Error('Chrome binary missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             const page=await browser.newPage();
-            const pageErrors=[];
+            const pageErrors=[];const httpErrors=[];const requestFailures=[];
             page.on('pageerror',e=>pageErrors.push(String(e.message||e)));
+            page.on('response',r=>{if(r.status()>=400){const x=`${r.status()} ${r.url()}`;httpErrors.push(x);console.log('HTTP_ERROR:',x)}});
+            page.on('requestfailed',r=>{const x=`${r.url()} :: ${r.failure()?.errorText||'failed'}`;requestFailures.push(x);console.log('REQUEST_FAILED:',x)});
             page.on('console',m=>{if(m.type()==='error')console.log('BROWSER_CONSOLE_ERROR:',m.text())});
             try{
               await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
@@ -67,6 +69,8 @@ jobs:
               },{timeout:30000});
               const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
               console.log('APP_TEXT:',text.slice(0,1500));
+              console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
+              console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               const bad=['Site yüklenemedi','Missing } in template expression','Invalid or unexpected token','Uygulama başlatılamadı','Uygulama dosyası yüklenemedi','Tarayıcı yükleme hatası'];
               const found=bad.filter(x=>text.toLowerCase().includes(x.toLowerCase()));
               if(found.length)throw new Error('Live app error text: '+found.join(', '));
