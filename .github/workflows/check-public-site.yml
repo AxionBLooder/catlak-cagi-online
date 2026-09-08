@@ -4,39 +4,76 @@ on:
     paths:
       - '.github/workflows/check-public-site.yml'
       - 'browser-app.js'
+      - 'browser-build.json'
   workflow_dispatch:
+concurrency:
+  group: catlak-public-site-check
+  cancel-in-progress: true
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Open live PageShare in Chrome
+      - uses: actions/checkout@v4
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify published version and artifact hash
+        env:
+          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/
+          ARTIFACT_SHA: 2b54c968fec795ad211f611970d57460c454a196
         run: |
-          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=compact-stats-bb6a15e9'
-          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
-          if [ -z "$CHROME" ]; then
-            echo 'Chrome binary missing'
-            exit 1
-          fi
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=15000 --dump-dom "$URL" >/tmp/live-dom.html 2>/tmp/live-chrome.log || true
-          echo '--- Chrome diagnostics ---'
-          cat /tmp/live-chrome.log || true
-          echo '--- Rendered application checks ---'
+          set -euo pipefail
+          curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
+          grep -q "$ARTIFACT_SHA" /tmp/live-index.html || { echo 'PageShare yeni artifact commitini servis etmiyor'; cat /tmp/live-index.html; exit 1; }
+          curl -fsSL --retry 4 --retry-delay 2 "https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@$ARTIFACT_SHA/browser-app.js" -o /tmp/live-browser-app.js
+          node --check /tmp/live-browser-app.js
           python3 - <<'PY'
-          from html.parser import HTMLParser
+          import hashlib,json
           from pathlib import Path
-          dom=Path('/tmp/live-dom.html').read_text(encoding='utf-8',errors='replace')
-          start=dom.find('<div id="app"');end=dom.find('<div id="toast"',start)
-          if start<0 or end<0: raise SystemExit('Could not isolate #app in rendered DOM')
-          fragment=dom[start:end]
-          class TextOnly(HTMLParser):
-              def __init__(self): super().__init__(); self.parts=[]
-              def handle_data(self,data): self.parts.append(data)
-          p=TextOnly();p.feed(fragment);app_text=' '.join(' '.join(p.parts).split())
-          print('APP_TEXT:',app_text[:2500])
-          bad=['Site yüklenemedi','Missing } in template expression','Invalid or unexpected token','Uygulama başlatılamadı','Uygulama dosyası yüklenemedi','Tarayıcı yükleme hatası']
-          found=[x for x in bad if x.lower() in app_text.lower()]
-          if found: raise SystemExit('Live app error text found: '+', '.join(found))
-          if not any(x in app_text for x in ['Giriş Yap','Hesap Aç','TEK EVREN • ONLINE FRP']): raise SystemExit('Live app did not reach auth UI')
-          print('LIVE PAGE OK')
+          expected=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))['sha256']
+          got=hashlib.sha256(Path('/tmp/live-browser-app.js').read_bytes()).hexdigest()
+          print('expected',expected);print('got',got)
+          if got!=expected: raise SystemExit('Canlı CDN artifact hash uyuşmuyor')
+          src=Path('/tmp/live-browser-app.js').read_text(encoding='utf-8')
+          for x in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','Partiye Yansıt']:
+              if x not in src: raise SystemExit('Canlı artifact özellik eksik: '+x)
+          for x in ['ccx-unified-world','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE']:
+              if x in src: raise SystemExit('Canlı artifact eski renderer içeriyor: '+x)
+          print('LIVE ARTIFACT OK')
           PY
-          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/live-chrome.log; then exit 1; fi
+      - name: Open live site with Playwright
+        env:
+          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=single-owner
+        run: |
+          cat > /tmp/check-live.cjs <<'JS'
+          const { chromium }=require('playwright-core');
+          const { execFileSync }=require('child_process');
+          (async()=>{
+            let exe='';
+            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){
+              try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}
+            }
+            if(!exe)throw new Error('Chrome binary missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            const page=await browser.newPage();
+            const pageErrors=[];
+            page.on('pageerror',e=>pageErrors.push(String(e.message||e)));
+            page.on('console',m=>{if(m.type()==='error')console.log('BROWSER_CONSOLE_ERROR:',m.text())});
+            try{
+              await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>{
+                const t=document.querySelector('#app')?.textContent||'';
+                return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN');
+              },{timeout:30000});
+              const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
+              console.log('APP_TEXT:',text.slice(0,1500));
+              const bad=['Site yüklenemedi','Missing } in template expression','Invalid or unexpected token','Uygulama başlatılamadı','Uygulama dosyası yüklenemedi','Tarayıcı yükleme hatası'];
+              const found=bad.filter(x=>text.toLowerCase().includes(x.toLowerCase()));
+              if(found.length)throw new Error('Live app error text: '+found.join(', '));
+              const syntax=pageErrors.filter(x=>/SyntaxError|Invalid or unexpected token|template expression|Unexpected token/i.test(x));
+              if(syntax.length)throw new Error('Browser syntax errors: '+syntax.join(' | '));
+              console.log('LIVE PAGE PLAYWRIGHT OK');
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/check-live.cjs
