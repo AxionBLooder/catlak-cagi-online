@@ -127,7 +127,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading']
+          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','hidden-spring-7923.hosted.pageshare.ai/?join=']
           missing=[x for x in required if x not in s]
           if missing: raise SystemExit('Üretim artifact özellikleri eksik: '+', '.join(missing))
           forbidden=['https://esm.sh/','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE','ccx-unified-world',"if(gm)gm.click()"]
@@ -176,3 +176,5 @@ jobs:
           git commit -m "Tek sahipli doğrulanmış browser app güncelle"
           git pull --rebase origin main
           git push
+
+# canonical invite production trigger
