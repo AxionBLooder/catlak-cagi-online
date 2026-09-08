@@ -20445,7 +20445,7 @@
     const slugify = (s) => String(s || "").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
     async function catload() {
       try {
-        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@681ddc58603eb56462be4022395367d4dbfe7d45/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@5dcb29e6b96ecb7e5862160a017fd729fbc18f19/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
         st.cat = JSON.parse(txt);
       } catch (e) {
         err(e);
@@ -20980,7 +20980,7 @@
         err(x);
       }
     });
-    await catload();
+    const catReady = catload();
     let joinCode = new URLSearchParams(window.location.search).get("join");
     let { data: { session } } = await S.auth.getSession();
     if (joinCode) {
@@ -21021,6 +21021,11 @@
     });
     if (session) await refresh();
     else render();
+    catReady.then(() => {
+      if (st.ses) refresh();
+      else render();
+    }).catch(() => {
+    });
     let liveRefreshTimer = null;
     const liveRefresh = () => {
       clearTimeout(liveRefreshTimer);
