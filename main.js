@@ -1,12 +1,1 @@
-(async()=>{
-  const app=document.querySelector('#app');
-  const fail=(e)=>{
-    console.error(e);
-    if(app) app.innerHTML='<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Site yüklenemedi: '+String(e?.message||e)+'</p></main>';
-  };
-  try{
-    await import('./bundle.js?v=30');
-    await import('./ui-patch.js?v=30');
-    await import('./world-patch.js?v=30');
-  }catch(e){fail(e)}
-})();
+(function(){var app=document.querySelector('#app');var s=document.createElement('script');s.src='./browser-app.js?v=6a68a7dfe79b55c2';s.async=false;s.onerror=function(){if(app)app.innerHTML='<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Doğrulanmış uygulama dosyası yüklenemedi.</p></main>';};document.body.appendChild(s);})();
