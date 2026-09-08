@@ -19,34 +19,44 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - name: Build self-contained HTML
+      - name: Build self-contained and same-origin chunks
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import base64,re
+          import base64,re,json,glob,os
           js=Path('browser-app.js').read_text(encoding='utf-8')
           catalog=Path('catalog.b64').read_bytes()
           data_url='data:text/plain;base64,'+base64.b64encode(catalog).decode('ascii')
           js=re.sub(r'https://cdn\.jsdelivr\.net/gh/AxionBLooder/catlak-cagi-online@[0-9a-f]+/catalog\.b64',data_url,js)
-          js=js.replace('</script','<\\/script')
-          html='''<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"><meta name="theme-color" content="#071019"><title>Çatlak Çağı</title></head><body><div id="app"><main style="padding:30px;font-family:system-ui;background:#071019;color:#edf6ff;min-height:100vh"><h1>Çatlak Çağı</h1><p>Uygulama yükleniyor…</p></main></div><div id="toast" class="toast hidden"></div><script>'''+js+'''</script></body></html>'''
+          js=re.sub(r'https://raw\.githubusercontent\.com/AxionBLooder/catlak-cagi-online/[0-9a-f]+/catalog\.b64',data_url,js)
+          js_inline=js.replace('</script','<\\/script')
+          html='''<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"><meta name="theme-color" content="#071019"><title>Çatlak Çağı</title></head><body><div id="app"><main style="padding:30px;font-family:system-ui;background:#071019;color:#edf6ff;min-height:100vh"><h1>Çatlak Çağı</h1><p>Uygulama yükleniyor…</p></main></div><div id="toast" class="toast hidden"></div><script>'''+js_inline+'''</script></body></html>'''
           Path('standalone.html').write_text(html,encoding='utf-8')
-          print('standalone bytes',len(html.encode('utf-8')))
+          for p in glob.glob('page-chunk-*.txt'): os.remove(p)
+          chunk_size=45000
+          chunks=[js[i:i+chunk_size] for i in range(0,len(js),chunk_size)]
+          for i,c in enumerate(chunks):
+              Path(f'page-chunk-{i:02d}.txt').write_text(c,encoding='utf-8')
+          manifest={'chunks':[f'page-chunk-{i:02d}.txt' for i in range(len(chunks))],'chars':len(js),'bytes':len(js.encode('utf-8'))}
+          Path('page-chunks.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print('standalone bytes',len(html.encode('utf-8')),'chunks',len(chunks),manifest)
           PY
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('standalone.html').read_text(encoding='utf-8')
+          import json
+          m=json.loads(Path('page-chunks.json').read_text(encoding='utf-8'))
+          s=''.join(Path(x).read_text(encoding='utf-8') for x in m['chunks'])
           for x in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','Partiye Yansıt']:
-              if x not in s: raise SystemExit('standalone eksik: '+x)
-          if 'https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@' in s: raise SystemExit('standalone katalog CDN bağımlılığı kaldı')
-          print('standalone verification OK')
+              if x not in s: raise SystemExit('same-origin chunk set eksik: '+x)
+          if 'https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@' in s and '/catalog.b64' in s: raise SystemExit('katalog CDN bağımlılığı kaldı')
+          print('same-origin chunk verification OK')
           PY
-      - name: Commit standalone artifact
+      - name: Commit standalone artifacts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add standalone.html
-          if git diff --cached --quiet; then echo 'Standalone already current'; exit 0; fi
-          git commit -m "Standalone site artifactini güncelle"
+          git add standalone.html page-chunks.json page-chunk-*.txt
+          if git diff --cached --quiet; then echo 'Standalone artifacts already current'; exit 0; fi
+          git commit -m "Aynı-origin site parçalarını güncelle"
           git pull --rebase origin main
           git push
