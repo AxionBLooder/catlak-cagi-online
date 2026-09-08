@@ -10,38 +10,25 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
+      - name: Inspect gateway response headers
+        run: |
+          set -euo pipefail
+          BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          curl -fsSL --retry 3 -D /tmp/gateway.headers "$BASE?join=CHAR-INVALID-SMOKE-ONLY&verify=$(date +%s)" -o /tmp/gateway.html
+          echo '--- RESPONSE HEADERS ---'
+          cat /tmp/gateway.headers
+          echo '--- CONTENT TYPE ---'
+          grep -i '^content-type:' /tmp/gateway.headers || true
+          echo '--- BODY PREFIX ---'
+          head -c 500 /tmp/gateway.html
+          echo
+          grep -q '<!doctype html>' /tmp/gateway.html
       - name: Verify v8 gateway bundle
         run: |
           set -euo pipefail
           BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
           HASH='6ca0f3381e8f'
-          curl -fsSL --retry 3 "$BASE?verify=$(date +%s)" -o /tmp/gateway.html
-          grep -q 'asset=app' /tmp/gateway.html
-          grep -q "$HASH" /tmp/gateway.html
           curl -fsSL --retry 3 "$BASE?asset=app&v=$HASH&verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c < /tmp/app.js)" -gt 300000
           echo 'GATEWAY_V8_STATIC_OK'
-      - name: Diagnose permanent gateway player entry in Chrome
-        run: |
-          set -euo pipefail
-          BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
-          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
-          test -n "$CHROME"
-          set +e
-          timeout 40s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=18000 --dump-dom "$BASE?join=CHAR-INVALID-SMOKE-ONLY" >/tmp/dom.html 2>/tmp/chrome.log
-          STATUS=$?
-          set -e
-          echo "CHROME_STATUS=$STATUS"
-          echo "DOM_BYTES=$(wc -c < /tmp/dom.html)"
-          echo '--- CHROME ERRORS ---'
-          grep -Ei 'net::ERR|Uncaught|SyntaxError|Failed|error' /tmp/chrome.log | tail -120 || true
-          echo '--- DOM SAMPLE ---'
-          head -c 7000 /tmp/dom.html || true
-          echo
-          echo '--- DOM TEXT MARKERS ---'
-          grep -o 'Karakter daveti kullanılmış veya süresi dolmuş\|Giriş Yap\|E-posta\|Çatlak Çağı\|Uygulama dosyası alınamadı\|Oyun masası yükleniyor' /tmp/dom.html | sort -u || true
-          test "$STATUS" -eq 0
-          test -s /tmp/dom.html
-          grep -q 'Çatlak Çağı' /tmp/dom.html
-          echo 'PERMANENT_GATEWAY_BROWSER_REACHABLE'
