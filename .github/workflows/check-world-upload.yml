@@ -1,0 +1,31 @@
+name: Check World Upload
+on:
+  push:
+    paths:
+      - 'simple-world-upload-patch.js'
+      - 'index.html'
+      - '.github/workflows/check-world-upload.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and wiring checks
+        run: |
+          node --check simple-world-upload-patch.js
+          grep -q 'simple-world-upload-patch.js' index.html
+          grep -q 'catlak-world-media' simple-world-upload-patch.js
+          grep -q 'type="file"' simple-world-upload-patch.js
+          grep -q 'Partiye Yansıt' simple-world-upload-patch.js
+          echo 'World upload static checks OK'
+      - name: Open live site in Chrome
+        run: |
+          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=world-upload-v1'
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=15000 --dump-dom "$URL" >/tmp/live-dom.html 2>/tmp/live-chrome.log || true
+          cat /tmp/live-chrome.log || true
+          if grep -Eqi '(Invalid or unexpected token|Uncaught SyntaxError|Missing \} in template expression|Uygulama başlatılamadı|Site yüklenemedi)' /tmp/live-dom.html /tmp/live-chrome.log; then exit 1; fi
+          grep -Eqi '(Giriş Yap|Hesap Aç|TEK EVREN)' /tmp/live-dom.html || { echo 'Auth ekranı oluşmadı'; exit 1; }
+          echo 'Live site world-upload smoke OK'
