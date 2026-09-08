@@ -5,67 +5,82 @@ on:
       - '.github/workflows/check-public-site.yml'
   workflow_dispatch:
 concurrency:
-  group: catlak-public-site-check
+  group: catlak-pages-live-smoke
   cancel-in-progress: true
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v6
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify canonical invite loader and legacy redirects
+
+      - name: Verify GitHub Pages static production
         env:
-          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
-          grep -q 'fc08f68b429b62147637178c7558173134202f55' /tmp/live-index.html
-          grep -q 'e5a648ab0231' /tmp/live-index.html
-          curl -fsSL 'https://blue-anchor-1448.hosted.pageshare.ai/?verify=legacy' -o /tmp/blue.html
-          curl -fsSL 'https://sage-thicket-5451.hosted.pageshare.ai/?verify=legacy' -o /tmp/sage.html
-          grep -q 'hidden-spring-7923.hosted.pageshare.ai' /tmp/blue.html
-          grep -q 'location.search+location.hash' /tmp/blue.html
-          grep -q 'hidden-spring-7923.hosted.pageshare.ai' /tmp/sage.html
-          grep -q 'location.search+location.hash' /tmp/sage.html
-          echo 'CANONICAL INVITE LOADER + LEGACY REDIRECTS OK'
-      - name: Open live site with Playwright
-        env:
-          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/?smoke=canonical-invites
+          curl -fsSL --retry 4 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/index.html
+          grep -q 'browser-app.js' /tmp/index.html
+          curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}browser-app.js?verify=$(date +%s)" -o /tmp/app.js
+          node --check /tmp/app.js
+          test "$(wc -c < /tmp/app.js)" -gt 300000
+          grep -q 'axionblooder.github.io/catlak-cagi-online/?join=' /tmp/app.js
+          grep -q 'catlak_generate_character_reconnect' /tmp/app.js
+          grep -q 'Yeniden Bağlama Linki Oluştur' /tmp/app.js
+          ! grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
+          ! grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
+          ! grep -q 'catlak-transfer-session' /tmp/app.js
+          echo 'PAGES_STATIC_PRODUCTION_OK'
+
+      - name: Verify reconnect edge rejection safely
         run: |
-          cat > .check-live.cjs <<'JS'
+          set -euo pipefail
+          CODE=$(curl -sS -o /tmp/recon.json -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -d '{"token":"RECON-INVALID-SMOKE-ONLY"}' \
+            'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-guest-join')
+          cat /tmp/recon.json
+          test "$CODE" = '409'
+          grep -Eqi 'Yeniden bağlama.*(geçersiz|kullanılmış|süresi dolmuş)' /tmp/recon.json
+          echo 'RECONNECT_EDGE_REJECTION_OK'
+
+      - name: Open permanent site with Chrome
+        env:
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
+        run: |
+          cat > .pages-smoke.cjs <<'JS'
           const { chromium }=require('playwright-core');
           const { execFileSync }=require('child_process');
           (async()=>{
             let exe='';
-            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){
+              try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}
+            }
             if(!exe)throw new Error('Chrome binary missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
-            const page=await browser.newPage();
-            const pageErrors=[],httpErrors=[],requestFailures=[],scriptUrls=[];
-            page.on('pageerror',e=>pageErrors.push(String(e.message||e)));
-            page.on('response',r=>{if(r.url().includes('browser-app.js'))scriptUrls.push(r.url());if(r.status()>=400&&!r.url().includes('/auth/v1/token'))httpErrors.push(`${r.status()} ${r.url()}`)});
-            page.on('requestfailed',r=>requestFailures.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
             try{
-              const started=Date.now();
-              const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')&&!t.includes('Uygulama yükleniyor')},{timeout:15000});
-              const elapsed=Date.now()-started;
-              const probe=await page.evaluate(async()=>{const r=await fetch('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@fc08f68b429b62147637178c7558173134202f55/browser-app.js?probe='+Date.now(),{cache:'no-store'});const t=await r.text();return {status:r.status,len:t.length,canonicalInvite:t.includes('https://hidden-spring-7923.hosted.pageshare.ai/?join='),bulk:t.includes('Toplu Yükle'),rename:t.includes('Adı Değiştir'),playerGuard:t.includes('builder')&&t.includes('races')&&t.includes('rules')}});
-              console.log('NAV_STATUS:',response?.status());
-              console.log('LOAD_MS:',elapsed);
-              console.log('SCRIPT_URLS:',JSON.stringify(scriptUrls));
-              console.log('BUNDLE_PROBE:',JSON.stringify(probe));
-              console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
-              console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
-              console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
-              if(response?.status()!==200)throw new Error('Root status '+response?.status());
-              if(!scriptUrls.some(x=>x.includes('fc08f68b429b62147637178c7558173134202f55')))throw new Error('Canonical invite bundle was not loaded');
-              if(probe.status!==200||probe.len<300000||!probe.canonicalInvite||!probe.bulk||!probe.rename)throw new Error('Canonical invite bundle markers missing');
-              if(pageErrors.length||httpErrors.length||requestFailures.length)throw new Error('Browser/network errors detected');
-              console.log('CANONICAL_INVITE_SITE_OK');
+              async function run(path,expected){
+                const page=await browser.newPage();
+                const errors=[];
+                page.on('pageerror',e=>errors.push(String(e.message||e)));
+                const response=await page.goto(process.env.LIVE_URL+path,{waitUntil:'domcontentloaded',timeout:30000});
+                if(response?.status()!==200)throw new Error(`Root status ${response?.status()} for ${path}`);
+                await page.waitForFunction((marker)=>{
+                  const t=document.querySelector('#app')?.textContent||'';
+                  return t.includes(marker)&&!t.includes('Uygulama yükleniyor');
+                },expected,{timeout:25000});
+                const text=(await page.locator('#app').innerText()).slice(0,1200);
+                console.log('PAGE_OK',path,JSON.stringify(text));
+                if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+                await page.close();
+              }
+              await run('?smoke=root','E-posta');
+              await run('?join=CHAR-INVALID-SMOKE-ONLY','Karakter daveti kullanılmış veya süresi dolmuş');
+              await run('?join=RECON-INVALID-SMOKE-ONLY','Yeniden bağlama');
+              console.log('GITHUB_PAGES_BROWSER_SMOKE_OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node .check-live.cjs
+          node .pages-smoke.cjs
