@@ -10,25 +10,31 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
-      - name: Inspect gateway response headers
+      - name: Verify v9 gateway serves PageShare invites
         run: |
           set -euo pipefail
           BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
-          curl -fsSL --retry 3 -D /tmp/gateway.headers "$BASE?join=CHAR-INVALID-SMOKE-ONLY&verify=$(date +%s)" -o /tmp/gateway.html
-          echo '--- RESPONSE HEADERS ---'
-          cat /tmp/gateway.headers
-          echo '--- CONTENT TYPE ---'
-          grep -i '^content-type:' /tmp/gateway.headers || true
-          echo '--- BODY PREFIX ---'
-          head -c 500 /tmp/gateway.html
-          echo
-          grep -q '<!doctype html>' /tmp/gateway.html
-      - name: Verify v8 gateway bundle
-        run: |
-          set -euo pipefail
-          BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
-          HASH='6ca0f3381e8f'
-          curl -fsSL --retry 3 "$BASE?asset=app&v=$HASH&verify=$(date +%s)" -o /tmp/app.js
+          curl -fsSL --retry 3 "$BASE?asset=app&v=6ca0f3381e8f-ps&verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c < /tmp/app.js)" -gt 300000
-          echo 'GATEWAY_V8_STATIC_OK'
+          grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
+          ! grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
+          echo 'GATEWAY_V9_PAGESHARE_INVITE_OK'
+      - name: Open PageShare invite in Chrome
+        run: |
+          set -euo pipefail
+          PAGE='https://hidden-spring-7923.hosted.pageshare.ai/'
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          set +e
+          timeout 40s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=18000 --dump-dom "$PAGE?join=CHAR-INVALID-SMOKE-ONLY&verify=$(date +%s)" >/tmp/dom.html 2>/tmp/chrome.log
+          STATUS=$?
+          set -e
+          echo "CHROME_STATUS=$STATUS"
+          grep -Ei 'net::ERR|Uncaught|SyntaxError' /tmp/chrome.log | tail -80 || true
+          echo '--- PAGE MARKERS ---'
+          grep -o 'Karakter daveti kullanılmış veya süresi dolmuş\|Giriş Yap\|E-posta\|Çatlak Çağı' /tmp/dom.html | sort -u || true
+          test "$STATUS" -eq 0
+          grep -q 'Çatlak Çağı' /tmp/dom.html
+          grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
+          echo 'PAGESHARE_INVITE_FLOW_OK'
