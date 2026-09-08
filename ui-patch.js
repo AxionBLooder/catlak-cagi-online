@@ -82,7 +82,7 @@ function enhanceBuilder(){
 
 async function makeInvite(characterId,name){
   const {data,error}=await S.rpc('catlak_generate_character_claim',{p_character_id:characterId});if(error)throw error;
-  const link='https://hidden-spring-7923.hosted.pageshare.ai/?join='+encodeURIComponent(data);
+  const link='https://catlak-cagi-online.netlify.app/?join='+encodeURIComponent(data);
   try{await navigator.clipboard.writeText(link)}catch{}
   prompt(`${name} için oyuncu davet linki. Oyuncuya bunu gönder:`,link);
   return link;
