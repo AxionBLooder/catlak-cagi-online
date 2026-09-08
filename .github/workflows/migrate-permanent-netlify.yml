@@ -1,0 +1,122 @@
+name: Migrate Permanent Netlify
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/migrate-permanent-netlify.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: catlak-permanent-netlify-migration
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move canonical host and add same-user transfer bridge
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          OLD='https://hidden-spring-7923.hosted.pageshare.ai/'
+          BAD='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          NEW='https://catlak-cagi-online.netlify.app/'
+
+          p=Path('ui-patch.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace(OLD+'?join=',NEW+'?join=')
+          s=s.replace(BAD+'?join=',NEW+'?join=')
+          s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(NEW+'?join=')+'+')
+
+          if 'CATLAK_PERMANENT_BASE' not in s:
+              marker="const toast=x=>{let t=document.querySelector('#toast');if(!t)return;t.textContent=x;t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};\n"
+              bridge=r'''
+const CATLAK_PERMANENT_BASE='https://catlak-cagi-online.netlify.app/';
+const CATLAK_LEGACY_HOST='hidden-spring-7923.hosted.pageshare.ai';
+async function ccImportDomainTransfer(){
+  const hp=new URLSearchParams((location.hash||'').replace(/^#/,'')),raw=hp.get('catlak-transfer');if(!raw)return;
+  try{
+    const payload=JSON.parse(atob(raw));
+    if(!payload?.access_token||!payload?.refresh_token)throw new Error('Aktarım bilgisi eksik.');
+    const {error}=await S.auth.setSession({access_token:payload.access_token,refresh_token:payload.refresh_token});if(error)throw error;
+    history.replaceState(null,'',location.pathname+location.search);
+    location.reload();
+  }catch(e){history.replaceState(null,'',location.pathname+location.search);toast('Kalıcı site oturumu aktarılamadı: '+(e?.message||e))}
+}
+async function ccOpenPermanentSite(){
+  const {data,error}=await S.auth.getSession();if(error)throw error;
+  const session=data?.session;if(!session?.access_token||!session?.refresh_token)throw new Error('Aktarılacak oyuncu oturumu bulunamadı.');
+  const payload=btoa(JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));
+  location.href=CATLAK_PERMANENT_BASE+'#catlak-transfer='+encodeURIComponent(payload);
+}
+function ensurePermanentMigrationButton(){
+  if(location.hostname!==CATLAK_LEGACY_HOST||isGM()||tabId()!=='sheet')return;
+  const main=APP.querySelector('main');if(!main||main.querySelector('[data-cc-migrate]'))return;
+  const card=main.querySelector('.cc-desk-intro')||main.querySelector('section.hero')||main.firstElementChild;if(!card)return;
+  const box=document.createElement('div');box.className='cc-flow';box.style.marginTop='14px';
+  box.innerHTML='<button type="button" class="primary" data-cc-migrate="1">Kalıcı Siteye Geç</button><small class="muted">Karakterin ve mevcut oyuncu oturumun aynı kullanıcıyla Netlify ana siteye aktarılır.</small>';
+  card.appendChild(box);
+}
+ccImportDomainTransfer();
+APP.addEventListener('click',e=>{const b=e.target.closest('[data-cc-migrate]');if(!b)return;e.preventDefault();e.stopPropagation();ccOpenPermanentSite().catch(x=>toast(x?.message||String(x)))},true);
+'''
+              if marker not in s: raise SystemExit('ui-patch transfer injection marker missing')
+              s=s.replace(marker,marker+bridge,1)
+          if 'ensurePermanentMigrationButton();' not in s:
+              old="function run(){scheduled=false;fixNav();enhancePlayerDesk();enhanceBuilder();renderPrepared();renderLiveTable();enhanceRollPage()}"
+              new="function run(){scheduled=false;fixNav();enhancePlayerDesk();ensurePermanentMigrationButton();enhanceBuilder();renderPrepared();renderLiveTable();enhanceRollPage()}"
+              if old not in s: raise SystemExit('ui-patch run marker missing')
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('live_06.txt')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("const CATLAK_PUBLIC_BASE='"+OLD+"';","const CATLAK_PUBLIC_BASE='"+NEW+"';")
+          s=s.replace("const CATLAK_PUBLIC_BASE='"+BAD+"';","const CATLAK_PUBLIC_BASE='"+NEW+"';")
+          s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
+          s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('.github/workflows/build-bundle.yml')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("'hidden-spring-7923.hosted.pageshare.ai/?join='","'catlak-cagi-online.netlify.app/?join='")
+          if "'hidden-spring-7923.hosted.pageshare.ai/?join='" not in s.split('forbidden=',1)[-1]:
+              s=s.replace("forbidden=['https://esm.sh/'","forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','https://esm.sh/'",1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('.github/workflows/fix-canonical-invites.yml')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('Pin all invite links to verified PageShare host','Pin all invite links to permanent Netlify host')
+          s=s.replace("good='https://hidden-spring-7923.hosted.pageshare.ai/'","good='https://catlak-cagi-online.netlify.app/'")
+          s=s.replace('ui-patch PageShare invite replacement missing','ui-patch Netlify invite replacement missing')
+          s=s.replace('live_06 PageShare base replacement missing','live_06 Netlify base replacement missing')
+          s=s.replace('hidden-spring-7923.hosted.pageshare.ai/?join=','catlak-cagi-online.netlify.app/?join=')
+          s=s.replace("CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'","CATLAK_PUBLIC_BASE='https://catlak-cagi-online.netlify.app/'")
+          s=s.replace('Hazır karakter davetlerini doğrulanmış PageShare adresine bağla','Hazır karakter davetlerini kalıcı Netlify adresine bağla')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate permanent-host source
+        run: |
+          set -euo pipefail
+          node --check ui-patch.js
+          cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
+          node --check /tmp/base.js
+          grep -q 'https://catlak-cagi-online.netlify.app/?join=' ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE='https://catlak-cagi-online.netlify.app/'" live_06.txt
+          grep -q 'CATLAK_PERMANENT_BASE' ui-patch.js
+          grep -q 'data-cc-migrate' ui-patch.js
+          ! grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' ui-patch.js
+          ! grep -q "CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'" live_06.txt
+          grep -q "'catlak-cagi-online.netlify.app/?join='" .github/workflows/build-bundle.yml
+      - name: Commit permanent-host migration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ui-patch.js live_06.txt .github/workflows/build-bundle.yml .github/workflows/fix-canonical-invites.yml
+          if git diff --cached --quiet; then echo 'Permanent-host migration already applied'; exit 0; fi
+          git commit -m 'Kalıcı Netlify ana siteye geç ve oyuncu oturum aktarımını ekle'
+          git pull --rebase origin main
+          git push
