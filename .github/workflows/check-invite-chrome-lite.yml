@@ -10,14 +10,18 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
-      - name: Verify PageShare invite entry
+      - name: Verify PageShare prepared-character invite
         run: |
           set -euo pipefail
           BASE='https://hidden-spring-7923.hosted.pageshare.ai/'
+          BUNDLE='a482f946f39acc1d660973bf0f352c90af887983'
           curl -fsSL -D /tmp/headers.txt "$BASE?verify=invite" -o /tmp/page.html
           cat /tmp/headers.txt
           grep -qi 'content-type: text/html' /tmp/headers.txt
-          grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/page.html
+          grep -q "$BUNDLE" /tmp/page.html
+          curl -fsSL "https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@$BUNDLE/browser-app.js?verify=$(date +%s)" -o /tmp/app.js
+          grep -q 'https://hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
+          ! grep -q 'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=' /tmp/app.js
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           set +e
@@ -25,10 +29,10 @@ jobs:
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
-          head -c 6000 /tmp/dom.html || true
-          echo
           grep -Ei 'error|fail|net::|catlak' /tmp/chrome.log | tail -80 || true
           echo '--- MARKERS ---'
-          grep -o 'Giriş Yap\|Çatlak Çağı\|Oyun masası yükleniyor\|Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html | sort -u || true
+          grep -o 'Giriş Yap\|Çatlak Çağı\|Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html | sort -u || true
           grep -q 'Çatlak Çağı' /tmp/dom.html
+          grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
           if grep -q '&lt;!doctype html&gt;' /tmp/dom.html; then echo 'HTML_RENDERED_AS_TEXT'; exit 1; fi
+          echo 'PREPARED_CHARACTER_INVITE_OK'
