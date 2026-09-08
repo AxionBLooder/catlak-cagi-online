@@ -1,0 +1,57 @@
+name: Fix Canonical Invites
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-canonical-invites.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin all invite links to stable public origin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base='https://hidden-spring-7923.hosted.pageshare.ai/'
+
+          p=Path('ui-patch.js')
+          s=p.read_text(encoding='utf-8')
+          old="const link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data);"
+          new=f"const link='{base}?join='+encodeURIComponent(data);"
+          if old in s:
+              s=s.replace(old,new)
+          if new not in s:
+              raise SystemExit('ui-patch canonical invite replacement missing')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('live_06.txt')
+          s=p.read_text(encoding='utf-8')
+          if "const CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/';" not in s:
+              anchor="async function savePath(path,spec,data,note){let{error}=await S.from('catlak_special_paths').update({name:data.name,data:data.data,detail_note:note}).eq('species_name',spec).eq('path_key',path);if(error)throw error}\n"
+              if anchor not in s: raise SystemExit('live_06 canonical anchor missing')
+              s=s.replace(anchor,anchor+"const CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/';\n",1)
+          s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
+          s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
+          if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
+              raise SystemExit('normal and prepared invite replacements missing')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate syntax
+        run: |
+          node --check ui-patch.js
+          cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
+          node --check /tmp/base.js
+          grep -q "hidden-spring-7923.hosted.pageshare.ai" ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE" live_06.txt
+      - name: Commit canonical invite fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui-patch.js live_06.txt
+          if git diff --cached --quiet; then echo 'Already fixed'; exit 0; fi
+          git commit -m "Davet linklerini sabit çalışan siteye bağla"
+          git pull --rebase origin main
+          git push
