@@ -9,55 +9,135 @@ permissions:
 jobs:
   fix:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Pin all invite links to verified PageShare host
+
+      - name: Pin all invite links to GitHub Pages
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           gateway='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
           netlify='https://catlak-cagi-online.netlify.app/'
-          good='https://hidden-spring-7923.hosted.pageshare.ai/'
+          pageshare='https://hidden-spring-7923.hosted.pageshare.ai/'
+          good='https://axionblooder.github.io/catlak-cagi-online/'
 
           p=Path('ui-patch.js')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(gateway+'?join=',good+'?join=')
-          s=s.replace(netlify+'?join=',good+'?join=')
+          for old in (gateway+'?join=',netlify+'?join=',pageshare+'?join='):
+              s=s.replace(old,good+'?join=')
           s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(good+'?join=')+'+')
           if good+'?join=' not in s:
-              raise SystemExit('ui-patch PageShare invite replacement missing')
-          if netlify+'?join=' in s or gateway+'?join=' in s:
+              raise SystemExit('ui-patch GitHub Pages invite replacement missing')
+          if netlify+'?join=' in s or pageshare+'?join=' in s or gateway+'?join=' in s:
               raise SystemExit('ui-patch still contains obsolete invite target')
           p.write_text(s,encoding='utf-8')
 
           p=Path('live_06.txt')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(f"const CATLAK_PUBLIC_BASE='{netlify}';",f"const CATLAK_PUBLIC_BASE='{good}';")
-          s=s.replace(f"const CATLAK_PUBLIC_BASE='{gateway}';",f"const CATLAK_PUBLIC_BASE='{good}';")
+          s=re.sub(r"const CATLAK_PUBLIC_BASE='[^']+';",f"const CATLAK_PUBLIC_BASE='{good}';",s,count=1)
           s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
           s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
           if f"const CATLAK_PUBLIC_BASE='{good}';" not in s:
-              raise SystemExit('live_06 PageShare base replacement missing')
+              raise SystemExit('live_06 GitHub Pages base replacement missing')
           if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
               raise SystemExit('normal and prepared invite replacements missing')
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Validate syntax and invite markers
+
+      - name: Replace legacy session-transfer patch with safe reconnect UI
+        run: |
+          cat > migration-patch.js <<'JS'
+          const CC_MIG_S=window.__catlakSupabase;
+          const CC_MIG_APP=document.querySelector('#app');
+          const CC_MIG_PERMANENT_BASE='https://axionblooder.github.io/catlak-cagi-online/';
+          let ccMigScheduled=false,ccMigRendering=false;
+
+          function ccMigText(el){return String(el?.textContent||'').trim()}
+          function ccMigIsGM(){return ccMigText(CC_MIG_APP?.querySelector('.role'))==='GM'}
+          function ccMigTab(){return CC_MIG_APP?.querySelector('.nav button.on')?.dataset.tab||''}
+          function ccMigToast(text){
+            const t=document.querySelector('#toast');if(!t)return;
+            t.textContent=text;t.classList.remove('hidden');
+            clearTimeout(ccMigToast.timer);ccMigToast.timer=setTimeout(()=>t.classList.add('hidden'),5200);
+          }
+          function ccMigEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+          async function ccMigEnsurePanel(){
+            if(ccMigRendering||!ccMigIsGM()||ccMigTab()!=='gm')return;
+            const main=CC_MIG_APP?.querySelector('main');
+            if(!main||main.querySelector('[data-cc-reconnect-panel]'))return;
+            ccMigRendering=true;
+            try{
+              const {data,error}=await CC_MIG_S.from('catlak_characters')
+                .select('id,name,species_name,class_name,owner_id,play_status')
+                .eq('play_status','active')
+                .not('owner_id','is',null)
+                .order('updated_at',{ascending:false});
+              if(error)throw error;
+              if(!ccMigIsGM()||ccMigTab()!=='gm'||!main.isConnected||main.querySelector('[data-cc-reconnect-panel]'))return;
+              const rows=data||[];
+              if(!rows.length)return;
+              const section=document.createElement('section');
+              section.className='card';section.dataset.ccReconnectPanel='1';
+              section.innerHTML=`<div class="eyebrow">KALICI GİTHUB PAGES</div><h2>Oyuncu Yeniden Bağlama</h2><p class="muted">Aktif oyuncu başka domaine geçerken karakter verisi taşınmaz; yalnız sahiplik yeni oyuncu oturumuna güvenli biçimde yeniden bağlanır. Bağlantı tek kullanımlıktır ve 24 saat geçerlidir.</p><div class="grid">${rows.map(c=>`<article class="card"><h3>${ccMigEsc(c.name)}</h3><p class="muted">${ccMigEsc(c.species_name||'')} • ${ccMigEsc(c.class_name||'')}</p><button type="button" class="primary" data-cc-reconnect="${c.id}" data-cc-reconnect-name="${ccMigEsc(c.name)}">Yeniden Bağlama Linki Oluştur</button></article>`).join('')}</div>`;
+              const anchor=main.firstElementChild;
+              if(anchor?.nextSibling)main.insertBefore(section,anchor.nextSibling);else main.appendChild(section);
+            }catch(error){console.warn('CATLAK_RECONNECT_PANEL',error)}
+            finally{ccMigRendering=false}
+          }
+
+          async function ccMigCreateReconnect(characterId,name){
+            const {data,error}=await CC_MIG_S.rpc('catlak_generate_character_reconnect',{p_character_id:characterId});
+            if(error)throw error;
+            const link=CC_MIG_PERMANENT_BASE+'?join='+encodeURIComponent(data);
+            try{await navigator.clipboard.writeText(link)}catch{}
+            prompt(`${name} için kalıcı site yeniden bağlama linki. Bu link tek kullanımlıktır ve 24 saat geçerlidir:`,link);
+            return link;
+          }
+
+          CC_MIG_APP?.addEventListener('click',event=>{
+            const button=event.target.closest('[data-cc-reconnect]');if(!button)return;
+            event.preventDefault();event.stopPropagation();
+            button.disabled=true;
+            ccMigCreateReconnect(button.dataset.ccReconnect,button.dataset.ccReconnectName||'Karakter')
+              .then(()=>ccMigToast('Kalıcı GitHub Pages yeniden bağlama linki oluşturuldu ve panoya kopyalandı.'))
+              .catch(error=>ccMigToast(error?.message||String(error)))
+              .finally(()=>{button.disabled=false});
+          },true);
+
+          function ccMigSchedule(){
+            if(ccMigScheduled)return;ccMigScheduled=true;
+            setTimeout(()=>{ccMigScheduled=false;ccMigEnsurePanel()},180);
+          }
+          new MutationObserver(ccMigSchedule).observe(CC_MIG_APP||document.body,{childList:true,subtree:true});
+          ccMigSchedule();
+          JS
+
+      - name: Validate syntax and permanent-host markers
         run: |
           node --check ui-patch.js
+          node --check migration-patch.js
           cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
           node --check /tmp/base.js
-          grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
-          grep -q "CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'" live_06.txt
+          grep -q "axionblooder.github.io/catlak-cagi-online/?join=" ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE='https://axionblooder.github.io/catlak-cagi-online/'" live_06.txt
+          grep -q "catlak_generate_character_reconnect" migration-patch.js
+          grep -q "Kalıcı Site Bağlantısı\|Yeniden Bağlama Linki" migration-patch.js
+          ! grep -q "catlak-transfer-session" migration-patch.js
+          ! grep -q "access_token\|refresh_token\|postMessage" migration-patch.js
+          ! grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
           ! grep -q "catlak-cagi-online.netlify.app/?join=" ui-patch.js
-          ! grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
-      - name: Commit verified invite host
+
+      - name: Commit GitHub Pages source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ui-patch.js live_06.txt
+          git add ui-patch.js live_06.txt migration-patch.js
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Davetleri doğrulanmış PageShare adresine bağla"
+            git commit -m "GitHub Pages davet ve güvenli yeniden bağlama akışını etkinleştir"
             git pull --rebase origin main
             git push
           fi
