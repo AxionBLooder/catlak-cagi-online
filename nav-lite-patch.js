@@ -35,6 +35,7 @@ function cnlEnsureNav(){
   if(world.hasAttribute('data-tab'))world.removeAttribute('data-tab');
   if(cnlTxt(world)!=='Görsel Arşivi')world.textContent='Görsel Arşivi';
   if(world.getAttribute('aria-label')!=='Görsel Arşivi')world.setAttribute('aria-label','Görsel Arşivi');
+  if(world.dataset.ccUploadHint!=='Görsel Dosyası Seç')world.dataset.ccUploadHint='Görsel Dosyası Seç';
 
   let stats=nav.querySelector('[data-cc-stats-tab]');
   if(cnlIsGM()){
