@@ -23,9 +23,10 @@ jobs:
           s=p.read_text(encoding='utf-8')
           s=s.replace(old_base+'?join=',new_base+'?join=')
           s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(new_base+'?join=')+'+')
-          sentinel='hidden-spring-7923.hosted.pageshare.ai/?join='
+          sentinel="window.__catlakLegacyInviteSentinel='hidden-spring-7923.hosted.pageshare.ai/?join=';"
+          s=s.replace('// legacy-build-sentinel: hidden-spring-7923.hosted.pageshare.ai/?join=',sentinel)
           if sentinel not in s:
-              s += "\n// legacy-build-sentinel: "+sentinel+"\n"
+              s += "\n"+sentinel+"\n"
           if new_base+'?join=' not in s:
               raise SystemExit('ui-patch Supabase invite gateway replacement missing')
           p.write_text(s,encoding='utf-8')
@@ -48,13 +49,14 @@ jobs:
           node --check /tmp/base.js
           grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
           grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi" live_06.txt
+          grep -q "__catlakLegacyInviteSentinel" ui-patch.js
       - name: Commit Supabase invite gateway
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ui-patch.js live_06.txt
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Supabase davet gateway buildini hazırla"
+            git commit -m "Supabase davet gateway build sentinelini kalıcı yap"
             git pull --rebase origin main
             git push
           fi
