@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Open live PageShare in Chrome
         run: |
-          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=github-actions'
+          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=gm-world-rolls-358c4b5'
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           if [ -z "$CHROME" ]; then
             echo 'Chrome binary missing'
