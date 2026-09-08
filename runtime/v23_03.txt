@@ -1,0 +1,54 @@
+="chardelete" data-id="${c.id}">Sil</button></div></div>`}).join('');
+ return `<div class="gm-player-desk"><section class="card gm-player-list"><div class="section-title"><div><div class="eyebrow">GM / DM • OYUNCU MASAM</div><h1>Karakterler & Hazır Karakterler</h1><p class="muted">Oyuncu karakterleri ve henüz sahibine gönderilmemiş hazır karakterler aynı yerde.</p></div><div class="actions"><button class="primary" data-tab="ready">+ Hazır Karakter Oluştur</button><button data-a="guestinvite">+ Yeni Oyuncu Daveti</button></div></div><div class="list">${cards||'<div class="empty">Henüz karakter yok.</div>'}</div></section><aside class="card gm-roll-stream"><div class="section-title"><div><div class="eyebrow">CANLI</div><h2>Zar Akışı</h2><p class="muted">Karakterlerin attığı zarlar burada anlık görünür.</p></div><button class="danger" data-a="clearrolls">Zar Logunu Temizle</button></div><div class="gm-roll-scroll">${rolls(st.rolls.slice(0,80),true)}</div></aside></div>${dc?detail(dc):''}`;
+}
+function readyPage(){
+ let form=typeof readyBuilderHTML==='function'?readyBuilderHTML():'<section class="card empty">Hazır karakter oluşturucu yüklenemedi.</section>';
+ form=form.replace('<button data-v14-ready="close">Kapat</button>','<button data-tab="characters">Oyuncu Masam’a Dön</button>');
+ return `<section class="card hero compact-hero"><div><div class="eyebrow">GM / DM • AYRI SAYFA</div><h1>Hazır Karakter Oluştur</h1><p>Karakteri önceden hazırla. Kaydedildiğinde Oyuncu Masam’da <b>Hazır / Sahipsiz</b> olarak görünür; oradan davet linkini gönderirsin.</p></div><button data-tab="characters">Oyuncu Masam</button></section>${form}`;
+}
+const baseUniverse=universeRoom;
+universeRoom=function(){
+ let x=baseUniverse();
+ if(st.role!=='gm')return x;
+ x=x.replace(/(<button class="primary" data-a="showvisual" data-id="([^"]+)">Partiye Göster<\/button>)/g,'$1<button class="danger" data-a="unidelete" data-kind="media" data-id="$2">Sil</button>');
+ x=x.replace(/(<button class="primary" data-a="shownpc" data-id="([^"]+)">Partiye Göster<\/button>)/g,'$1<button class="danger" data-a="unidelete" data-kind="npc" data-id="$2">Sil</button>');
+ return x;
+};
+gmhome=function(){return `<section class="card hero"><div><div class="eyebrow">GM / DM CANLI MASA</div><h1>Çatlak Çağı</h1><p>${st.chars.length} karakter • ${st.items.length} eşya • canlı masa hazır</p><div class="actions"><button class="primary" data-tab="characters">Oyuncu Masam</button><button data-tab="ready">Hazır Karakter Oluştur</button><button data-a="guestinvite">Yeni Oyuncu Daveti</button></div></div><div class="vitals"><div class="vital"><span>KARAKTER</span><b>${st.chars.length}</b></div><div class="vital"><span>HAZIR</span><b>${st.chars.filter(c=>!c.owner_id).length}</b></div><div class="vital"><span>CANLI</span><b>●</b></div></div></section>`};
+const baseRender=render;
+render=function(){
+ if(!st.ses)return baseRender();
+ if(st.role==='gm'){
+  if(st.tab==='rolls')st.tab='characters';
+  if(st.tab==='ready'){app.innerHTML=nav()+`<main>${readyPage()}</main>`;return}
+  if(st.tab==='characters'){app.innerHTML=nav()+`<main>${gmDesk()}</main>`;return}
+ }else{
+  const allowed=playerCanBuild()?['sheet','builder','world','rolls']:['sheet','world','rolls'];
+  if(!allowed.includes(st.tab))st.tab='sheet';
+ }
+ return baseRender();
+};
+document.addEventListener('click',async e=>{
+ const b=e.target?.closest?.('button');if(!b)return;
+ try{
+  if(b.dataset.a==='clearrolls'){
+   e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+   if(st.role!=='gm')throw new Error('GM yetkisi gerekli');
+   if(!confirm('Tüm zar logları silinsin mi? Oyuncuların Zarlarım geçmişinden de kaldırılacak.'))return;
+   const {data,error}=await S.rpc('catlak_clear_roll_log');if(error)throw error;
+   msg((data||0)+' zar kaydı temizlendi.');await refresh();return;
+  }
+  if(b.dataset.a==='unidelete'){
+   e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+   if(st.role!=='gm')throw new Error('GM yetkisi gerekli');
+   if(!confirm('Bu Evren dosyası silinsin mi? Parti ekranında açıksa oradan da kaldırılacak.'))return;
+   const {error}=await S.rpc('catlak_delete_universe_item',{p_kind:b.dataset.kind,p_id:b.dataset.id});if(error)throw error;
+   msg('Evren dosyası silindi.');await refresh();return;
+  }
+ }catch(ex){err(ex)}
+},true);
+const sty=document.createElement('style');sty.textContent=`
+.gm-player-desk{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(340px,.85fr);gap:14px;align-items:start}.gm-roll-stream{position:sticky;top:118px;max-height:calc(100vh - 140px);overflow:hidden}.gm-roll-scroll{max-height:calc(100vh - 245px);overflow:auto;padding-right:4px}.gm-char-card{align-items:flex-start}.gm-char-main{min-width:0;flex:1}.gm-last-roll{margin-top:8px;padding:8px 10px;border:1px solid #2a465f;border-radius:10px;background:#07131f;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.gm-last-roll small{color:var(--cyan);font-weight:800}.compact-hero{margin-bottom:12px}.universecard img,.worldcard img,.activevisual,.worldmodalbox img{object-fit:contain!important;object-position:center!important;background:#02060a!important;image-rendering:auto!important}.universeimg,.mapthumb,.npcimg{width:100%!important;height:280px!important}.activevisual{display:block!important;width:min(1280px,100%)!important;max-height:min(80vh,860px)!important;margin:auto!important}.worldmodalbox img{max-height:78vh!important;width:100%!important}.ready-builder [data-v14-ready="close"]{display:none!important}@media(max-width:1050px){.gm-player-desk{grid-template-columns:1fr}.gm-roll-stream{position:static;max-height:none}.gm-roll-scroll{max-height:520px}}`;
+document.head.appendChild(sty);
+setTimeout(()=>{try{render()}catch(e){console.error(e)}},60);
+})();
