@@ -13,3 +13,4 @@ s = s.replace(old, new, 1)
 s = s.replace("liveRefreshTimer=setTimeout(()=>{if(st.ses)refresh()},180)", "liveRefreshTimer=setTimeout(()=>{if(st.ses)catlakSafeRefresh()},180)", 1)
 p.write_text(s, encoding='utf-8')
 print('auth/refresh hardening applied')
+# trigger: apply through GitHub Actions
