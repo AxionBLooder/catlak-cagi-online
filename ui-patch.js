@@ -82,7 +82,7 @@ function enhanceBuilder(){
 
 async function makeInvite(characterId,name){
   const {data,error}=await S.rpc('catlak_generate_character_claim',{p_character_id:characterId});if(error)throw error;
-  const link='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join='+encodeURIComponent(data);
+  const link='https://hidden-spring-7923.hosted.pageshare.ai/?join='+encodeURIComponent(data);
   try{await navigator.clipboard.writeText(link)}catch{}
   prompt(`${name} için oyuncu davet linki. Oyuncuya bunu gönder:`,link);
   return link;
@@ -166,4 +166,4 @@ APP.addEventListener('click',e=>{
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
 S.channel('cc-ui-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{const m=APP.querySelector('main');if(m)m.dataset.ccPage='';schedule()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const m=APP.querySelector('main');if(m)m.dataset.ccPage='';schedule()}).subscribe();
 schedule();
-window.__catlakLegacyInviteSentinel='hidden-spring-7923.hosted.pageshare.ai/?join=';
+
