@@ -1,0 +1,30 @@
+name: Player Preview
+on:
+  push:
+    paths:
+      - 'player-preview.html'
+      - 'browser-app.js'
+      - '.github/workflows/player-preview.yml'
+  workflow_dispatch:
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render player preview in Chrome
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/player-preview-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then echo 'Chrome binary missing'; exit 1; fi
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1100 --virtual-time-budget=9000 --screenshot=player-preview.png http://127.0.0.1:4173/player-preview.html >/tmp/player-preview-chrome.log 2>&1 || true
+          cat /tmp/player-preview-chrome.log || true
+          test -s player-preview.png
+      - name: Upload player preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: player-preview
+          path: player-preview.png
+          if-no-files-found: error
+          retention-days: 7
