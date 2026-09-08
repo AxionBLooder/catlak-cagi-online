@@ -20,7 +20,7 @@ jobs:
       - name: Verify published version and artifact hash
         env:
           LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/
-          ARTIFACT_SHA: 2b54c968fec795ad211f611970d57460c454a196
+          ARTIFACT_SHA: 6efbb1ddf1ed4bd3452914ef59873e4ef67c6cf6
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
