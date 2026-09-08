@@ -10,12 +10,11 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
-      - name: Verify v8 gateway and PageShare migration shell
+      - name: Verify v8 gateway bundle
         run: |
           set -euo pipefail
           BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
           HASH='6ca0f3381e8f'
-          PAGE='https://hidden-spring-7923.hosted.pageshare.ai/'
           curl -fsSL --retry 3 "$BASE?verify=$(date +%s)" -o /tmp/gateway.html
           grep -q 'asset=app' /tmp/gateway.html
           grep -q "$HASH" /tmp/gateway.html
@@ -25,28 +24,22 @@ jobs:
           grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
           grep -q 'Kalıcı Siteye Geç' /tmp/app.js
           grep -q 'catlak-transfer-ready' /tmp/app.js
-          curl -fsSL --retry 3 -D /tmp/pageshare.headers "$PAGE?verify=$(date +%s)" -o /tmp/pageshare.html
-          cat /tmp/pageshare.headers
-          grep -qi 'content-type: text/html' /tmp/pageshare.headers
-          grep -q 'functions/v1/catlak-cagi?asset=app' /tmp/pageshare.html
-          grep -q "$HASH" /tmp/pageshare.html
-          echo 'GATEWAY_AND_PAGESHARE_MIGRATION_STATIC_OK'
-      - name: Open PageShare player entry in Chrome
+          echo 'GATEWAY_V8_STATIC_OK'
+      - name: Open permanent gateway player entry in Chrome
         run: |
           set -euo pipefail
-          PAGE='https://hidden-spring-7923.hosted.pageshare.ai/'
+          BASE='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           set +e
-          timeout 35s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=15000 --dump-dom "$PAGE?verify=bridge-$(date +%s)" >/tmp/dom.html 2>/tmp/chrome.log
+          timeout 40s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=18000 --dump-dom "$BASE?join=CHAR-INVALID-SMOKE-ONLY" >/tmp/dom.html 2>/tmp/chrome.log
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
           grep -Ei 'net::ERR|Uncaught|SyntaxError' /tmp/chrome.log | tail -80 || true
-          echo '--- PAGE MARKERS ---'
-          grep -o 'Giriş Yap\|E-posta\|Çatlak Çağı' /tmp/dom.html | sort -u || true
+          echo '--- GATEWAY MARKERS ---'
+          grep -o 'Karakter daveti kullanılmış veya süresi dolmuş\|Giriş Yap\|Çatlak Çağı' /tmp/dom.html | sort -u || true
           test "$STATUS" -eq 0
           grep -q 'Çatlak Çağı' /tmp/dom.html
-          grep -q 'Giriş Yap' /tmp/dom.html
-          grep -q 'E-posta' /tmp/dom.html
-          echo 'PAGESHARE_V8_PLAYER_ENTRY_OK'
+          grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
+          echo 'PERMANENT_GATEWAY_PLAYER_ENTRY_OK'
