@@ -23,7 +23,7 @@ jobs:
           got=hashlib.sha256(b).hexdigest()
           if got!=m.get('sha256'):
               raise SystemExit('Current artifact hash mismatch')
-          required=['Görsel Dosyası Seç','Stat Atölyesi','Toplu Zar Sil','Partiye Yansıt','Oturum kontrolü yanıt vermedi','Masa hazırlanıyor']
+          required=['Görsel Dosyası Seç','Stat Atölyesi','Toplu Zar Sil','Partiye Yansıt','Oturum kontrolü yanıt vermedi','Masa hazırlanıyor','Oyun verileri yüklenemedi','data-cc-auth-loading']
           s=b.decode('utf-8')
           miss=[x for x in required if x not in s]
           if miss: raise SystemExit('Missing recovery markers: '+', '.join(miss))
