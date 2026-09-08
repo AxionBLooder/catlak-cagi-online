@@ -1,0 +1,30 @@
+name: Apply Auth Refresh Hardening
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/apply-auth-refresh-hardening.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Apply source transformation
+        run: python3 scripts/apply-auth-refresh-hardening.py
+      - name: Verify transformed legacy source parses
+        run: |
+          cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/catlak-source.js
+          node --check /tmp/catlak-source.js
+          grep -q 'catlakSafeRefresh' live_08.txt
+          grep -q 'Oyun verileri yüklenemedi' live_08.txt
+      - name: Commit hardened source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live_08.txt
+          git commit -m "Giriş sonrası veri yükleme kilidini sınırla"
+          git pull --rebase origin main
+          git push
