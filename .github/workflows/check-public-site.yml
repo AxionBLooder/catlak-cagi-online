@@ -20,7 +20,7 @@ jobs:
       - name: Verify published version and artifact hash
         env:
           LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/
-          ARTIFACT_SHA: 6efbb1ddf1ed4bd3452914ef59873e4ef67c6cf6
+          ARTIFACT_SHA: 60ad678b1cc9db8382a78082d09e5af6c55aa6f1
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
@@ -43,7 +43,7 @@ jobs:
           PY
       - name: Open live site with Playwright
         env:
-          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=single-owner
+          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=minified
         run: |
           cat > .check-live.cjs <<'JS'
           const { chromium }=require('playwright-core');
