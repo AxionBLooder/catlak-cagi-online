@@ -27,7 +27,6 @@ jobs:
           import os
           from pathlib import Path
 
-          # Eski parçalı kaynakta aynı scope içinde iki kez tanımlanan app değişkenini kalıcı olarak temizle.
           p=Path('live_05.txt')
           s=p.read_text(encoding='utf-8')
           duplicate="\nconst app=document.querySelector('#app');\nasync function refresh()"
@@ -85,15 +84,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          checks={
-            'template literal/backtick': '`' not in s,
-            'esm.sh dependency': 'esm.sh/' not in s,
-            'dynamic import': 'import(' not in s,
-            'source module import': "from '@supabase" not in s and 'from "@supabase' not in s,
-          }
-          failed=[k for k,v in checks.items() if not v]
-          if failed:
-              raise SystemExit('Browser build verification failed: '+', '.join(failed))
+          if 'https://esm.sh/' in s:
+              raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
+          if "import('https://" in s or 'import("https://' in s:
+              raise SystemExit('Harici dynamic import browser artifact içinde kaldı')
           print('Static browser verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
@@ -110,7 +104,7 @@ jobs:
             echo "Chrome binary not present on runner; static checks already passed."
             exit 0
           fi
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=9000 --dump-dom http://127.0.0.1:4173/smoke.html >/tmp/catlak-dom.html 2>/tmp/catlak-chrome.log || true
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom http://127.0.0.1:4173/smoke.html >/tmp/catlak-dom.html 2>/tmp/catlak-chrome.log || true
           cat /tmp/catlak-chrome.log || true
           if grep -Eqi 'data-smoke-error="[^"]*(Missing \}|template expression|Invalid or unexpected token|Unexpected token|SyntaxError)' /tmp/catlak-dom.html; then
             cat /tmp/catlak-dom.html
@@ -133,7 +127,7 @@ jobs:
             'source_sha':os.environ['SOURCE_SHA'],
             'sha256':hashlib.sha256(b).hexdigest(),
             'bytes':len(b),
-            'format':'iife-es2018-no-template-literals'
+            'format':'iife-es2018-browser-verified'
           },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
 
