@@ -1,6 +1,6 @@
 {
-  "source_sha": "62410b771634abd1799f741598e7686de16c2a26",
-  "sha256": "6ca0f3381e8f425d69b9fe5fdff19b6dda76497b7876c57c1f326324ea5519c1",
-  "bytes": 357569,
+  "source_sha": "e06a6de5e0e21953ea78fd8cfe7a77e78d471011",
+  "sha256": "aa190ac13a02204fdad345f6946a7401ac3ab5e4efa2631740a2e18b5f81b3d4",
+  "bytes": 357390,
   "format": "iife-es2018-browser-verified-single-owner-minified"
 }
