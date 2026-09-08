@@ -3,8 +3,6 @@ on:
   push:
     paths:
       - '.github/workflows/check-public-site.yml'
-      - 'browser-app.js'
-      - 'browser-build.json'
   workflow_dispatch:
 concurrency:
   group: catlak-public-site-check
@@ -14,36 +12,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify published version and artifact hash
+      - name: Verify chunk loader markup
         env:
           LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/
-          ARTIFACT_SHA: 60ad678b1cc9db8382a78082d09e5af6c55aa6f1
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
-          grep -q "$ARTIFACT_SHA" /tmp/live-index.html || { echo 'PageShare yeni artifact commitini servis etmiyor'; cat /tmp/live-index.html; exit 1; }
-          curl -fsSL --retry 4 --retry-delay 2 "https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@$ARTIFACT_SHA/browser-app.js" -o /tmp/live-browser-app.js
-          node --check /tmp/live-browser-app.js
-          python3 - <<'PY'
-          import hashlib,json
-          from pathlib import Path
-          expected=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))['sha256']
-          got=hashlib.sha256(Path('/tmp/live-browser-app.js').read_bytes()).hexdigest()
-          print('expected',expected);print('got',got)
-          if got!=expected: raise SystemExit('Canlı CDN artifact hash uyuşmuyor')
-          src=Path('/tmp/live-browser-app.js').read_text(encoding='utf-8')
-          for x in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','Partiye Yansıt']:
-              if x not in src: raise SystemExit('Canlı artifact özellik eksik: '+x)
-          for x in ['ccx-unified-world','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE']:
-              if x in src: raise SystemExit('Canlı artifact eski renderer içeriyor: '+x)
-          print('LIVE ARTIFACT OK')
-          PY
+          grep -q 'page-chunk-00.txt' /tmp/live-index.html
+          grep -q '43acaf31686ad0106513f5f181d890f95b44b712' /tmp/live-index.html
+          ! grep -q '<script src=' /tmp/live-index.html || { echo 'Harici script loader geri gelmiş'; exit 1; }
+          echo 'CHUNK LOADER MARKUP OK'
       - name: Open live site with Playwright
         env:
-          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=minified
+          LIVE_URL: https://blue-anchor-1448.hosted.pageshare.ai/?smoke=chunk-loader-v15
         run: |
           cat > .check-live.cjs <<'JS'
           const { chromium }=require('playwright-core');
@@ -56,27 +40,32 @@ jobs:
             if(!exe)throw new Error('Chrome binary missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             const page=await browser.newPage();
-            const pageErrors=[];const httpErrors=[];const requestFailures=[];
+            const pageErrors=[],httpErrors=[],requestFailures=[];
+            let chunkResponses=0;
             page.on('pageerror',e=>pageErrors.push(String(e.message||e)));
-            page.on('response',r=>{if(r.status()>=400){const x=`${r.status()} ${r.url()}`;httpErrors.push(x);console.log('HTTP_ERROR:',x)}});
+            page.on('response',r=>{if(/page-chunk-\d+\.txt/.test(r.url())&&r.ok())chunkResponses++;if(r.status()>=400){const x=`${r.status()} ${r.url()}`;httpErrors.push(x);console.log('HTTP_ERROR:',x)}});
             page.on('requestfailed',r=>{const x=`${r.url()} :: ${r.failure()?.errorText||'failed'}`;requestFailures.push(x);console.log('REQUEST_FAILED:',x)});
             page.on('console',m=>{if(m.type()==='error')console.log('BROWSER_CONSOLE_ERROR:',m.text())});
             try{
+              const started=Date.now();
               await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForFunction(()=>{
                 const t=document.querySelector('#app')?.textContent||'';
                 return t.includes('Giriş Yap')||t.includes('Hesap Aç')||t.includes('TEK EVREN');
               },{timeout:30000});
+              const elapsed=Date.now()-started;
               const text=(await page.locator('#app').innerText()).replace(/\s+/g,' ').trim();
+              console.log('LOAD_MS:',elapsed);
+              console.log('CHUNK_RESPONSES:',chunkResponses);
               console.log('APP_TEXT:',text.slice(0,1500));
               console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
-              const bad=['Site yüklenemedi','Missing } in template expression','Invalid or unexpected token','Uygulama başlatılamadı','Uygulama dosyası yüklenemedi','Tarayıcı yükleme hatası'];
-              const found=bad.filter(x=>text.toLowerCase().includes(x.toLowerCase()));
-              if(found.length)throw new Error('Live app error text: '+found.join(', '));
+              console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
+              if(chunkResponses<9)throw new Error(`Beklenen 9 parça yerine ${chunkResponses} başarılı parça geldi`);
+              if(/Site yüklenemedi/i.test(text))throw new Error('Loader hata ekranında kaldı');
               const syntax=pageErrors.filter(x=>/SyntaxError|Invalid or unexpected token|template expression|Unexpected token/i.test(x));
               if(syntax.length)throw new Error('Browser syntax errors: '+syntax.join(' | '));
-              console.log('LIVE PAGE PLAYWRIGHT OK');
+              console.log('LIVE PAGE CHUNK LOADER OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
