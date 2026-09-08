@@ -131,13 +131,13 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','catlak-cagi-online.netlify.app/?join=','Kalıcı Siteye Geç','catlak-transfer-ready']
+          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','axionblooder.github.io/catlak-cagi-online/?join=','Kalıcı Site Bağlantısı','catlak_generate_character_reconnect']
           missing=[x for x in required if x not in s]
           if missing: raise SystemExit('Üretim artifact özellikleri eksik: '+', '.join(missing))
-          forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','https://esm.sh/','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE','ccx-unified-world',"if(gm)gm.click()"]
+          forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','catlak-cagi-online.netlify.app/?join=','https://esm.sh/','catlak-transfer-session','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE','ccx-unified-world',"if(gm)gm.click()"]
           found=[x for x in forbidden if x in s]
           if found: raise SystemExit('Eski/çakışan renderer üretimde kaldı: '+', '.join(found))
-          print('Single-owner static verification OK; bytes=',len(s.encode('utf-8')))
+          print('GitHub Pages static verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
       - name: Browser parse probe
@@ -177,8 +177,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add live_05.txt browser-app.js browser-build.json
           if git diff --cached --quiet; then echo 'Verified browser artifacts already up to date'; exit 0; fi
-          git commit -m "Tek sahipli doğrulanmış browser app güncelle"
+          git commit -m "GitHub Pages için doğrulanmış browser app güncelle"
           git pull --rebase origin main
           git push
 
-# permanent Netlify production trigger
+# permanent GitHub Pages production
