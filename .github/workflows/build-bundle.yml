@@ -7,6 +7,7 @@ on:
       - 'world-patch.js'
       - 'fixes-patch.js'
       - 'stability-patch.js'
+      - 'world-extra-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -42,6 +43,7 @@ jobs:
           world=Path('world-patch.js').read_text(encoding='utf-8')
           fixes=Path('fixes-patch.js').read_text(encoding='utf-8')
           stability=Path('stability-patch.js').read_text(encoding='utf-8')
+          extra=Path('world-extra-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -55,16 +57,40 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base,ui,world,fixes,stability=map(clean,(base,ui,world,fixes,stability))
+          base,ui,world,fixes,stability,extra=map(clean,(base,ui,world,fixes,stability,extra))
+
+          # GM canlı masasının tek sahibi stability katmanı olsun; eski ayrıntılı
+          # HP/AC/HIZ/LV + STR-CHA renderer'ı artık çalışmasın.
+          needle='async function renderLiveTable(){'
+          if ui.count(needle)!=1:
+              raise SystemExit('renderLiveTable beklenen biçimde bulunamadı')
+          ui=ui.replace(needle,"async function renderLiveTable(){if(window.__catlakStableLiveOwner)return;",1)
+
+          # Evren modülünün aktif durumunu ara ekran render etmeden kapatabilmek için
+          # küçük bir kontrollü API aç.
+          world_state='let worldActive=false,rendering=false,scheduled=false;'
+          if world_state not in world:
+              raise SystemExit('worldActive state satırı bulunamadı')
+          world=world.replace(world_state,world_state+"\nwindow.__catlakSetWorldActive=v=>{worldActive=!!v};",1)
+
+          # Harita'ya geçerken eski kod GM düğmesine tıklayıp bir ara ekran çiziyordu.
+          # Bu çift render/flicker kaynağını doğrudan state kapatmaya çevir.
+          old="if(worldOn){const gm=CC_APP.querySelector('.nav [data-tab=\"gm\"]');if(gm)gm.click()}"
+          new="if(worldOn){window.__catlakSetWorldActive?.(false)}"
+          if old not in stability:
+              raise SystemExit('Harita geçişindeki eski gm.click kalıbı bulunamadı')
+          stability=stability.replace(old,new,1)
+
           Path('.build').mkdir(exist_ok=True)
           entry=(
               "import {createClient} from '@supabase/supabase-js';\n"
-              "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\n})();\n"
+              "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\nwindow.__catlakStableLiveOwner=true;\n})();\n"
               "const __catlakUiReady=(async()=>{await __catlakBaseReady;\n"+ui+"\n})();\n"
               "const __catlakWorldReady=(async()=>{await __catlakUiReady;\n"+world+"\n})();\n"
               "const __catlakFixesReady=(async()=>{await __catlakWorldReady;\n"+fixes+"\n})();\n"
               "const __catlakStabilityReady=(async()=>{await __catlakFixesReady;\n"+stability+"\n})();\n"
-              "__catlakStabilityReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakExtraReady=(async()=>{await __catlakStabilityReady;\n"+extra+"\n})();\n"
+              "__catlakExtraReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -86,15 +112,18 @@ jobs:
           node --check browser-app.js
           node --check fixes-patch.js
           node --check stability-patch.js
+          node --check world-extra-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
           if 'https://esm.sh/' in s:
               raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
-          required=['Toplu Zar Sil','catlak_clear_roll_log','Partiye Yansıt','Harita & NPC Görselleri','Zar silinemedi','data-cc-map-tab']
+          required=['Toplu Zar Sil','catlak_clear_roll_log','Partiye Yansıt','Harita & NPC Görselleri','Zar silinemedi','data-cc-map-tab','EVREN GÖRSELLERİ','__catlakStableLiveOwner','__catlakSetWorldActive']
           missing=[x for x in required if x not in s]
           if missing:
               raise SystemExit('Yeni stabilite özellikleri artifact içinde eksik: '+', '.join(missing))
+          if "if(gm)gm.click()" in s:
+              raise SystemExit('Eski çift-render gm.click kalıbı artifact içinde kaldı')
           print('Static browser verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
