@@ -62,3 +62,5 @@ function ccMigSchedule(){
 }
 new MutationObserver(ccMigSchedule).observe(CC_MIG_APP||document.body,{childList:true,subtree:true});
 ccMigSchedule();
+
+// GitHub Pages production build trigger.
