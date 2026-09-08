@@ -23,9 +23,9 @@ function cnlEnsureNav(){
     const rules=nav.querySelector('[data-tab="rules"]');
     rules?rules.before(world):nav.appendChild(world);
   }
-  world.removeAttribute('data-tab');
-  world.textContent='Görsel Arşivi';
-  world.setAttribute('aria-label','Görsel Arşivi');
+  if(world.hasAttribute('data-tab'))world.removeAttribute('data-tab');
+  if(cnlTxt(world)!=='Görsel Arşivi')world.textContent='Görsel Arşivi';
+  if(world.getAttribute('aria-label')!=='Görsel Arşivi')world.setAttribute('aria-label','Görsel Arşivi');
 
   let stats=nav.querySelector('[data-cc-stats-tab]');
   if(cnlIsGM()){
@@ -37,9 +37,9 @@ function cnlEnsureNav(){
       const races=nav.querySelector('[data-tab="races"]');
       chars?chars.after(stats):races?races.before(stats):nav.appendChild(stats);
     }
-    stats.removeAttribute('data-tab');
-    stats.textContent='Stat Atölyesi';
-    stats.setAttribute('aria-label','Stat Atölyesi');
+    if(stats.hasAttribute('data-tab'))stats.removeAttribute('data-tab');
+    if(cnlTxt(stats)!=='Stat Atölyesi')stats.textContent='Stat Atölyesi';
+    if(stats.getAttribute('aria-label')!=='Stat Atölyesi')stats.setAttribute('aria-label','Stat Atölyesi');
   }else if(stats){
     stats.remove();
   }
@@ -71,4 +71,3 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
-// build trigger: auth refresh hardening
