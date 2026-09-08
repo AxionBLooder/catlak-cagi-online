@@ -5,7 +5,11 @@ on:
       - 'live_*.txt'
       - 'main.js'
       - 'ui-patch.js'
-      - 'world-patch.js'
+      - 'stability-patch.js'
+      - 'gallery-quality-patch.js'
+      - 'ux-patch.js'
+      - 'nav-lite-patch.js'
+      - 'simple-world-upload-patch.js'
       - 'index.html'
       - 'browser-app.js'
       - 'browser-build.json'
@@ -18,12 +22,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Rebuild legacy source for parser check
         run: cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/catlak-live.js
-      - name: Check all JavaScript syntax
+      - name: Check JavaScript syntax
         run: |
           node --check /tmp/catlak-live.js
           node --check main.js
           node --check ui-patch.js
-          node --check world-patch.js
+          node --check stability-patch.js
+          node --check gallery-quality-patch.js
+          node --check ux-patch.js
+          node --check nav-lite-patch.js
+          node --check simple-world-upload-patch.js
           node --check browser-app.js
       - name: Check source invariants
         run: |
@@ -34,10 +42,17 @@ jobs:
           if src.count("const app=document.querySelector('#app');") != 1:
               raise SystemExit('Legacy kaynakta app tanımı tam olarak bir kez olmalı')
           manifest=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))
-          if manifest.get('format')!='iife-es2018-browser-verified':
+          if manifest.get('format') not in ('iife-es2018-browser-verified','iife-es2018-browser-verified-single-owner'):
               raise SystemExit('Doğrulanmış browser build manifesti bulunamadı')
-          if not Path('browser-app.js').stat().st_size:
+          artifact=Path('browser-app.js').read_text(encoding='utf-8')
+          if not artifact:
               raise SystemExit('browser-app.js boş')
+          for marker in ['Görsel Dosyası Seç','catlak-world-media','Hızlı Karakter Düzenleme','Toplu Zar Sil']:
+              if marker not in artifact:
+                  raise SystemExit('browser-app.js yeni üretim özelliğini içermiyor: '+marker)
+          for stale in ['ccx-unified-world','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE']:
+              if stale in artifact:
+                  raise SystemExit('Eski Evren rendererı artifact içinde kaldı: '+stale)
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
