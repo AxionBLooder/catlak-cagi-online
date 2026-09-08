@@ -1,0 +1,25 @@
+name: Package Netlify Site
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/package-netlify.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare minimal production site
+        run: |
+          mkdir -p netlify-site
+          cp index.html browser-app.js catalog.b64 netlify-site/
+          touch netlify-site/.nojekyll
+          node --check netlify-site/browser-app.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: netlify-site
+          path: netlify-site
+          if-no-files-found: error
