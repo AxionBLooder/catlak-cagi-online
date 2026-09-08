@@ -1,0 +1,47 @@
+name: Check Public Site
+on:
+  push:
+    paths:
+      - '.github/workflows/check-public-site.yml'
+      - 'browser-app.js'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open live PageShare in Chrome
+        run: |
+          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=github-actions'
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            echo 'Chrome binary missing'
+            exit 1
+          fi
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=15000 --dump-dom "$URL" >/tmp/live-dom.html 2>/tmp/live-chrome.log || true
+          echo '--- Chrome diagnostics ---'
+          cat /tmp/live-chrome.log || true
+          echo '--- Rendered DOM checks ---'
+          python3 - <<'PY'
+          from pathlib import Path
+          dom=Path('/tmp/live-dom.html').read_text(encoding='utf-8',errors='replace')
+          bad=[
+            'Site yüklenemedi',
+            'Missing } in template expression',
+            'Invalid or unexpected token',
+            'Uygulama başlatılamadı',
+            'Uygulama dosyası yüklenemedi',
+            'Tarayıcı yükleme hatası'
+          ]
+          found=[x for x in bad if x.lower() in dom.lower()]
+          if found:
+            print(dom[:12000])
+            raise SystemExit('Live site error text found: '+', '.join(found))
+          auth_markers=['Giriş Yap','Hesap Aç','TEK EVREN • ONLINE FRP']
+          if not any(x in dom for x in auth_markers):
+            print(dom[:12000])
+            raise SystemExit('Live app did not reach the expected auth UI')
+          print('LIVE PAGE OK: verified app UI rendered from public PageShare URL')
+          PY
+          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/live-chrome.log; then
+            exit 1
+          fi
