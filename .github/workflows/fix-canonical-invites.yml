@@ -11,33 +11,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pin all invite links to permanent Netlify host
+      - name: Pin all invite links to verified PageShare host
         run: |
           python3 - <<'PY'
           from pathlib import Path
           gateway='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
-          old='https://hidden-spring-7923.hosted.pageshare.ai/'
-          good='https://catlak-cagi-online.netlify.app/'
+          netlify='https://catlak-cagi-online.netlify.app/'
+          good='https://hidden-spring-7923.hosted.pageshare.ai/'
 
           p=Path('ui-patch.js')
           s=p.read_text(encoding='utf-8')
           s=s.replace(gateway+'?join=',good+'?join=')
-          s=s.replace(old+'?join=',good+'?join=')
+          s=s.replace(netlify+'?join=',good+'?join=')
           s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(good+'?join=')+'+')
           if good+'?join=' not in s:
-              raise SystemExit('ui-patch Netlify invite replacement missing')
-          if old+'?join=' in s or gateway+'?join=' in s:
+              raise SystemExit('ui-patch PageShare invite replacement missing')
+          if netlify+'?join=' in s or gateway+'?join=' in s:
               raise SystemExit('ui-patch still contains obsolete invite target')
           p.write_text(s,encoding='utf-8')
 
           p=Path('live_06.txt')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(f"const CATLAK_PUBLIC_BASE='{old}';",f"const CATLAK_PUBLIC_BASE='{good}';")
+          s=s.replace(f"const CATLAK_PUBLIC_BASE='{netlify}';",f"const CATLAK_PUBLIC_BASE='{good}';")
           s=s.replace(f"const CATLAK_PUBLIC_BASE='{gateway}';",f"const CATLAK_PUBLIC_BASE='{good}';")
           s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
           s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
           if f"const CATLAK_PUBLIC_BASE='{good}';" not in s:
-              raise SystemExit('live_06 Netlify base replacement missing')
+              raise SystemExit('live_06 PageShare base replacement missing')
           if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
               raise SystemExit('normal and prepared invite replacements missing')
           p.write_text(s,encoding='utf-8')
@@ -47,17 +47,17 @@ jobs:
           node --check ui-patch.js
           cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
           node --check /tmp/base.js
-          grep -q "catlak-cagi-online.netlify.app/?join=" ui-patch.js
-          grep -q "CATLAK_PUBLIC_BASE='https://catlak-cagi-online.netlify.app/'" live_06.txt
-          ! grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
+          grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'" live_06.txt
+          ! grep -q "catlak-cagi-online.netlify.app/?join=" ui-patch.js
           ! grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
-      - name: Commit permanent invite host
+      - name: Commit verified invite host
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ui-patch.js live_06.txt
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Davetleri kalıcı Netlify adresine bağla"
+            git commit -m "Davetleri doğrulanmış PageShare adresine bağla"
             git pull --rebase origin main
             git push
           fi
