@@ -20445,7 +20445,7 @@
     const slugify = (s) => String(s || "").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
     async function catload() {
       try {
-        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@19df6e6e8db828766c950ca158b21ad08e23d4ea/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@681ddc58603eb56462be4022395367d4dbfe7d45/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
         st.cat = JSON.parse(txt);
       } catch (e) {
         err(e);
@@ -21031,7 +21031,6 @@
     S.channel("catlak-live").on("postgres_changes", { event: "*", schema: "public", table: "catlak_rolls" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_inventory" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_characters" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_items" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_species_powers" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_species" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_backgrounds" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_classes" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_special_paths" }, liveRefresh).subscribe();
     window.__catlakSupabase = S;
     window.__catlakStableLiveOwner = true;
-    window.__catlakCompactStatsOwner = true;
   })();
   var __catlakUiReady = (async () => {
     await __catlakBaseReady;
@@ -21200,6 +21199,10 @@
       if (error) {
         main.dataset.ccPage = "";
         toast(error.message);
+        return;
+      }
+      if (!isGM() || tabId() !== "characters") {
+        main.dataset.ccPage = "";
         return;
       }
       main.innerHTML = '<section class="card"><div class="section-title"><div><div class="eyebrow">HAZIR KARAKTER HAVUZU</div><h2>Oyuncuya Gönderilmeyi Bekleyen Karakterler</h2><p class="muted">Bu karakterler henüz Canlı Oyun Masası\'nda değildir. Davet linki oyuncu tarafından açıldığında otomatik olarak aktif masaya geçer.</p></div><button class="primary" data-tab="builder">+ Yeni Karakter Oluştur</button></div>'.concat(data.length ? '<div class="grid">'.concat(data.map((c) => '<article class="card cc-prepared"><div class="cc-char-head"><div><span class="tag">HAZIR</span><h3>'.concat(h(c.name), '</h3><p class="muted">').concat(h(c.species_name), " • ").concat(h(c.class_name), " ").concat(c.level, " • ").concat(h(c.background_name), '</p></div><span class="cc-status" style="color:var(--gold);border-color:#66552d">OYUNCU BEKLİYOR</span></div><div class="stats">').concat(A.map((a) => {
@@ -21407,112 +21410,8 @@
     }).subscribe();
     schedule();
   })();
-  var __catlakFixesReady = (async () => {
-    await __catlakUiReady;
-    const S = window.__catlakSupabase;
-    const APP = document.querySelector("#app");
-    if (!S || !APP) throw new Error("Çatlak Çağı düzeltme katmanı başlatılamadı.");
-    const txt = (e) => String((e == null ? void 0 : e.textContent) || "").trim();
-    const isGM = () => txt(APP.querySelector(".role")) === "GM";
-    const activeTab = () => {
-      var _a;
-      return ((_a = APP.querySelector(".nav button.on")) == null ? void 0 : _a.dataset.tab) || "";
-    };
-    const toast = (x) => {
-      const t = document.querySelector("#toast");
-      if (!t) return;
-      t.textContent = x;
-      t.classList.remove("hidden");
-      clearTimeout(toast.t);
-      toast.t = setTimeout(() => t.classList.add("hidden"), 4200);
-    };
-    let scheduled = false, clearing = false;
-    function repairWorldRouter() {
-      const b = APP.querySelector("[data-cc-world-tab]");
-      if (!b) return;
-      b.removeAttribute("data-tab");
-      b.type = "button";
-      b.setAttribute("aria-label", "Evren");
-    }
-    function makeClearButton() {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "danger cc-clear-all-rolls";
-      b.dataset.ccClearAllRolls = "1";
-      b.textContent = "Tüm Zarları Sil";
-      return b;
-    }
-    function addBulkRollControls() {
-      if (!isGM()) return;
-      const main = APP.querySelector("main");
-      if (!main) return;
-      const tab = activeTab();
-      if (tab === "rolls") {
-        const card = main.querySelector(":scope > section.card");
-        if (card && !card.querySelector("[data-cc-clear-all-rolls]")) {
-          const bar = document.createElement("div");
-          bar.className = "row cc-clear-roll-actions";
-          bar.style.justifyContent = "flex-end";
-          bar.style.marginBottom = "12px";
-          bar.appendChild(makeClearButton());
-          const rolls = card.querySelector(".rolls");
-          rolls ? card.insertBefore(bar, rolls) : card.appendChild(bar);
-        }
-      }
-      if (tab === "gm") {
-        const sections = [...main.querySelectorAll(":scope > section.card")];
-        const flow = sections.find((s) => txt(s.querySelector(".eyebrow")) === "ORTAK ZAR AKIŞI" || txt(s.querySelector("h2")) === "DM + Oyuncular");
-        if (flow && !flow.querySelector("[data-cc-clear-all-rolls]")) {
-          const title = flow.querySelector(".section-title");
-          if (title) {
-            let actions = title.querySelector(".cc-clear-roll-actions");
-            if (!actions) {
-              actions = document.createElement("div");
-              actions.className = "row cc-clear-roll-actions";
-              title.appendChild(actions);
-            }
-            actions.appendChild(makeClearButton());
-          } else flow.insertBefore(makeClearButton(), flow.firstChild);
-        }
-      }
-    }
-    async function clearAllRolls() {
-      if (clearing || !isGM()) return;
-      if (!confirm("Tüm zar geçmişi kalıcı olarak silinsin mi? Bu işlem oyuncu ve DM ekranındaki bütün zar kayıtlarını temizler.")) return;
-      clearing = true;
-      try {
-        const { data, error } = await S.rpc("catlak_clear_roll_log");
-        if (error) throw error;
-        APP.querySelectorAll(".roll,.cc-roll-line").forEach((x) => x.remove());
-        toast("".concat(Number(data) || 0, " zar kaydı silindi. Oyuncu ve DM ekranları canlı olarak yenilenecek."));
-      } catch (e) {
-        toast((e == null ? void 0 : e.message) || String(e));
-      } finally {
-        clearing = false;
-      }
-    }
-    APP.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-cc-clear-all-rolls]");
-      if (!b) return;
-      e.preventDefault();
-      e.stopPropagation();
-      clearAllRolls();
-    }, true);
-    function run() {
-      scheduled = false;
-      repairWorldRouter();
-      addBulkRollControls();
-    }
-    function schedule() {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(run);
-    }
-    new MutationObserver(schedule).observe(APP, { childList: true, subtree: true });
-    schedule();
-  })();
   var __catlakStabilityReady = (async () => {
-    await __catlakFixesReady;
+    await __catlakUiReady;
     const CC_S = window.__catlakSupabase;
     const CC_APP = document.querySelector("#app");
     if (!CC_S || !CC_APP) throw new Error("Çatlak Çağı stabilite katmanı başlatılamadı.");
@@ -21708,6 +21607,9 @@
       if (!main || main.querySelector("[data-cc-party-visual-card]")) return;
       const { data, error } = await CC_S.from("catlak_party_visual").select("*").eq("singleton", true).maybeSingle();
       if (error || !(data == null ? void 0 : data.image_url)) return;
+      if (ccMapActive || ccTab() !== "sheet" || ccIsGM()) return;
+      const currentMain = CC_APP.querySelector("main");
+      if (!currentMain || currentMain !== main || currentMain.querySelector("[data-cc-party-visual-card]")) return;
       const s = document.createElement("section");
       s.className = "card cc-party-show";
       s.dataset.ccPartyVisualCard = "1";
@@ -21813,255 +21715,8 @@
     }).subscribe();
     ccSchedule();
   })();
-  var __catlakExtraReady = (async () => {
-    await __catlakStabilityReady;
-    const CCX_S = window.__catlakSupabase;
-    const CCX_APP = document.querySelector("#app");
-    if (!CCX_S || !CCX_APP) throw new Error("Çatlak Çağı birleşik Evren/Stat katmanı başlatılamadı.");
-    const ccxH = (x) => String(x != null ? x : "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-    const ccxTxt = (e) => String((e == null ? void 0 : e.textContent) || "").trim();
-    const ccxIsGM = () => ccxTxt(CCX_APP.querySelector(".role")) === "GM";
-    const CCX_STATS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
-    let ccxMode = "", ccxBusy = false, ccxNavScheduled = false;
-    const ccxToast = (x) => {
-      const t = document.querySelector("#toast");
-      if (!t) return;
-      t.textContent = String(x);
-      t.classList.remove("hidden");
-      clearTimeout(ccxToast.t);
-      ccxToast.t = setTimeout(() => t.classList.add("hidden"), 4300);
-    };
-    const ccxCss = "\n.ccx-world-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}.ccx-media{overflow:hidden;padding:14px}.ccx-media-frame{width:100%;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:radial-gradient(circle at center,#17243a 0,#080d17 70%);cursor:zoom-in}.ccx-media-frame img{width:100%;height:100%;object-fit:contain;display:block;padding:6px}.ccx-media-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}.ccx-media h3{margin:.25rem 0}.ccx-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ccx-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ccx-form-grid .wide{grid-column:1/-1}.ccx-world-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.ccx-empty{padding:24px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center}.ccx-danger{border-color:#713b49!important;color:#ffb7c2!important}.ccx-modal{position:fixed;inset:0;z-index:99999;background:#02050bea;display:flex;align-items:center;justify-content:center;padding:28px}.ccx-modal img{max-width:96vw;max-height:90vh;object-fit:contain;border-radius:16px;box-shadow:0 25px 100px #000}.ccx-modal button{position:fixed;right:22px;top:20px;z-index:2}.ccx-stat-list{display:grid;gap:16px}.ccx-stat-card{border-color:#344d69!important}.ccx-stat-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.ccx-stat-badge{border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:.72rem}.ccx-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:14px 0}.ccx-vitals-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.ccx-stat-grid label,.ccx-vitals-grid label{font-size:.72rem;color:var(--muted)}.ccx-stat-grid input,.ccx-vitals-grid input{margin-top:4px;text-align:center;font-weight:800}.ccx-save-row{display:flex;justify-content:flex-end;margin-top:13px}.ccx-hero{background:linear-gradient(135deg,#12283b,#0b1422 58%,#21182a)!important;border-color:#36536e!important}\n@media(max-width:950px){.ccx-world-columns{grid-template-columns:1fr}.ccx-stat-grid{grid-template-columns:repeat(3,1fr)}.ccx-vitals-grid{grid-template-columns:repeat(3,1fr)}}\n@media(max-width:620px){.ccx-world-grid{grid-template-columns:1fr}.ccx-form-grid{grid-template-columns:1fr}.ccx-form-grid .wide{grid-column:auto}.ccx-stat-grid,.ccx-vitals-grid{grid-template-columns:repeat(2,1fr)}}\n";
-    if (!document.querySelector("#ccx-style")) {
-      const s = document.createElement("style");
-      s.id = "ccx-style";
-      s.textContent = ccxCss;
-      document.head.appendChild(s);
-    }
-    function ccxEnsureNav() {
-      var _a;
-      const nav = CCX_APP.querySelector(".nav");
-      if (!nav) return;
-      let world = nav.querySelector("[data-cc-world-tab]");
-      if (!world) {
-        world = document.createElement("button");
-        world.type = "button";
-        world.dataset.ccWorldTab = "1";
-        world.textContent = "Evren";
-        const rules = nav.querySelector('[data-tab="rules"]');
-        rules ? rules.before(world) : nav.appendChild(world);
-      }
-      if (ccxIsGM()) {
-        let stats = nav.querySelector("[data-cc-stats-tab]");
-        if (!stats) {
-          stats = document.createElement("button");
-          stats.type = "button";
-          stats.dataset.ccStatsTab = "1";
-          stats.dataset.tab = "stats-workshop";
-          stats.textContent = "Stat Atölyesi";
-          const chars = nav.querySelector('[data-tab="characters"]'), races = nav.querySelector('[data-tab="races"]');
-          chars ? chars.after(stats) : races ? races.before(stats) : nav.appendChild(stats);
-        }
-      } else (_a = nav.querySelector("[data-cc-stats-tab]")) == null ? void 0 : _a.remove();
-    }
-    function ccxSelectNav(target) {
-      const nav = CCX_APP.querySelector(".nav");
-      if (!nav) return;
-      nav.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === target));
-    }
-    function ccxMediaTitle(x, kind) {
-      return kind === "npc" ? x.name || "Adsız NPC" : x.title || "Adsız Görsel";
-    }
-    function ccxMediaNote(x, kind) {
-      return kind === "npc" ? x.note || "" : x.description || "";
-    }
-    function ccxMediaCard(x, kind) {
-      const title = ccxMediaTitle(x, kind), note = ccxMediaNote(x, kind), img = x.image_url || "", tag = kind === "map" ? "HARİTA" : kind === "npc" ? "NPC" : "EVREN";
-      return '<article class="card ccx-media" data-ccx-card="'.concat(x.id, '"><div class="ccx-media-head"><div><span class="tag">').concat(tag, "</span><h3>").concat(ccxH(title), "</h3></div>").concat(ccxIsGM() ? '<button type="button" class="ccx-danger small" data-ccx-delete="'.concat(x.id, '" data-kind="').concat(kind, '">Sil</button>') : "", "</div>").concat(img ? '<div class="ccx-media-frame" data-ccx-zoom="1"><img src="'.concat(ccxH(img), '" alt="').concat(ccxH(title), '" loading="lazy"></div>') : "", "<p>").concat(ccxH(note), "</p></article>");
-    }
-    async function ccxRenderWorld(force = false) {
-      if (ccxMode !== "world" || ccxBusy) return;
-      const main = CCX_APP.querySelector("main");
-      if (!main) return;
-      if (!force && main.dataset.ccxPage === "world") return;
-      ccxBusy = true;
-      try {
-        const [mr, or, nr] = await Promise.all([
-          CCX_S.from("catlak_world_media").select("*").eq("media_type", "map").order("sort_order").order("created_at", { ascending: true }),
-          CCX_S.from("catlak_world_media").select("*").eq("media_type", "other").order("sort_order").order("created_at", { ascending: true }),
-          CCX_S.from("catlak_npcs").select("*").order("sort_order").order("created_at", { ascending: true })
-        ]);
-        if (mr.error) throw mr.error;
-        if (or.error) throw or.error;
-        if (nr.error) throw nr.error;
-        if (ccxMode !== "world") return;
-        const maps = mr.data || [], others = or.data || [], npcs = nr.data || [], gm = ccxIsGM();
-        const forms = gm ? '<div class="ccx-world-columns"><section class="card"><div class="eyebrow">HARİTA EKLE</div><h3>Yeni Harita</h3><div class="ccx-form-grid"><label>Başlık<input id="ccx-map-title"></label><label>Görsel URL<input id="ccx-map-url"></label><label class="wide">Açıklama<textarea id="ccx-map-note"></textarea></label></div><button class="primary" data-ccx-add="map">Haritayı Ekle</button></section><section class="card"><div class="eyebrow">EVREN GÖRSELİ EKLE</div><h3>Bölge / Sahne</h3><div class="ccx-form-grid"><label>Başlık<input id="ccx-other-title"></label><label>Görsel URL<input id="ccx-other-url"></label><label class="wide">Açıklama<textarea id="ccx-other-note"></textarea></label></div><button class="primary" data-ccx-add="other">Görseli Ekle</button></section><section class="card"><div class="eyebrow">NPC EKLE</div><h3>Yeni NPC</h3><div class="ccx-form-grid"><label>Ad<input id="ccx-npc-name"></label><label>Rol<input id="ccx-npc-role"></label><label>Yer<input id="ccx-npc-place"></label><label>İlişki<input id="ccx-npc-relation"></label><label class="wide">Görsel URL<input id="ccx-npc-url"></label><label class="wide">Not<textarea id="ccx-npc-note"></textarea></label></div><button class="primary" data-ccx-add="npc">NPC Ekle</button></section></div>' : "";
-        main.innerHTML = '<section class="card ccx-hero"><div class="eyebrow">ÇATLAK ÇAĞI • EVREN</div><h1>Evren Arşivi</h1><p class="muted">Görseller kırpılmadan, gerçek oranları korunarak gösterilir. Görsele tıklayarak büyük açabilirsin.</p><div class="row"><span class="tag">'.concat(maps.length, ' HARİTA</span><span class="tag">').concat(others.length, ' EVREN GÖRSELİ</span><span class="tag">').concat(npcs.length, " NPC</span></div></section>").concat(forms, '<section class="card"><div class="eyebrow">HARİTALAR</div><h2>Harita Arşivi</h2>').concat(maps.length ? '<div class="ccx-world-grid">'.concat(maps.map((x) => ccxMediaCard(x, "map")).join(""), "</div>") : '<div class="ccx-empty">Harita yok.</div>', '</section><section class="card"><div class="eyebrow">EVREN GÖRSELLERİ</div><h2>Bölgeler & Sahneler</h2>').concat(others.length ? '<div class="ccx-world-grid">'.concat(others.map((x) => ccxMediaCard(x, "other")).join(""), "</div>") : '<div class="ccx-empty">Evren görseli yok.</div>', '</section><section class="card"><div class="eyebrow">NPC ARŞİVİ</div><h2>Karakter Görselleri</h2>').concat(npcs.length ? '<div class="ccx-world-grid">'.concat(npcs.map((x) => ccxMediaCard(x, "npc")).join(""), "</div>") : '<div class="ccx-empty">NPC yok.</div>', "</section>");
-        main.dataset.ccxPage = "world";
-      } catch (e) {
-        ccxToast("Evren yüklenemedi: " + ((e == null ? void 0 : e.message) || String(e)));
-      } finally {
-        ccxBusy = false;
-      }
-    }
-    async function ccxAdd(kind) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-      if (!ccxIsGM()) return;
-      if (kind === "npc") {
-        const name = (_a = document.querySelector("#ccx-npc-name")) == null ? void 0 : _a.value.trim();
-        if (!name) return ccxToast("NPC adı gerekli.");
-        const { error } = await CCX_S.from("catlak_npcs").insert({ name, role: ((_b = document.querySelector("#ccx-npc-role")) == null ? void 0 : _b.value.trim()) || "NPC", place: ((_c = document.querySelector("#ccx-npc-place")) == null ? void 0 : _c.value.trim()) || "", relation: ((_d = document.querySelector("#ccx-npc-relation")) == null ? void 0 : _d.value.trim()) || "", image_url: ((_e = document.querySelector("#ccx-npc-url")) == null ? void 0 : _e.value.trim()) || "", note: ((_f = document.querySelector("#ccx-npc-note")) == null ? void 0 : _f.value) || "", visible: true, sort_order: 0, data: {} });
-        if (error) throw error;
-      } else {
-        const prefix = kind === "map" ? "map" : "other", title = (_g = document.querySelector("#ccx-".concat(prefix, "-title"))) == null ? void 0 : _g.value.trim();
-        if (!title) return ccxToast("Başlık gerekli.");
-        const { error } = await CCX_S.from("catlak_world_media").insert({ media_type: kind, title, image_url: ((_h = document.querySelector("#ccx-".concat(prefix, "-url"))) == null ? void 0 : _h.value.trim()) || "", description: ((_i = document.querySelector("#ccx-".concat(prefix, "-note"))) == null ? void 0 : _i.value) || "", visible: true, sort_order: 0, data: {} });
-        if (error) throw error;
-      }
-      ccxToast("Evren kaydı eklendi.");
-      await ccxRenderWorld(true);
-    }
-    async function ccxDelete(id, kind) {
-      var _a;
-      if (!ccxIsGM() || !confirm("Bu görsel kalıcı olarak silinsin mi?")) return;
-      const table = kind === "npc" ? "catlak_npcs" : "catlak_world_media";
-      const { error } = await CCX_S.from(table).delete().eq("id", id);
-      if (error) throw error;
-      (_a = document.querySelector('[data-ccx-card="'.concat(CSS.escape(String(id)), '"]'))) == null ? void 0 : _a.remove();
-      ccxToast("Görsel silindi.");
-    }
-    function ccxInput(c, key, value, min, max) {
-      return "<label>".concat(key, '<input type="number" min="').concat(min, '" max="').concat(max, '" data-ccx-field="').concat(key, '" value="').concat(Number(value != null ? value : 0), '"></label>');
-    }
-    function ccxCharacterCard(c) {
-      const s = c.base_stats || {}, status = c.play_status === "active" ? "CANLI" : "HAZIR";
-      return '<article class="card ccx-stat-card" data-ccx-character="'.concat(c.id, '"><div class="ccx-stat-head"><div><div class="eyebrow">').concat(status, "</div><h2>").concat(ccxH(c.name), '</h2><p class="muted">').concat(ccxH(c.species_name || ""), " • ").concat(ccxH(c.class_name || ""), " • ").concat(ccxH(c.background_name || ""), '</p></div><span class="ccx-stat-badge">').concat(status, '</span></div><h3>Temel Statlar</h3><div class="ccx-stat-grid">').concat(CCX_STATS.map((k) => {
-        var _a;
-        return ccxInput(c, k, (_a = s[k]) != null ? _a : 10, 1, 99);
-      }).join(""), '</div><h3>Can & Savaş Değerleri</h3><div class="ccx-vitals-grid">').concat(ccxInput(c, "HP_CURRENT", c.hp_current, 0, 99999)).concat(ccxInput(c, "HP_MAX", c.hp_max, 1, 99999)).concat(ccxInput(c, "AC", c.base_ac, 0, 999)).concat(ccxInput(c, "SPEED", c.base_speed, 0, 9999)).concat(ccxInput(c, "LEVEL", c.level, 1, 20), '</div><div class="ccx-save-row"><button class="primary" data-ccx-save-stats="').concat(c.id, '">Değişiklikleri Kaydet</button></div></article>');
-    }
-    async function ccxRenderStats(force = false) {
-      if (window.__catlakCompactStatsOwner) return;
-      if (ccxMode !== "stats" || !ccxIsGM() || ccxBusy) return;
-      const main = CCX_APP.querySelector("main");
-      if (!main) return;
-      if (!force && main.dataset.ccxPage === "stats") return;
-      ccxBusy = true;
-      try {
-        const { data, error } = await CCX_S.from("catlak_characters").select("id,name,species_name,background_name,class_name,play_status,base_stats,hp_current,hp_max,base_ac,base_speed,level,created_at").in("play_status", ["prepared", "active"]).order("play_status").order("created_at", { ascending: true });
-        if (error) throw error;
-        const chars = data || [];
-        main.innerHTML = '<section class="card ccx-hero"><div class="eyebrow">GM • STAT ATÖLYESİ</div><h1>Karakter Değerlerini Düzenle</h1><p class="muted">Hazır ve canlı karakterlerin STR–CHA, HP, AC, Hız ve Seviye değerlerini buradan kalıcı olarak değiştirebilirsin. Kaydettiğin değerler oyuncu karakter kağıdına Realtime ile yansır.</p></section><div class="ccx-stat-list">'.concat(chars.length ? chars.map(ccxCharacterCard).join("") : '<section class="card ccx-empty">Düzenlenecek karakter yok.</section>', "</div>");
-        main.dataset.ccxPage = "stats";
-      } catch (e) {
-        ccxToast("Stat Atölyesi yüklenemedi: " + ((e == null ? void 0 : e.message) || String(e)));
-      } finally {
-        ccxBusy = false;
-      }
-    }
-    async function ccxSaveStats(id) {
-      const card = document.querySelector('[data-ccx-character="'.concat(CSS.escape(String(id)), '"]'));
-      if (!card) return;
-      const v = (k) => {
-        var _a;
-        return Number((_a = card.querySelector('[data-ccx-field="'.concat(k, '"]'))) == null ? void 0 : _a.value);
-      };
-      const stats = {};
-      CCX_STATS.forEach((k) => stats[k] = v(k));
-      const { data, error } = await CCX_S.rpc("catlak_gm_update_character_sheet", { p_character_id: id, p_stats: stats, p_hp_current: v("HP_CURRENT"), p_hp_max: v("HP_MAX"), p_ac: v("AC"), p_speed: v("SPEED"), p_level: v("LEVEL") });
-      if (error) throw error;
-      ccxToast(((data == null ? void 0 : data.name) || "Karakter") + " statları kaydedildi ve oyuncu kağıdına yansıtıldı.");
-    }
-    function ccxOpenZoom(img) {
-      const old = document.querySelector(".ccx-modal");
-      if (old) old.remove();
-      const m = document.createElement("div");
-      m.className = "ccx-modal";
-      m.innerHTML = '<button type="button" class="danger" data-ccx-close-zoom>Kapat ✕</button><img src="'.concat(ccxH(img.src), '" alt="').concat(ccxH(img.alt || "Görsel"), '">');
-      document.body.appendChild(m);
-    }
-    document.addEventListener("click", (e) => {
-      var _a, _b, _c, _d, _e, _f, _g;
-      const world = e.target.closest("#app [data-cc-world-tab]");
-      if (world) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        (_a = window.__catlakSetWorldActive) == null ? void 0 : _a.call(window, false);
-        ccxMode = "world";
-        ccxSelectNav(world);
-        const main = CCX_APP.querySelector("main");
-        if (main) {
-          main.removeAttribute("data-ccPage");
-          main.removeAttribute("data-ccSimpleLive");
-        }
-        (_b = window.__catlakRouteLoading) == null ? void 0 : _b.call(window, "Evren");
-        ccxRenderWorld(true);
-        return;
-      }
-      const stats = e.target.closest("#app [data-cc-stats-tab]");
-      if (stats && ccxIsGM()) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        (_c = window.__catlakSetWorldActive) == null ? void 0 : _c.call(window, false);
-        ccxMode = "stats";
-        ccxSelectNav(stats);
-        (_d = window.__catlakRouteLoading) == null ? void 0 : _d.call(window, "Stat Atölyesi");
-        (_e = window.__catlakRenderCompactStats) == null ? void 0 : _e.call(window, true);
-        return;
-      }
-      const nav = e.target.closest("#app .nav button");
-      if (nav && !world && !stats) ccxMode = "";
-      const add = e.target.closest("[data-ccx-add]");
-      if (add) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        ccxAdd(add.dataset.ccxAdd).catch((x) => ccxToast(x.message || String(x)));
-        return;
-      }
-      const del = e.target.closest("[data-ccx-delete]");
-      if (del) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        ccxDelete(del.dataset.ccxDelete, del.dataset.kind).catch((x) => ccxToast(x.message || String(x)));
-        return;
-      }
-      const save = e.target.closest("[data-ccx-save-stats]");
-      if (save) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        ccxSaveStats(save.dataset.ccxSaveStats).catch((x) => ccxToast(x.message || String(x)));
-        return;
-      }
-      const zoom = e.target.closest("[data-ccx-zoom] img");
-      if (zoom) {
-        e.preventDefault();
-        ccxOpenZoom(zoom);
-        return;
-      }
-      if (e.target.closest("[data-ccx-close-zoom]") || ((_f = e.target.classList) == null ? void 0 : _f.contains("ccx-modal"))) (_g = document.querySelector(".ccx-modal")) == null ? void 0 : _g.remove();
-    }, true);
-    function ccxScheduleNav() {
-      if (ccxNavScheduled) return;
-      ccxNavScheduled = true;
-      requestAnimationFrame(() => {
-        var _a, _b;
-        ccxNavScheduled = false;
-        ccxEnsureNav();
-        if (ccxMode === "world" && !((_a = CCX_APP.querySelector("main")) == null ? void 0 : _a.dataset.ccxPage)) ccxRenderWorld();
-        if (ccxMode === "stats" && !((_b = CCX_APP.querySelector("main")) == null ? void 0 : _b.dataset.ccxPage)) ccxRenderStats();
-      });
-    }
-    new MutationObserver(ccxScheduleNav).observe(CCX_APP, { childList: true, subtree: true });
-    CCX_S.channel("ccx-unified-world").on("postgres_changes", { event: "*", schema: "public", table: "catlak_world_media" }, () => {
-      if (ccxMode === "world") ccxRenderWorld(true);
-    }).on("postgres_changes", { event: "*", schema: "public", table: "catlak_npcs" }, () => {
-      if (ccxMode === "world") ccxRenderWorld(true);
-    }).subscribe();
-    ccxEnsureNav();
-  })();
   var __catlakQualityReady = (async () => {
-    await __catlakExtraReady;
+    await __catlakStabilityReady;
     const CCQ_S = window.__catlakSupabase;
     const CCQ_APP = document.querySelector("#app");
     if (!CCQ_S || !CCQ_APP) throw new Error("Görsel kalite katmanı başlatılamadı.");
@@ -22278,7 +21933,301 @@
       }
     }).subscribe();
   })();
-  __catlakUxReady.catch((e) => {
+  var __catlakNavReady = (async () => {
+    await __catlakUxReady;
+    const CNL_APP = document.querySelector("#app");
+    if (!CNL_APP) throw new Error("Çatlak Çağı navigasyon katmanı başlatılamadı.");
+    const cnlTxt = (e) => String((e == null ? void 0 : e.textContent) || "").trim();
+    const cnlIsGM = () => cnlTxt(CNL_APP.querySelector(".role")) === "GM";
+    let cnlScheduled = false;
+    function cnlSelect(btn) {
+      const nav = CNL_APP.querySelector(".nav");
+      if (!nav) return;
+      nav.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === btn));
+    }
+    function cnlEnsureNav() {
+      const nav = CNL_APP.querySelector(".nav");
+      if (!nav) return;
+      let world = nav.querySelector("[data-cc-world-tab]");
+      if (!world) {
+        world = document.createElement("button");
+        world.type = "button";
+        world.dataset.ccWorldTab = "1";
+        const rules = nav.querySelector('[data-tab="rules"]');
+        rules ? rules.before(world) : nav.appendChild(world);
+      }
+      world.removeAttribute("data-tab");
+      world.textContent = "Görsel Arşivi";
+      world.setAttribute("aria-label", "Görsel Arşivi");
+      let stats = nav.querySelector("[data-cc-stats-tab]");
+      if (cnlIsGM()) {
+        if (!stats) {
+          stats = document.createElement("button");
+          stats.type = "button";
+          stats.dataset.ccStatsTab = "1";
+          const chars = nav.querySelector('[data-tab="characters"]');
+          const races = nav.querySelector('[data-tab="races"]');
+          chars ? chars.after(stats) : races ? races.before(stats) : nav.appendChild(stats);
+        }
+        stats.removeAttribute("data-tab");
+        stats.textContent = "Stat Atölyesi";
+        stats.setAttribute("aria-label", "Stat Atölyesi");
+      } else if (stats) {
+        stats.remove();
+      }
+    }
+    function cnlSchedule() {
+      if (cnlScheduled) return;
+      cnlScheduled = true;
+      requestAnimationFrame(() => {
+        cnlScheduled = false;
+        cnlEnsureNav();
+      });
+    }
+    document.addEventListener("click", (e) => {
+      var _a, _b, _c, _d, _e;
+      const stats = (_b = (_a = e.target).closest) == null ? void 0 : _b.call(_a, "#app [data-cc-stats-tab]");
+      if (stats) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        window.__catlakRouteGeneration = (window.__catlakRouteGeneration || 0) + 1;
+        cnlSelect(stats);
+        (_c = window.__catlakRouteLoading) == null ? void 0 : _c.call(window, "Stat Atölyesi");
+        requestAnimationFrame(() => {
+          var _a2;
+          return (_a2 = window.__catlakRenderCompactStats) == null ? void 0 : _a2.call(window, true);
+        });
+        return;
+      }
+      const normal = (_e = (_d = e.target).closest) == null ? void 0 : _e.call(_d, "#app .nav button");
+      if (normal && !normal.matches("[data-cc-world-tab],[data-cc-map-tab],[data-cc-stats-tab]")) {
+        window.__catlakRouteGeneration = (window.__catlakRouteGeneration || 0) + 1;
+      }
+    }, true);
+    new MutationObserver(cnlSchedule).observe(CNL_APP, { childList: true, subtree: true });
+    cnlEnsureNav();
+  })();
+  var __catlakWorldReady = (async () => {
+    await __catlakNavReady;
+    const SW_S = window.__catlakSupabase;
+    const SW_APP = document.querySelector("#app");
+    if (!SW_S || !SW_APP) throw new Error("Görsel Arşivi katmanı başlatılamadı.");
+    const SW_BUCKET = "catlak-world-media";
+    const SW_ALLOWED = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+    const swH = (x) => String(x != null ? x : "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const swTxt = (e) => String((e == null ? void 0 : e.textContent) || "").trim();
+    const swGM = () => swTxt(SW_APP.querySelector(".role")) === "GM";
+    const swToast = (x) => {
+      const t = document.querySelector("#toast");
+      if (!t) return;
+      t.textContent = String(x);
+      t.classList.remove("hidden");
+      clearTimeout(swToast.t);
+      swToast.t = setTimeout(() => t.classList.add("hidden"), 4200);
+    };
+    let swActive = false, swBusy = false, swToken = 0, swPreviewUrl = "";
+    const swCss = "\n.sw-hero{background:linear-gradient(135deg,#12283b,#0b1422 58%,#21182a)!important;border-color:#36536e!important}.sw-upload{display:grid;grid-template-columns:minmax(230px,1.25fr) minmax(150px,.55fr) minmax(190px,.8fr) auto;gap:10px;align-items:end}.sw-filepick{position:relative;border:1px dashed #4a6f8f;border-radius:14px;background:#091522;padding:13px;min-height:74px;display:flex;align-items:center;gap:11px;cursor:pointer}.sw-filepick:hover{border-color:var(--cyan);background:#0d1d2c}.sw-filepick input{position:absolute;inset:0;opacity:0;cursor:pointer}.sw-file-icon{width:42px;height:42px;border-radius:12px;background:#10283b;border:1px solid #315775;display:grid;place-items:center;font-size:1.2rem}.sw-file-meta{min-width:0}.sw-file-meta b,.sw-file-meta span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sw-file-meta span{color:var(--muted);font-size:.76rem;margin-top:3px}.sw-upload button{height:42px}.sw-note{margin-top:10px}.sw-note summary{font-weight:700;color:var(--muted)}.sw-preview{display:none;margin-top:12px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#07101a;max-height:300px}.sw-preview.on{display:block}.sw-preview img{width:100%;max-height:300px;object-fit:contain;display:block}.sw-gallery-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:14px}.sw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.sw-card{padding:12px;overflow:hidden}.sw-img{aspect-ratio:16/10;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#060d15;display:flex;align-items:center;justify-content:center;cursor:zoom-in}.sw-img img{width:100%;height:100%;object-fit:contain;display:block}.sw-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-top:10px}.sw-card h3{margin:4px 0 2px;font-size:1.04rem}.sw-card p{margin:8px 0 0;color:var(--muted);font-size:.86rem;white-space:pre-line}.sw-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.sw-empty{padding:30px;border:1px dashed var(--line);border-radius:14px;text-align:center;color:var(--muted)}.sw-danger{border-color:#713b49!important;color:#ffb7c2!important}.sw-modal{position:fixed;inset:0;z-index:99999;background:#02050bea;display:flex;align-items:center;justify-content:center;padding:24px}.sw-modal img{max-width:96vw;max-height:91vh;object-fit:contain;border-radius:14px}.sw-modal button{position:fixed;right:20px;top:18px}.sw-loading{opacity:.65;pointer-events:none}\n@media(max-width:900px){.sw-upload{grid-template-columns:1fr 1fr}.sw-filepick{grid-column:1/-1}.sw-upload button{width:100%}}\n@media(max-width:620px){.sw-upload{grid-template-columns:1fr}.sw-filepick{grid-column:auto}.sw-gallery{grid-template-columns:1fr}.sw-gallery-head{align-items:flex-start;flex-direction:column}}\n";
+    if (!document.querySelector("#sw-style")) {
+      const s = document.createElement("style");
+      s.id = "sw-style";
+      s.textContent = swCss;
+      document.head.appendChild(s);
+    }
+    function swEnsureNav() {
+      const nav = SW_APP.querySelector(".nav");
+      if (!nav) return;
+      const b = nav.querySelector("[data-cc-world-tab]");
+      if (b) b.textContent = "Görsel Arşivi";
+    }
+    function swSelectNav(btn) {
+      const nav = SW_APP.querySelector(".nav");
+      if (nav) nav.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === btn));
+    }
+    function swKindLabel(k) {
+      return k === "map" ? "HARİTA" : k === "npc" ? "NPC" : "EVREN";
+    }
+    function swTitle(x, k) {
+      return k === "npc" ? x.name || "Adsız NPC" : x.title || "Adsız Görsel";
+    }
+    function swNoteText(x, k) {
+      return k === "npc" ? x.note || "" : x.description || "";
+    }
+    function swCard(x, k) {
+      const title = swTitle(x, k), note = swNoteText(x, k), img = x.image_url || "";
+      return '<article class="card sw-card" data-sw-card="'.concat(swH(x.id), '"><div class="sw-img" data-sw-zoom="1"><img src="').concat(swH(img), '" alt="').concat(swH(title), '" loading="lazy"></div><div class="sw-card-head"><div><span class="tag">').concat(swKindLabel(k), "</span><h3>").concat(swH(title), "</h3></div></div>").concat(note ? "<p>".concat(swH(note), "</p>") : "").concat(swGM() ? '<div class="sw-card-actions"><button type="button" class="small primary" data-sw-party="'.concat(swH(x.id), '" data-sw-kind="').concat(k, '">Partiye Yansıt</button><button type="button" class="small sw-danger" data-sw-delete="').concat(swH(x.id), '" data-sw-kind="').concat(k, '">Sil</button></div>') : "", "</article>");
+    }
+    async function swRender(force = false) {
+      if (!swActive || swBusy) return;
+      const main = SW_APP.querySelector("main");
+      if (!main) return;
+      if (!force && main.dataset.swPage === "gallery") return;
+      const token = ++swToken;
+      swBusy = true;
+      try {
+        const [mr, or, nr] = await Promise.all([
+          SW_S.from("catlak_world_media").select("*").eq("media_type", "map").eq("visible", true).order("created_at", { ascending: false }),
+          SW_S.from("catlak_world_media").select("*").eq("media_type", "other").eq("visible", true).order("created_at", { ascending: false }),
+          SW_S.from("catlak_npcs").select("*").eq("visible", true).order("created_at", { ascending: false })
+        ]);
+        if (mr.error) throw mr.error;
+        if (or.error) throw or.error;
+        if (nr.error) throw nr.error;
+        if (!swActive || token !== swToken) return;
+        const all = [...(mr.data || []).map((x) => [x, "map"]), ...(or.data || []).map((x) => [x, "other"]), ...(nr.data || []).map((x) => [x, "npc"])].sort((a, b) => String(b[0].created_at || "").localeCompare(String(a[0].created_at || "")));
+        const gm = swGM();
+        main.innerHTML = '<section class="card sw-hero"><div class="eyebrow">ÇATLAK ÇAĞI • GÖRSEL ARŞİVİ</div><h1>'.concat(gm ? "Görsel Seç ve Yükle" : "Evren Görselleri", '</h1><p class="muted">').concat(gm ? "Bilgisayarından görsel seç, türünü belirle ve yükle. URL kopyalamana gerek yok." : "GM tarafından paylaşılan haritaları, sahneleri ve NPC görsellerini burada görebilirsin.", "</p></section>").concat(gm ? '<section class="card"><div class="sw-upload"><label class="sw-filepick"><input id="sw-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><span class="sw-file-icon">＋</span><span class="sw-file-meta"><b id="sw-file-name">Görsel Dosyası Seç</b><span>PNG, JPG, WEBP veya GIF • en fazla 12 MB</span></span></label><label>Tür<select id="sw-kind"><option value="other">Evren Görseli</option><option value="map">Harita</option><option value="npc">NPC</option></select></label><label>Başlık<input id="sw-title" placeholder="İstersen boş bırak"></label><button type="button" class="primary" data-sw-upload>Yükle</button></div><details class="sw-note"><summary>İsteğe bağlı not ekle</summary><textarea id="sw-note" placeholder="Oyuncuların göreceği kısa not..."></textarea></details><div class="sw-preview" id="sw-preview"><img alt="Seçilen görsel ön izlemesi"></div></section>' : "", '<section class="card"><div class="sw-gallery-head"><div><div class="eyebrow">ARŞİV</div><h2>Yüklenen Görseller</h2></div><span class="tag">').concat(all.length, " GÖRSEL</span></div>").concat(all.length ? '<div class="sw-gallery">'.concat(all.map(([x, k]) => swCard(x, k)).join(""), "</div>") : '<div class="sw-empty">Henüz görsel yüklenmedi.</div>', "</section>");
+        main.dataset.swPage = "gallery";
+      } catch (e) {
+        swToast("Görsel Arşivi yüklenemedi: " + ((e == null ? void 0 : e.message) || String(e)));
+      } finally {
+        swBusy = false;
+      }
+    }
+    function swExt(file) {
+      const m = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+      return m[file.type] || "img";
+    }
+    async function swUpload() {
+      var _a, _b, _c, _d, _e, _f;
+      if (!swGM() || swBusy) return;
+      const file = (_b = (_a = document.querySelector("#sw-file")) == null ? void 0 : _a.files) == null ? void 0 : _b[0];
+      if (!file) return swToast("Önce bir görsel dosyası seç.");
+      if (!SW_ALLOWED.has(file.type)) return swToast("Yalnızca PNG, JPG, WEBP veya GIF yükleyebilirsin.");
+      if (file.size > 12 * 1024 * 1024) return swToast("Görsel 12 MB’dan büyük olamaz.");
+      const kind = ((_c = document.querySelector("#sw-kind")) == null ? void 0 : _c.value) || "other";
+      const rawTitle = ((_d = document.querySelector("#sw-title")) == null ? void 0 : _d.value.trim()) || file.name.replace(/\.[^.]+$/, "");
+      const note = ((_e = document.querySelector("#sw-note")) == null ? void 0 : _e.value) || "";
+      const uid = crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2);
+      const path = "".concat(kind, "/").concat(Date.now(), "-").concat(uid, ".").concat(swExt(file));
+      const main = SW_APP.querySelector("main");
+      main == null ? void 0 : main.classList.add("sw-loading");
+      swBusy = true;
+      try {
+        const up = await SW_S.storage.from(SW_BUCKET).upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+        if (up.error) throw up.error;
+        const pub = SW_S.storage.from(SW_BUCKET).getPublicUrl(path);
+        const url = (_f = pub == null ? void 0 : pub.data) == null ? void 0 : _f.publicUrl;
+        if (!url) throw new Error("Görsel bağlantısı oluşturulamadı.");
+        const meta = { storage_bucket: SW_BUCKET, storage_path: path, original_name: file.name };
+        let ins;
+        if (kind === "npc") ins = await SW_S.from("catlak_npcs").insert({ name: rawTitle, role: "NPC", place: "", relation: "", image_url: url, note, visible: true, sort_order: 0, data: meta });
+        else ins = await SW_S.from("catlak_world_media").insert({ media_type: kind, title: rawTitle, image_url: url, description: note, visible: true, sort_order: 0, data: meta });
+        if (ins.error) {
+          await SW_S.storage.from(SW_BUCKET).remove([path]);
+          throw ins.error;
+        }
+        swToast("Görsel yüklendi.");
+        swBusy = false;
+        await swRender(true);
+      } catch (e) {
+        swToast("Yükleme başarısız: " + ((e == null ? void 0 : e.message) || String(e)));
+      } finally {
+        swBusy = false;
+        main == null ? void 0 : main.classList.remove("sw-loading");
+      }
+    }
+    async function swDelete(id, kind) {
+      var _a, _b;
+      if (!swGM() || !confirm("Bu görsel kalıcı olarak silinsin mi?")) return;
+      const table = kind === "npc" ? "catlak_npcs" : "catlak_world_media";
+      const row = await SW_S.from(table).select("id,image_url,data").eq("id", id).maybeSingle();
+      if (row.error) throw row.error;
+      const path = ((_b = (_a = row.data) == null ? void 0 : _a.data) == null ? void 0 : _b.storage_path) || "";
+      if (path) {
+        const rm = await SW_S.storage.from(SW_BUCKET).remove([path]);
+        if (rm.error) throw rm.error;
+      }
+      const del = await SW_S.from(table).delete().eq("id", id);
+      if (del.error) throw del.error;
+      swToast("Görsel silindi.");
+      await swRender(true);
+    }
+    async function swParty(id, kind) {
+      if (!swGM()) return;
+      const table = kind === "npc" ? "catlak_npcs" : "catlak_world_media";
+      const row = await SW_S.from(table).select("*").eq("id", id).maybeSingle();
+      if (row.error) throw row.error;
+      if (!row.data) return;
+      const x = row.data, title = swTitle(x, kind), note = swNoteText(x, kind);
+      const r = await SW_S.from("catlak_party_visual").upsert({ singleton: true, kind, ref_id: id, title, image_url: x.image_url || "", note, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, { onConflict: "singleton" });
+      if (r.error) throw r.error;
+      swToast("Görsel oyunculara yansıtıldı.");
+    }
+    function swZoom(img) {
+      var _a;
+      (_a = document.querySelector(".sw-modal")) == null ? void 0 : _a.remove();
+      const m = document.createElement("div");
+      m.className = "sw-modal";
+      m.innerHTML = '<button type="button" class="danger" data-sw-close>Kapat ✕</button><img src="'.concat(swH(img.src), '" alt="').concat(swH(img.alt || "Görsel"), '">');
+      document.body.appendChild(m);
+    }
+    document.addEventListener("click", (e) => {
+      var _a, _b, _c, _d, _e;
+      const world = (_b = (_a = e.target).closest) == null ? void 0 : _b.call(_a, "#app [data-cc-world-tab]");
+      if (world) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        swActive = true;
+        swSelectNav(world);
+        (_c = window.__catlakRouteLoading) == null ? void 0 : _c.call(window, "Görsel Arşivi");
+        swRender(true);
+        return;
+      }
+      const nav = (_e = (_d = e.target).closest) == null ? void 0 : _e.call(_d, "#app .nav button");
+      if (nav && !world) {
+        swActive = false;
+        swToken++;
+      }
+    }, true);
+    document.addEventListener("click", async (e) => {
+      var _a, _b;
+      try {
+        if (e.target.closest("[data-sw-upload]")) return await swUpload();
+        const del = e.target.closest("[data-sw-delete]");
+        if (del) return await swDelete(del.dataset.swDelete, del.dataset.swKind);
+        const party = e.target.closest("[data-sw-party]");
+        if (party) return await swParty(party.dataset.swParty, party.dataset.swKind);
+        const zoom = e.target.closest("[data-sw-zoom] img");
+        if (zoom) return swZoom(zoom);
+        if (e.target.closest("[data-sw-close]") || ((_a = e.target.classList) == null ? void 0 : _a.contains("sw-modal"))) (_b = e.target.closest(".sw-modal")) == null ? void 0 : _b.remove();
+      } catch (err) {
+        swToast((err == null ? void 0 : err.message) || String(err));
+      }
+    });
+    document.addEventListener("change", (e) => {
+      var _a, _b;
+      if (((_a = e.target) == null ? void 0 : _a.id) !== "sw-file") return;
+      const file = (_b = e.target.files) == null ? void 0 : _b[0], name = document.querySelector("#sw-file-name"), title = document.querySelector("#sw-title"), preview = document.querySelector("#sw-preview"), img = preview == null ? void 0 : preview.querySelector("img");
+      if (swPreviewUrl) {
+        URL.revokeObjectURL(swPreviewUrl);
+        swPreviewUrl = "";
+      }
+      if (!file) {
+        if (name) name.textContent = "Görsel Dosyası Seç";
+        preview == null ? void 0 : preview.classList.remove("on");
+        return;
+      }
+      if (name) name.textContent = file.name;
+      if (title && !title.value) title.value = file.name.replace(/\.[^.]+$/, "");
+      swPreviewUrl = URL.createObjectURL(file);
+      if (img) img.src = swPreviewUrl;
+      preview == null ? void 0 : preview.classList.add("on");
+    });
+    const swObs = new MutationObserver(() => {
+      swEnsureNav();
+      if (swActive) {
+        const b = SW_APP.querySelector("[data-cc-world-tab]");
+        if (b && !b.classList.contains("on")) swSelectNav(b);
+      }
+    });
+    swObs.observe(SW_APP, { childList: true, subtree: true });
+    swEnsureNav();
+    ["catlak_world_media", "catlak_npcs"].forEach((t) => SW_S.channel("simple-world-" + t).on("postgres_changes", { event: "*", schema: "public", table: t }, () => {
+      if (swActive && !swBusy) swRender(true);
+    }).subscribe());
+    window.__catlakRenderSimpleWorld = swRender;
+  })();
+  __catlakWorldReady.catch((e) => {
     console.error("CATLAK_BOOT", e);
     const a = document.querySelector("#app");
     if (a) a.innerHTML = '<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';
