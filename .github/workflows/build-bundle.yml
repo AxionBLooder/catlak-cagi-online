@@ -1,0 +1,29 @@
+name: Build Browser Bundle
+on:
+  push:
+    paths:
+      - 'live_*.txt'
+      - '.github/workflows/build-bundle.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build bundle
+        run: cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > bundle.js
+      - name: Syntax check bundle
+        run: node --check bundle.js
+      - name: Commit generated bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- bundle.js; then
+            echo "bundle.js already up to date"
+            exit 0
+          fi
+          git add bundle.js
+          git commit -m "Otomatik browser bundle güncelle"
+          git push
