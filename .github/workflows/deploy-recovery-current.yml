@@ -1,0 +1,52 @@
+name: Deploy Recovery Current
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-recovery-current.yml'
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify current production artifact
+        run: |
+          node --check browser-app.js
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          m=json.loads(Path('browser-build.json').read_text())
+          b=Path('browser-app.js').read_bytes()
+          got=hashlib.sha256(b).hexdigest()
+          if got!=m.get('sha256'):
+              raise SystemExit('Current artifact hash mismatch')
+          required=['Görsel Dosyası Seç','Stat Atölyesi','Toplu Zar Sil','Partiye Yansıt','Oturum kontrolü yanıt vermedi','Masa hazırlanıyor']
+          s=b.decode('utf-8')
+          miss=[x for x in required if x not in s]
+          if miss: raise SystemExit('Missing recovery markers: '+', '.join(miss))
+          print('CURRENT_RECOVERY_ARTIFACT_OK',len(b),got)
+          PY
+      - name: Prepare clean recovery package
+        run: |
+          mkdir -p recovery-site
+          cp index.html browser-app.js catalog.b64 recovery-site/
+          if [ -f _headers ]; then cp _headers recovery-site/; else cat > recovery-site/_headers <<'EOF'
+          /
+            Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+          /index.html
+            Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+          /browser-app.js
+            Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+            Content-Type: application/javascript; charset=UTF-8
+          EOF
+          fi
+      - name: Deploy current fixed build to clean Netlify origin
+        working-directory: recovery-site
+        run: |
+          npx -y @netlify/mcp@latest \
+            --site-id bfdbcf3c-534a-4f45-a010-b77db193f037 \
+            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..1mUx7VFj0P11nnhH.f0CtZki3KpmayziIKOi2cdPbDWGMQsAOY_S5w1SxAsjbucLIChkcYUom1IYW1WR1z4bulRO4DrGSGBQB2-lB_F9ommzoohi-RyodA9GLH7EaUBzU0Ahx59Q-t0Wql9OFTmSuGHY3r0704D9NCM_vRFpe_xUDl88U9L-YDdVxJ1RkPOJAykVICYMlyGGn6XIMd9MFNexfV7ns7bPVpULhUW9nw7eUAL0sbp4omTQs2DJuSBFCtGGBq0fYvIINmi6Ic2Fg6HL3FOHkJ4w_21YpP9iQiWECTc4OuycGrND-1un5uU-WX3pFKtDJ7sT8W9kgDBLnB-aGEwNefRq4G8ILdQ7lbjhHoO_dg4ks5aRbnN254A2MZmkdKkPSXjMPTFHpbH_uYfJA.IJdFaHfFfqUE2v6rA0dhCw" \
+            --no-wait
