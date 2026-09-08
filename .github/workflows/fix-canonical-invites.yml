@@ -12,51 +12,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pin all invite links to Supabase gateway
+      - name: Pin all invite links to verified PageShare host
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          old_base='https://hidden-spring-7923.hosted.pageshare.ai/'
-          new_base='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          bad='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi'
+          good='https://hidden-spring-7923.hosted.pageshare.ai/'
 
           p=Path('ui-patch.js')
           s=p.read_text(encoding='utf-8')
-          s=s.replace(old_base+'?join=',new_base+'?join=')
-          s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(new_base+'?join=')+'+')
-          sentinel="window.__catlakLegacyInviteSentinel='hidden-spring-7923.hosted.pageshare.ai/?join=';"
-          s=s.replace('// legacy-build-sentinel: hidden-spring-7923.hosted.pageshare.ai/?join=',sentinel)
-          if sentinel not in s:
-              s += "\n"+sentinel+"\n"
-          if new_base+'?join=' not in s:
-              raise SystemExit('ui-patch Supabase invite gateway replacement missing')
+          s=s.replace(bad+'?join=',good+'?join=')
+          s=s.replace("window.__catlakLegacyInviteSentinel='hidden-spring-7923.hosted.pageshare.ai/?join=';",'')
+          s=s.replace("window.location.origin+window.location.pathname+'?join='",repr(good+'?join=')+'+')
+          if good+'?join=' not in s:
+              raise SystemExit('ui-patch PageShare invite replacement missing')
+          if bad+'?join=' in s:
+              raise SystemExit('ui-patch still contains Supabase invite target')
           p.write_text(s,encoding='utf-8')
 
           p=Path('live_06.txt')
           s=p.read_text(encoding='utf-8')
-          s=s.replace("const CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/';",f"const CATLAK_PUBLIC_BASE='{new_base}';")
+          s=s.replace(f"const CATLAK_PUBLIC_BASE='{bad}';",f"const CATLAK_PUBLIC_BASE='{good}';")
           s=s.replace("emailRedirectTo:window.location.origin+window.location.pathname","emailRedirectTo:CATLAK_PUBLIC_BASE")
           s=s.replace("let link=window.location.origin+window.location.pathname+'?join='+encodeURIComponent(data)","let link=CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)")
-          if new_base not in s:
-              raise SystemExit('live_06 Supabase invite gateway replacement missing')
+          if f"const CATLAK_PUBLIC_BASE='{good}';" not in s:
+              raise SystemExit('live_06 PageShare base replacement missing')
           if s.count("CATLAK_PUBLIC_BASE+'?join='+encodeURIComponent(data)") < 2:
               raise SystemExit('normal and prepared invite replacements missing')
+          if bad in s:
+              raise SystemExit('live_06 still contains Supabase invite target')
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Validate syntax and gateway markers
+      - name: Validate syntax and invite markers
         run: |
           node --check ui-patch.js
           cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/base.js
           node --check /tmp/base.js
-          grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
-          grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi" live_06.txt
-          grep -q "__catlakLegacyInviteSentinel" ui-patch.js
-      - name: Commit Supabase invite gateway
+          grep -q "hidden-spring-7923.hosted.pageshare.ai/?join=" ui-patch.js
+          grep -q "CATLAK_PUBLIC_BASE='https://hidden-spring-7923.hosted.pageshare.ai/'" live_06.txt
+          ! grep -q "ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=" ui-patch.js
+      - name: Commit verified invite host
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ui-patch.js live_06.txt
           if git diff --cached --quiet; then echo 'Already fixed'; else
-            git commit -m "Supabase davet gateway build sentinelini kalıcı yap"
+            git commit -m "Hazır karakter davetlerini doğrulanmış PageShare adresine bağla"
             git pull --rebase origin main
             git push
           fi
