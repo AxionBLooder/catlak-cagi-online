@@ -1,7 +1,6 @@
 {
-  "source_sha": "5dcb29e6b96ecb7e5862160a017fd729fbc18f19",
-  "sha256": "f285d10f9ef8097389fa188796d414dc797054af46443fa4cffe2fecdf1eb554",
-  "bytes": 930760,
-  "format": "iife-es2018-browser-verified-single-owner",
-  "live_check": "pageshare-v12-simple-loader"
+  "source_sha": "d58294945b3ff2f40879f7d27ccba645ea188aae",
+  "sha256": "37e76eddab03d76442a2ce3a61b86754921694b9dd4eee507cc7f63c05acef20",
+  "bytes": 346350,
+  "format": "iife-es2018-browser-verified-single-owner-minified"
 }
