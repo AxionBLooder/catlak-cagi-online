@@ -46,5 +46,5 @@ jobs:
         run: |
           npx -y @netlify/mcp@latest \
             --site-id bfdbcf3c-534a-4f45-a010-b77db193f037 \
-            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QpOJfVTp_5g5iMV9.Dn8hk29FD8tdwbKFuKd1C_Du4X7nsKxGhM6nPIGe4RO8Lrru0WJKwyqiWbBwOXZLVrhn_fV_Mr6AxTtcrruyujd6Y2gae4j7VywgJU2y-FDWjOH75k4h1nEqDxnWusNMHQAVvIwmo9ahFXsbZohtQhDjuD3H4KQisya6UwezjSx8k08x2u_iksVr8b03KYfhfzsTN2qSqyYBAVKFQhQ0XXUIzBUbTCllCMFH04q6mHK7yM8DrpzMwUOp4pTlCyOsB2M2XkzFs_KCFK2pecNqBbtwvI9W3W6Dir046A18CwCYVOiHQqsFL5yV5MPWAfc1EL6HHxJlbFtGyzVANcq5u_DrdKha8TOGUdWCvxaTjOaWEc0dfeklutP3Mcql1h3FBitPITb-.XQ_UAS1Jsj0FFjDJtwnrbw" \
+            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..1mUx7VFj0P11nnhH.f0CtZki3KpmayziIKOi2cdPbDWGMQsAOY_S5w1SxAsjbucLIChkcYUom1IYW1WR1z4bulRO4DrGSGBQB2-lB_F9ommzoohi-RyodA9GLH7EaUBzU0Ahx59Q-t0Wql9OFTmSuGHY3r0704D9NCM_vRFpe_xUDl88U9L-YDdVxJ1RkPOJAykVICYMlyGGn6XIMd9MFNexfV7ns7bPVpULhUW9nw7eUAL0sbp4omTQs2DJuSBFCtGGBq0fYvIINmi6Ic2Fg6HL3FOHkJ4w_21YpP9iQiWECTc4OuycGrND-1un5uU-WX3pFKtDJ7sT8W9kgDBLnB-aGEwNefRq4G8ILdQ7lbjhHoO_dg4ks5aRbnN254A2MZmkdKkPSXjMPTFHpbH_uYfJA.IJdFaHfFfqUE2v6rA0dhCw" \
             --no-wait
