@@ -2,7 +2,10 @@ const CNL_APP=document.querySelector('#app');
 if(!CNL_APP)throw new Error('Çatlak Çağı navigasyon katmanı başlatılamadı.');
 
 const cnlTxt=e=>String(e?.textContent||'').trim();
-const cnlIsGM=()=>cnlTxt(CNL_APP.querySelector('.role'))==='GM';
+const cnlRole=()=>cnlTxt(CNL_APP.querySelector('.role'));
+const cnlIsGM=()=>cnlRole()==='GM';
+const cnlIsPlayer=()=>!!cnlRole()&&!cnlIsGM();
+const CNL_PLAYER_HIDDEN=new Set(['builder','races','rules']);
 let cnlScheduled=false;
 
 function cnlSelect(btn){
@@ -14,6 +17,12 @@ function cnlSelect(btn){
 function cnlEnsureNav(){
   const nav=CNL_APP.querySelector('.nav');
   if(!nav)return;
+
+  // Oyuncular yalnız kendi masa/oyun ekranlarını görür. Irk Atölyesi, Kaynaklar ve
+  // Karakter Oluşturucu GM'ye özeldir. Hazır karakter ve normal davet oyuncuları aynıdır.
+  if(cnlIsPlayer()){
+    CNL_PLAYER_HIDDEN.forEach(id=>nav.querySelector(`[data-tab="${id}"]`)?.remove());
+  }
 
   let world=nav.querySelector('[data-cc-world-tab]');
   if(!world){
@@ -52,6 +61,15 @@ function cnlSchedule(){
 }
 
 document.addEventListener('click',e=>{
+  const restricted=e.target.closest?.('#app .nav button[data-tab]');
+  if(restricted&&cnlIsPlayer()&&CNL_PLAYER_HIDDEN.has(restricted.dataset.tab)){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const sheet=CNL_APP.querySelector('.nav [data-tab="sheet"]');
+    if(sheet)requestAnimationFrame(()=>sheet.click());
+    return;
+  }
+
   const stats=e.target.closest?.('#app [data-cc-stats-tab]');
   if(stats){
     e.preventDefault();
@@ -71,4 +89,4 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
-// build trigger: world observer regression removed
+// build trigger: player catalog visibility locked to GM
