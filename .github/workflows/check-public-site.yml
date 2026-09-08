@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Open live PageShare in Chrome
         run: |
-          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=gm-world-rolls-358c4b5'
+          URL='https://blue-anchor-1448.hosted.pageshare.ai/?smoke=map-party-rolls-0964e18'
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           if [ -z "$CHROME" ]; then
             echo 'Chrome binary missing'
@@ -24,39 +24,19 @@ jobs:
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-
           dom=Path('/tmp/live-dom.html').read_text(encoding='utf-8',errors='replace')
-          start=dom.find('<div id="app"')
-          end=dom.find('<div id="toast"',start)
-          if start < 0 or end < 0:
-              raise SystemExit('Could not isolate #app in rendered DOM')
+          start=dom.find('<div id="app"');end=dom.find('<div id="toast"',start)
+          if start<0 or end<0: raise SystemExit('Could not isolate #app in rendered DOM')
           fragment=dom[start:end]
-
           class TextOnly(HTMLParser):
-              def __init__(self):
-                  super().__init__(); self.parts=[]
-              def handle_data(self,data):
-                  self.parts.append(data)
-
-          p=TextOnly(); p.feed(fragment)
-          app_text=' '.join(' '.join(p.parts).split())
+              def __init__(self): super().__init__(); self.parts=[]
+              def handle_data(self,data): self.parts.append(data)
+          p=TextOnly();p.feed(fragment);app_text=' '.join(' '.join(p.parts).split())
           print('APP_TEXT:',app_text[:2500])
-          bad=[
-            'Site yüklenemedi',
-            'Missing } in template expression',
-            'Invalid or unexpected token',
-            'Uygulama başlatılamadı',
-            'Uygulama dosyası yüklenemedi',
-            'Tarayıcı yükleme hatası'
-          ]
+          bad=['Site yüklenemedi','Missing } in template expression','Invalid or unexpected token','Uygulama başlatılamadı','Uygulama dosyası yüklenemedi','Tarayıcı yükleme hatası']
           found=[x for x in bad if x.lower() in app_text.lower()]
-          if found:
-              raise SystemExit('Live app error text found: '+', '.join(found))
-          auth_markers=['Giriş Yap','Hesap Aç','TEK EVREN • ONLINE FRP']
-          if not any(x in app_text for x in auth_markers):
-              raise SystemExit('Live app did not reach the expected auth UI')
-          print('LIVE PAGE OK: public PageShare rendered the real auth UI')
+          if found: raise SystemExit('Live app error text found: '+', '.join(found))
+          if not any(x in app_text for x in ['Giriş Yap','Hesap Aç','TEK EVREN • ONLINE FRP']): raise SystemExit('Live app did not reach auth UI')
+          print('LIVE PAGE OK')
           PY
-          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/live-chrome.log; then
-            exit 1
-          fi
+          if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/live-chrome.log; then exit 1; fi
