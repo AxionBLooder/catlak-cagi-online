@@ -19,7 +19,7 @@ if(!document.querySelector('#sw-style')){const s=document.createElement('style')
 
 function swEnsureNav(){
   const nav=SW_APP.querySelector('.nav');if(!nav)return;
-  const b=nav.querySelector('[data-cc-world-tab]');if(b)b.textContent='Görsel Arşivi';
+  const b=nav.querySelector('[data-cc-world-tab]');if(b&&swTxt(b)!=='Görsel Arşivi')b.textContent='Görsel Arşivi';
 }
 function swSelectNav(btn){const nav=SW_APP.querySelector('.nav');if(nav)nav.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))}
 function swKindLabel(k){return k==='map'?'HARİTA':k==='npc'?'NPC':'EVREN'}
@@ -118,7 +118,9 @@ document.addEventListener('change',e=>{
   swPreviewUrl=URL.createObjectURL(file);if(img)img.src=swPreviewUrl;preview?.classList.add('on');
 });
 
-const swObs=new MutationObserver(()=>{swEnsureNav();if(swActive){const b=SW_APP.querySelector('[data-cc-world-tab]');if(b&&!b.classList.contains('on'))swSelectNav(b)}});swObs.observe(SW_APP,{childList:true,subtree:true});swEnsureNav();
+// Navigasyonun tek sahibi nav-lite-patch.js. Burada MutationObserver kullanma; aksi halde
+// nav textContent yazımı kendi childList olayını yeniden tetikleyip sonsuz DOM döngüsü oluşturabilir.
+swEnsureNav();
 ['catlak_world_media','catlak_npcs'].forEach(t=>SW_S.channel('simple-world-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{if(swActive&&!swBusy)swRender(true)}).subscribe());
 
 window.__catlakRenderSimpleWorld=swRender;
