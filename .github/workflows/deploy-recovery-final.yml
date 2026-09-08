@@ -23,7 +23,7 @@ jobs:
           got=hashlib.sha256(b).hexdigest()
           exp='efeb0c5549dabb8f692ebc84456417c11cf18fd34b7a6769b7bdf2f95075e048'
           if got!=exp or m.get('sha256')!=exp: raise SystemExit(f'Unexpected artifact {got}')
-          for x in ['catlakSafeRefresh','Oyun verileri yüklenemedi','Oturum kontrolü yanıt vermedi','Masa hazırlanıyor','Görsel Dosyası Seç','Stat Atölyesi']:
+          for x in ['Oyun verileri yüklenemedi','Oyun verileri zaman aşımına uğradı','Oturum kontrolü yanıt vermedi','Masa hazırlanıyor','Görsel Dosyası Seç','Stat Atölyesi']:
               if x not in s: raise SystemExit('Missing marker '+x)
           print('FINAL_HARDENED_ARTIFACT_OK',len(b),got)
           PY
