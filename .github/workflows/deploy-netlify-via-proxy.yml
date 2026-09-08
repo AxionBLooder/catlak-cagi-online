@@ -32,3 +32,4 @@ jobs:
             --site-id f08d5c89-8c67-470c-9a35-013839260f6d \
             --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..kpGFMhsL3UOvqa4g.5QMRWaxg_ZLsUojvu1cJ2nL7eJGXmLB3tUdpKVuhXvFjieRCLez5CNgp7z21zIuJa3mGu4p6aNGMi-O8x-OXNsXxKoYuuVCdq-mJ85xFUbT-0pGP3zGGpLUOFPuZIlRV_eDZFnMHw18Slq0m2AEtWBjz114kYPiNtuxGS871ftcqnw8Ej-dQnCjLJ-vk6CUc1YnsKSekvKrIY-Ps1HamWwdMV4ijk1SYu8zVgnv7FzGPP7g-2cGu6sGsfcys4kZ_kuAaAbjJzBaFaKJUlpeMsTvXtol6nE7E0y0ojcH04nRsLp7KZBOO2pgEVgW6Nn00GAYcrBJ6GggS_la7PwwHrFju9qAFPWl5wBS1YyFlbIoDK9wH6RIbmXetHrOGf9jUsmg9zX1-.A7e9oFK8wflwaGu5Xn_qTQ" \
             --no-wait
+# production redeploy trigger: auth deadlock fix
