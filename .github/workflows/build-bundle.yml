@@ -9,6 +9,7 @@ on:
       - 'ux-patch.js'
       - 'nav-lite-patch.js'
       - 'simple-world-upload-patch.js'
+      - 'migration-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -49,6 +50,7 @@ jobs:
           ux=Path('ux-patch.js').read_text(encoding='utf-8')
           nav=Path('nav-lite-patch.js').read_text(encoding='utf-8')
           simple=Path('simple-world-upload-patch.js').read_text(encoding='utf-8')
+          migration=Path('migration-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -62,7 +64,7 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base,ui,stability,quality,ux,nav,simple=map(clean,(base,ui,stability,quality,ux,nav,simple))
+          base,ui,stability,quality,ux,nav,simple,migration=map(clean,(base,ui,stability,quality,ux,nav,simple,migration))
 
           needle='async function renderLiveTable(){'
           if ui.count(needle)!=1: raise SystemExit('renderLiveTable beklenen biçimde bulunamadı')
@@ -102,7 +104,8 @@ jobs:
               "const __catlakUxReady=(async()=>{await __catlakQualityReady;\n"+ux+"\n})();\n"
               "const __catlakNavReady=(async()=>{await __catlakUxReady;\n"+nav+"\n})();\n"
               "const __catlakWorldReady=(async()=>{await __catlakNavReady;\n"+simple+"\n})();\n"
-              "__catlakWorldReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakMigrationReady=(async()=>{await __catlakWorldReady;\n"+migration+"\n})();\n"
+              "__catlakMigrationReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -124,10 +127,11 @@ jobs:
           node --check ux-patch.js
           node --check nav-lite-patch.js
           node --check simple-world-upload-patch.js
+          node --check migration-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','catlak-cagi-online.netlify.app/?join=']
+          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','catlak-cagi-online.netlify.app/?join=','Kalıcı Siteye Geç','catlak-transfer-ready']
           missing=[x for x in required if x not in s]
           if missing: raise SystemExit('Üretim artifact özellikleri eksik: '+', '.join(missing))
           forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','https://esm.sh/','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE','ccx-unified-world',"if(gm)gm.click()"]
@@ -177,4 +181,4 @@ jobs:
           git pull --rebase origin main
           git push
 
-# canonical invite production trigger
+# permanent Netlify production trigger
