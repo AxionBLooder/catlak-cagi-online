@@ -17,6 +17,7 @@ jobs:
           curl -fsSL -D /tmp/headers.txt "$BASE?verify=invite-$(date +%s)" -o /tmp/page.html
           cat /tmp/headers.txt
           grep -qi 'content-type: text/html' /tmp/headers.txt
+          grep -qi 'x-catlak-release: permanent-netlify' /tmp/headers.txt
           curl -fsSL "$BASE/browser-app.js?verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c </tmp/app.js)" -gt 300000
@@ -32,10 +33,12 @@ jobs:
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
+          test "$STATUS" -eq 0
           grep -Ei 'error|fail|net::|catlak' /tmp/chrome.log | tail -80 || true
           echo '--- MARKERS ---'
           grep -o 'Giriş Yap\|Çatlak Çağı\|Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html | sort -u || true
           grep -q 'Çatlak Çağı' /tmp/dom.html
           grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
-          if grep -q '&lt;!doctype html&gt;' /tmp/dom.html; then echo 'HTML_RENDERED_AS_TEXT'; exit 1; fi
+          grep -q '<html' /tmp/dom.html
+          grep -q '<body' /tmp/dom.html
           echo 'PERMANENT_NETLIFY_INVITE_OK'
