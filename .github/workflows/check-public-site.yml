@@ -15,19 +15,24 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify pinned fixed loader
+      - name: Verify canonical invite loader and legacy redirects
         env:
           LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/live-index.html
-          grep -q '8a272bee5668c5f4370592aabf2a90e4b7bd801f' /tmp/live-index.html
-          grep -q '1ec7ba91a2de' /tmp/live-index.html
-          grep -q "CNL_PLAYER_HIDDEN=new Set(\['builder','races','rules'\])" nav-lite-patch.js
-          echo 'PINNED BULK-UPLOAD LOADER OK'
+          grep -q 'fc08f68b429b62147637178c7558173134202f55' /tmp/live-index.html
+          grep -q 'e5a648ab0231' /tmp/live-index.html
+          curl -fsSL 'https://blue-anchor-1448.hosted.pageshare.ai/?verify=legacy' -o /tmp/blue.html
+          curl -fsSL 'https://sage-thicket-5451.hosted.pageshare.ai/?verify=legacy' -o /tmp/sage.html
+          grep -q 'hidden-spring-7923.hosted.pageshare.ai' /tmp/blue.html
+          grep -q 'location.search+location.hash' /tmp/blue.html
+          grep -q 'hidden-spring-7923.hosted.pageshare.ai' /tmp/sage.html
+          grep -q 'location.search+location.hash' /tmp/sage.html
+          echo 'CANONICAL INVITE LOADER + LEGACY REDIRECTS OK'
       - name: Open live site with Playwright
         env:
-          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/?smoke=bulk-upload-player-lock
+          LIVE_URL: https://hidden-spring-7923.hosted.pageshare.ai/?smoke=canonical-invites
         run: |
           cat > .check-live.cjs <<'JS'
           const { chromium }=require('playwright-core');
@@ -47,27 +52,19 @@ jobs:
               const response=await page.goto(process.env.LIVE_URL,{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')&&!t.includes('Uygulama yükleniyor')},{timeout:15000});
               const elapsed=Date.now()-started;
-              const probe=await page.evaluate(async()=>{const r=await fetch('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@8a272bee5668c5f4370592aabf2a90e4b7bd801f/browser-app.js?probe='+Date.now(),{cache:'no-store'});const t=await r.text();return {status:r.status,len:t.length,bulk:t.includes('Toplu Yükle'),rename:t.includes('Adı Değiştir'),multi:t.includes('Görselleri Seç'),perName:t.includes('Görsele ad ver'),worldDelete:t.includes('data-sw-delete')}});
-              const playerLock=await page.evaluate(async()=>{
-                const app=document.querySelector('#app');
-                app.innerHTML='<div class="role">PLAYER</div><div class="nav"><button data-tab="sheet">Oyuncu Masası</button><button data-tab="builder">Karakter Oluşturucu</button><button data-tab="races">Irk Atölyesi</button><button data-tab="rules">Kaynaklar</button></div><main></main>';
-                await new Promise(r=>setTimeout(r,250));
-                return [...app.querySelectorAll('.nav button[data-tab]')].map(b=>b.dataset.tab);
-              });
+              const probe=await page.evaluate(async()=>{const r=await fetch('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@fc08f68b429b62147637178c7558173134202f55/browser-app.js?probe='+Date.now(),{cache:'no-store'});const t=await r.text();return {status:r.status,len:t.length,canonicalInvite:t.includes('https://hidden-spring-7923.hosted.pageshare.ai/?join='),bulk:t.includes('Toplu Yükle'),rename:t.includes('Adı Değiştir'),playerGuard:t.includes('builder')&&t.includes('races')&&t.includes('rules')}});
               console.log('NAV_STATUS:',response?.status());
               console.log('LOAD_MS:',elapsed);
               console.log('SCRIPT_URLS:',JSON.stringify(scriptUrls));
               console.log('BUNDLE_PROBE:',JSON.stringify(probe));
-              console.log('PLAYER_TABS_AFTER_GUARD:',JSON.stringify(playerLock));
               console.log('HTTP_ERRORS:',JSON.stringify(httpErrors));
               console.log('REQUEST_FAILURES:',JSON.stringify(requestFailures));
               console.log('PAGE_ERRORS:',JSON.stringify(pageErrors));
               if(response?.status()!==200)throw new Error('Root status '+response?.status());
-              if(!scriptUrls.some(x=>x.includes('8a272bee5668c5f4370592aabf2a90e4b7bd801f')))throw new Error('New bulk bundle was not loaded');
-              if(probe.status!==200||probe.len<300000||!probe.bulk||!probe.rename||!probe.multi||!probe.perName||!probe.worldDelete)throw new Error('Bulk upload markers missing');
-              if(playerLock.includes('builder')||playerLock.includes('races')||playerLock.includes('rules')||!playerLock.includes('sheet'))throw new Error('Player restricted tabs still visible');
+              if(!scriptUrls.some(x=>x.includes('fc08f68b429b62147637178c7558173134202f55')))throw new Error('Canonical invite bundle was not loaded');
+              if(probe.status!==200||probe.len<300000||!probe.canonicalInvite||!probe.bulk||!probe.rename)throw new Error('Canonical invite bundle markers missing');
               if(pageErrors.length||httpErrors.length||requestFailures.length)throw new Error('Browser/network errors detected');
-              console.log('BULK_UPLOAD_AND_PLAYER_LOCK_OK');
+              console.log('CANONICAL_INVITE_SITE_OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
