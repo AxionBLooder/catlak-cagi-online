@@ -4,11 +4,11 @@ on:
     paths:
       - 'live_*.txt'
       - 'ui-patch.js'
-      - 'fixes-patch.js'
       - 'stability-patch.js'
-      - 'world-extra-patch.js'
       - 'gallery-quality-patch.js'
       - 'ux-patch.js'
+      - 'nav-lite-patch.js'
+      - 'simple-world-upload-patch.js'
       - 'catalog.b64'
       - '.github/workflows/build-bundle.yml'
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       - name: Install browser build dependencies
         run: npm install --no-save --no-package-lock --no-audit --no-fund esbuild@0.25.9 @supabase/supabase-js@2.115.0
 
-      - name: Normalize legacy source and prepare browser source
+      - name: Normalize source and prepare single-owner browser app
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: |
@@ -38,14 +38,13 @@ jobs:
               s=s.replace(duplicate,"\nasync function refresh()",1)
               p.write_text(s,encoding='utf-8')
 
-          files=[f'live_{i:02d}.txt' for i in range(9)]
-          base=''.join(Path(name).read_text(encoding='utf-8') for name in files)
+          base=''.join(Path(f'live_{i:02d}.txt').read_text(encoding='utf-8') for i in range(9))
           ui=Path('ui-patch.js').read_text(encoding='utf-8')
-          fixes=Path('fixes-patch.js').read_text(encoding='utf-8')
           stability=Path('stability-patch.js').read_text(encoding='utf-8')
-          extra=Path('world-extra-patch.js').read_text(encoding='utf-8')
           quality=Path('gallery-quality-patch.js').read_text(encoding='utf-8')
           ux=Path('ux-patch.js').read_text(encoding='utf-8')
+          nav=Path('nav-lite-patch.js').read_text(encoding='utf-8')
+          simple=Path('simple-world-upload-patch.js').read_text(encoding='utf-8')
 
           remote="import{createClient}from'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
           remote_spaced="import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0?bundle';"
@@ -59,22 +58,28 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base,ui,fixes,stability,extra,quality,ux=map(clean,(base,ui,fixes,stability,extra,quality,ux))
+          base,ui,stability,quality,ux,nav,simple=map(clean,(base,ui,stability,quality,ux,nav,simple))
 
-          # Eski ayrıntılı GM canlı masa rendererı artık stabilite katmanına ait.
+          # GM Canlı Masa'nın tek sahibi stability-patch olsun.
           needle='async function renderLiveTable(){'
           if ui.count(needle)!=1:
               raise SystemExit('renderLiveTable beklenen biçimde bulunamadı')
           ui=ui.replace(needle,"async function renderLiveTable(){if(window.__catlakStableLiveOwner)return;",1)
 
-          # Harita'ya geçerken ara GM ekranı çizme.
+          # Hazır Karakterler isteği geç dönerse başka sekmenin üstüne yazmasın.
+          prepared="if(error){main.dataset.ccPage='';toast(error.message);return}\n  main.innerHTML="
+          if prepared not in ui:
+              raise SystemExit('Hazır Karakterler async render kalıbı bulunamadı')
+          ui=ui.replace(prepared,"if(error){main.dataset.ccPage='';toast(error.message);return}\n  if(!isGM()||tabId()!=='characters'){main.dataset.ccPage='';return}\n  main.innerHTML=",1)
+
+          # Harita açılırken önce GM masasını çizdiren eski ara tıklamayı kaldır.
           old="if(worldOn){const gm=CC_APP.querySelector('.nav [data-tab=\"gm\"]');if(gm)gm.click()}"
           new="if(worldOn){worldOn.classList.remove('on')}"
           if old not in stability:
               raise SystemExit('Harita geçişindeki eski gm.click kalıbı bulunamadı')
           stability=stability.replace(old,new,1)
 
-          # Harita açılışında eski ekranı anında temizle.
+          # Harita açılışında eski içeriği anında temizle.
           map_open="requestAnimationFrame(()=>{ccMapActive=true;ccEnsureMapNav();ccRenderMapPage(true)});return;"
           if map_open not in stability:
               raise SystemExit('Harita açılış kalıbı bulunamadı')
@@ -92,38 +97,23 @@ jobs:
               raise SystemExit('Canlı masa sonuç kalıbı bulunamadı')
           stability=stability.replace(live_rows,"if(cr.error)throw cr.error;if(rr.error)throw rr.error;\n    if(!ccIsGM()||ccMapActive||ccTab()!=='gm')return;\n    const chars=cr.data||[],ids=new Set(chars.map(c=>c.id)),rolls=(rr.data||[]).filter(r=>ids.has(r.character_id));",1)
 
-          # Uzun eski Stat Atölyesi rendererını devre dışı bırak; kompakt UX katmanı sahip olsun.
-          stats_fn='async function ccxRenderStats(force=false){'
-          if extra.count(stats_fn)!=1:
-              raise SystemExit('ccxRenderStats beklenen biçimde bulunamadı')
-          extra=extra.replace(stats_fn,"async function ccxRenderStats(force=false){if(window.__catlakCompactStatsOwner)return;",1)
-
-          # Evren sonucu geç geldiyse sadece Evren sekmesi hâlâ açıksa çiz.
-          world_rows="if(mr.error)throw mr.error;if(or.error)throw or.error;if(nr.error)throw nr.error;\n    const maps=mr.data||[],others=or.data||[],npcs=nr.data||[],gm=ccxIsGM();"
-          if world_rows not in extra:
-              raise SystemExit('Evren sonuç kalıbı bulunamadı')
-          extra=extra.replace(world_rows,"if(mr.error)throw mr.error;if(or.error)throw or.error;if(nr.error)throw nr.error;\n    if(ccxMode!=='world')return;\n    const maps=mr.data||[],others=or.data||[],npcs=nr.data||[],gm=ccxIsGM();",1)
-
-          # Evren ve Stat sekmelerinde eski sayfayı anında temizle.
-          if "ccxRenderWorld(true);return" not in extra:
-              raise SystemExit('Evren click render kalıbı bulunamadı')
-          extra=extra.replace("ccxRenderWorld(true);return","window.__catlakRouteLoading?.('Evren');ccxRenderWorld(true);return",1)
-          stats_click="ccxMode='stats';ccxSelectNav(stats);ccxRenderStats(true);return"
-          if stats_click not in extra:
-              raise SystemExit('Stat click render kalıbı bulunamadı')
-          extra=extra.replace(stats_click,"ccxMode='stats';ccxSelectNav(stats);window.__catlakRouteLoading?.('Stat Atölyesi');window.__catlakRenderCompactStats?.(true);return",1)
+          # Oyuncu parti görseli isteği geç dönerse yeni sayfaya eklenmesin.
+          party_fetch="const {data,error}=await CC_S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle();if(error||!data?.image_url)return;\n  const s=document.createElement('section');"
+          if party_fetch not in stability:
+              raise SystemExit('Parti görseli async kalıbı bulunamadı')
+          stability=stability.replace(party_fetch,"const {data,error}=await CC_S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle();if(error||!data?.image_url)return;\n  if(ccMapActive||ccTab()!=='sheet'||ccIsGM())return;\n  const currentMain=CC_APP.querySelector('main');if(!currentMain||currentMain!==main||currentMain.querySelector('[data-cc-party-visual-card]'))return;\n  const s=document.createElement('section');",1)
 
           Path('.build').mkdir(exist_ok=True)
           entry=(
               "import {createClient} from '@supabase/supabase-js';\n"
-              "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\nwindow.__catlakStableLiveOwner=true;\nwindow.__catlakCompactStatsOwner=true;\n})();\n"
+              "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\nwindow.__catlakStableLiveOwner=true;\n})();\n"
               "const __catlakUiReady=(async()=>{await __catlakBaseReady;\n"+ui+"\n})();\n"
-              "const __catlakFixesReady=(async()=>{await __catlakUiReady;\n"+fixes+"\n})();\n"
-              "const __catlakStabilityReady=(async()=>{await __catlakFixesReady;\n"+stability+"\n})();\n"
-              "const __catlakExtraReady=(async()=>{await __catlakStabilityReady;\n"+extra+"\n})();\n"
-              "const __catlakQualityReady=(async()=>{await __catlakExtraReady;\n"+quality+"\n})();\n"
+              "const __catlakStabilityReady=(async()=>{await __catlakUiReady;\n"+stability+"\n})();\n"
+              "const __catlakQualityReady=(async()=>{await __catlakStabilityReady;\n"+quality+"\n})();\n"
               "const __catlakUxReady=(async()=>{await __catlakQualityReady;\n"+ux+"\n})();\n"
-              "__catlakUxReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
+              "const __catlakNavReady=(async()=>{await __catlakUxReady;\n"+nav+"\n})();\n"
+              "const __catlakWorldReady=(async()=>{await __catlakNavReady;\n"+simple+"\n})();\n"
+              "__catlakWorldReady.catch((e)=>{console.error('CATLAK_BOOT',e);const a=document.querySelector('#app');if(a)a.innerHTML='<main style=\"padding:30px\"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';});\n"
           )
           Path('.build/entry.mjs').write_text(entry,encoding='utf-8')
           PY
@@ -143,31 +133,41 @@ jobs:
       - name: Static verification
         run: |
           node --check browser-app.js
-          node --check fixes-patch.js
+          node --check ui-patch.js
           node --check stability-patch.js
-          node --check world-extra-patch.js
           node --check gallery-quality-patch.js
           node --check ux-patch.js
+          node --check nav-lite-patch.js
+          node --check simple-world-upload-patch.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          if 'https://esm.sh/' in s:
-              raise SystemExit('Harici esm.sh bağımlılığı browser artifact içinde kaldı')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','EVREN GÖRSELLERİ','data-ccx-delete','data-ccq-party-other','__catlakStableLiveOwner','__catlakCompactStatsOwner','__catlakRenderCompactStats','__catlakRouteLoading','cux-workshop']
+          required=[
+            'Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme',
+            'catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media',
+            'data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab',
+            '__catlakStableLiveOwner','__catlakRouteLoading'
+          ]
           missing=[x for x in required if x not in s]
           if missing:
-              raise SystemExit('Yeni özellikler artifact içinde eksik: '+', '.join(missing))
-          if "if(gm)gm.click()" in s:
-              raise SystemExit('Eski çift-render gm.click kalıbı artifact içinde kaldı')
-          if 'GM • HARİTA EKLE' in s:
-              raise SystemExit('Eski world-patch rendererı hâlâ artifact içinde')
-          print('Static browser verification OK; bytes=',len(s.encode('utf-8')))
+              raise SystemExit('Üretim artifact özellikleri eksik: '+', '.join(missing))
+          forbidden=[
+            'https://esm.sh/',
+            'GM • HARİTA EKLE',
+            'EVREN GÖRSELİ EKLE',
+            'ccx-unified-world',
+            "if(gm)gm.click()"
+          ]
+          found=[x for x in forbidden if x in s]
+          if found:
+              raise SystemExit('Eski/çakışan renderer üretimde kaldı: '+', '.join(found))
+          print('Single-owner static verification OK; bytes=',len(s.encode('utf-8')))
           PY
 
       - name: Browser smoke test
         run: |
           cat > smoke.html <<'EOF'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button><button data-tab="characters">Hazır Karakterler</button><button data-tab="rules">Kaynaklar</button></div><main></main>';},5000);</script></body></html>
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Smoke</title></head><body><div id="app"></div><div id="toast" class="hidden"></div><script>window.addEventListener('error',function(e){document.documentElement.setAttribute('data-smoke-error',String(e.message||'error'));});</script><script src="./browser-app.js"></script><script>setTimeout(function(){var a=document.querySelector('#app');if(!a)return;a.innerHTML='<div class="role">GM</div><div class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button><button data-tab="characters">Hazır Karakterler</button><button data-tab="rules">Kaynaklar</button></div><main></main>';},4500);</script></body></html>
           EOF
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/catlak-http.log 2>&1 &
           SERVER_PID=$!
@@ -177,8 +177,10 @@ jobs:
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom http://127.0.0.1:4173/smoke.html >/tmp/catlak-dom.html 2>/tmp/catlak-chrome.log || true
           cat /tmp/catlak-chrome.log || true
           if grep -Eqi 'data-smoke-error="[^"]*(Missing \}|template expression|Invalid or unexpected token|Unexpected token|SyntaxError)' /tmp/catlak-dom.html; then cat /tmp/catlak-dom.html; exit 1; fi
-          grep -q 'data-cc-world-tab' /tmp/catlak-dom.html || { echo 'Evren nav oluşmadı'; exit 1; }
+          grep -q 'data-cc-world-tab' /tmp/catlak-dom.html || { echo 'Görsel Arşivi nav oluşmadı'; exit 1; }
           grep -q 'data-cc-stats-tab' /tmp/catlak-dom.html || { echo 'Stat Atölyesi nav oluşmadı'; exit 1; }
+          grep -q 'data-cc-map-tab' /tmp/catlak-dom.html || { echo 'Harita nav oluşmadı'; exit 1; }
+          grep -q 'Görsel Arşivi' /tmp/catlak-dom.html || { echo 'Yeni Evren etiketi oluşmadı'; exit 1; }
           if grep -Eqi '(Missing \} in template expression|Invalid or unexpected token|Uncaught SyntaxError)' /tmp/catlak-chrome.log; then exit 1; fi
           echo "Browser smoke test OK"
 
@@ -190,7 +192,12 @@ jobs:
           import hashlib,json,os
           from pathlib import Path
           b=Path('browser-app.js').read_bytes()
-          Path('browser-build.json').write_text(json.dumps({'source_sha':os.environ['SOURCE_SHA'],'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b),'format':'iife-es2018-browser-verified'},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          Path('browser-build.json').write_text(json.dumps({
+            'source_sha':os.environ['SOURCE_SHA'],
+            'sha256':hashlib.sha256(b).hexdigest(),
+            'bytes':len(b),
+            'format':'iife-es2018-browser-verified-single-owner'
+          },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
 
       - name: Commit verified browser artifacts and normalized source
@@ -199,5 +206,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add live_05.txt browser-app.js browser-build.json
           if git diff --cached --quiet; then echo "Verified browser artifacts already up to date"; exit 0; fi
-          git commit -m "Doğrulanmış browser app güncelle"
+          git commit -m "Tek sahipli doğrulanmış browser app güncelle"
           git push
