@@ -10,24 +10,24 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
-      - name: Verify static invite entry
+      - name: Verify PageShare invite entry
         run: |
           set -euo pipefail
-          BASE='https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@c363e89abcfba71ccbb81a16f8d42206a2bcded3/invite-entry.html'
-          curl -fsSL -D /tmp/headers.txt "$BASE?join=CHAR-INVALID-SMOKE-ONLY" -o /tmp/invite.html
+          BASE='https://hidden-spring-7923.hosted.pageshare.ai/'
+          curl -fsSL -D /tmp/headers.txt "$BASE?verify=invite" -o /tmp/page.html
           cat /tmp/headers.txt
           grep -qi 'content-type: text/html' /tmp/headers.txt
-          grep -q 'catlak-cagi?asset=app' /tmp/invite.html
+          grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/page.html
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           set +e
-          timeout 25s "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "$BASE?join=CHAR-INVALID-SMOKE-ONLY" >/tmp/dom.html 2>/tmp/chrome.log
+          timeout 25s "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-background-networking --virtual-time-budget=12000 --dump-dom "$BASE?join=CHAR-INVALID-SMOKE-ONLY" >/tmp/dom.html 2>/tmp/chrome.log
           STATUS=$?
           set -e
           echo "CHROME_STATUS=$STATUS"
-          head -c 5000 /tmp/dom.html || true
+          head -c 6000 /tmp/dom.html || true
           echo
-          grep -Ei 'error|fail|net::' /tmp/chrome.log | tail -80 || true
+          grep -Ei 'error|fail|net::|catlak' /tmp/chrome.log | tail -80 || true
           echo '--- MARKERS ---'
           grep -o 'Giriş Yap\|Çatlak Çağı\|Oyun masası yükleniyor\|Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html | sort -u || true
           grep -q 'Çatlak Çağı' /tmp/dom.html
