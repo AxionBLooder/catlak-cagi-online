@@ -11,3 +11,4 @@ s=s.replace(old,new,1)
 s=s.replace("const b=nav.querySelector('[data-cc-world-tab]');if(b)b.textContent='Görsel Arşivi';","const b=nav.querySelector('[data-cc-world-tab]');if(b&&swTxt(b)!=='Görsel Arşivi')b.textContent='Görsel Arşivi';",1)
 p.write_text(s,encoding='utf-8')
 print('world observer loop removed')
+# trigger
