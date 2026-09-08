@@ -20445,7 +20445,7 @@
     const slugify = (s) => String(s || "").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
     async function catload() {
       try {
-        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@78b10727be6d93a4b4080316446dc6e711b23ff2/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+        let b = await (await fetch("https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@0e002d8b4800b1938963f086ab26530b4a3a1e1b/catalog.b64")).text(), u = Uint8Array.from(atob(b.trim()), (c) => c.charCodeAt(0)), txt = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
         st.cat = JSON.parse(txt);
       } catch (e) {
         err(e);
@@ -21030,6 +21030,7 @@
     };
     S.channel("catlak-live").on("postgres_changes", { event: "*", schema: "public", table: "catlak_rolls" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_inventory" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_characters" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_items" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_species_powers" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_species" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_backgrounds" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_classes" }, liveRefresh).on("postgres_changes", { event: "*", schema: "public", table: "catlak_special_paths" }, liveRefresh).subscribe();
     window.__catlakSupabase = S;
+    window.__catlakStableLiveOwner = true;
   })();
   var __catlakUiReady = (async () => {
     await __catlakBaseReady;
@@ -21229,6 +21230,7 @@
       return '<div class="cc-roll-line'.concat(cls, '" data-roll-id="').concat(r.id, '"><div class="die">').concat(r.total == null ? "?" : r.total, "</div><div><b>").concat(h((c == null ? void 0 : c.name) || r.label || "Karakter"), "</b><br><span>").concat(h(r.label || r.roll_kind || "Zar"), '</span><br><small class="muted">').concat(h(r.formula || ""), " ").concat(r.modifier ? sg(r.modifier) : "", " • ").concat(new Date(r.created_at).toLocaleTimeString("tr-TR"), "</small>").concat(r.dm_ruling ? '<div class="gold">GM: '.concat(h(r.dm_ruling), "</div>") : "", '</div><div class="cc-roll-actions">').concat(withRuling ? '<input id="ru-'.concat(r.id, '" value="').concat(h(r.dm_ruling || ""), '" placeholder="GM kararı / not"><button data-a="ruling" data-id="').concat(r.id, '">Notu Kaydet</button>') : "", '<button class="cc-danger" data-cc-delete-roll="').concat(r.id, '">Zarı Sil</button></div></div>');
     }
     async function renderLiveTable() {
+      if (window.__catlakStableLiveOwner) return;
       if (!isGM() || tabId() !== "gm") return;
       const main = APP.querySelector("main");
       if (!main || main.dataset.ccPage === "live") return;
@@ -21421,6 +21423,9 @@
       toast.t = setTimeout(() => t.classList.add("hidden"), 4200);
     };
     let worldActive = false, rendering = false, scheduled = false;
+    window.__catlakSetWorldActive = (v) => {
+      worldActive = !!v;
+    };
     const css = "\n.cc-world-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}.cc-world-card{overflow:hidden}.cc-world-card img{width:100%;height:210px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#07101d}.cc-world-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.cc-world-actions{display:flex;gap:7px;flex-wrap:wrap}.cc-world-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cc-world-form .wide{grid-column:1/-1}.cc-world-empty{padding:24px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}.cc-world-danger{border-color:#713b49!important;color:#ffb7c2!important}.cc-world-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.cc-world-meta{color:var(--muted);font-size:.82rem}.cc-world-card p{white-space:pre-wrap}.cc-world-top{background:linear-gradient(135deg,#10283a,#0d1724 55%,#1a1829)!important}.cc-world-count{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;color:var(--cyan);font-size:.72rem}\n@media(max-width:850px){.cc-world-columns{grid-template-columns:1fr}}@media(max-width:600px){.cc-world-form{grid-template-columns:1fr}.cc-world-form .wide{grid-column:auto}.cc-world-card img{height:180px}}\n";
     if (!document.querySelector("#cc-world-style")) {
       const s = document.createElement("style");
@@ -21877,14 +21882,14 @@
       main.insertBefore(s, main.firstChild);
     }
     document.addEventListener("click", (e) => {
+      var _a;
       const map = e.target.closest("[data-cc-map-tab]");
       if (map && ccIsGM()) {
         e.preventDefault();
         e.stopImmediatePropagation();
         const worldOn = CC_APP.querySelector("[data-cc-world-tab].on");
         if (worldOn) {
-          const gm = CC_APP.querySelector('.nav [data-tab="gm"]');
-          if (gm) gm.click();
+          (_a = window.__catlakSetWorldActive) == null ? void 0 : _a.call(window, false);
         }
         requestAnimationFrame(() => {
           ccMapActive = true;
@@ -21974,7 +21979,55 @@
     }).subscribe();
     ccSchedule();
   })();
-  __catlakStabilityReady.catch((e) => {
+  var __catlakExtraReady = (async () => {
+    await __catlakStabilityReady;
+    const CCX_S = window.__catlakSupabase;
+    const CCX_APP = document.querySelector("#app");
+    if (!CCX_S || !CCX_APP) throw new Error("Evren ek görsel katmanı başlatılamadı.");
+    const ccxH = (x) => String(x != null ? x : "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    let ccxBusy = false, ccxScheduled = false;
+    function ccxWorldActive() {
+      return !!CCX_APP.querySelector("[data-cc-world-tab].on");
+    }
+    async function ccxRenderOthers() {
+      if (!ccxWorldActive() || ccxBusy) return;
+      const main = CCX_APP.querySelector("main");
+      if (!main || main.querySelector("[data-cc-world-other-section]")) return;
+      ccxBusy = true;
+      try {
+        const { data, error } = await CCX_S.from("catlak_world_media").select("*").eq("media_type", "other").order("created_at", { ascending: true });
+        if (error) throw error;
+        if (!ccxWorldActive()) return;
+        const current = CCX_APP.querySelector("main");
+        if (!current || current.querySelector("[data-cc-world-other-section]")) return;
+        const section = document.createElement("section");
+        section.className = "card";
+        section.dataset.ccWorldOtherSection = "1";
+        section.innerHTML = '<div class="eyebrow">EVREN GÖRSELLERİ</div><h2>Bölgeler & Sahne Görselleri</h2><p class="muted">Harita olmayan evren, bölge ve sahne görselleri burada tutulur.</p>'.concat((data || []).length ? '<div class="cc-world-grid">'.concat(data.map((x) => '<article class="card cc-world-card"><div class="cc-world-head"><div><span class="tag">EVREN</span><h3>'.concat(ccxH(x.title || "Adsız Görsel"), "</h3></div></div>").concat(x.image_url ? '<img src="'.concat(ccxH(x.image_url), '" alt="').concat(ccxH(x.title || "Evren görseli"), '">') : "", "<p>").concat(ccxH(x.description || ""), "</p></article>")).join(""), "</div>") : '<div class="cc-world-empty">Ek evren görseli yok.</div>');
+        current.appendChild(section);
+      } catch (e) {
+        console.error("CC_WORLD_OTHER", e);
+      } finally {
+        ccxBusy = false;
+      }
+    }
+    function ccxSchedule() {
+      if (ccxScheduled) return;
+      ccxScheduled = true;
+      requestAnimationFrame(() => {
+        ccxScheduled = false;
+        ccxRenderOthers();
+      });
+    }
+    new MutationObserver(ccxSchedule).observe(CCX_APP, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    CCX_S.channel("cc-world-other-live").on("postgres_changes", { event: "*", schema: "public", table: "catlak_world_media" }, () => {
+      const s = CCX_APP.querySelector("[data-cc-world-other-section]");
+      if (s) s.remove();
+      ccxSchedule();
+    }).subscribe();
+    ccxSchedule();
+  })();
+  __catlakExtraReady.catch((e) => {
     console.error("CATLAK_BOOT", e);
     const a = document.querySelector("#app");
     if (a) a.innerHTML = '<main style="padding:30px"><h1>Çatlak Çağı</h1><p>Uygulama başlatılamadı.</p></main>';
