@@ -1,0 +1,61 @@
+name: Check Invite Gateway
+on:
+  push:
+    paths:
+      - '.github/workflows/check-invite-gateway.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify gateway markup
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?verify=1' -o /tmp/gateway.html
+          grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/gateway.html
+          curl -fsSL --retry 3 'https://hidden-spring-7923.hosted.pageshare.ai/?verify=1' -o /tmp/pageshare.html
+          grep -q 'f469429abde87e1f16af30b42f9a46245f83bdc8' /tmp/pageshare.html
+          echo 'GATEWAY_MARKUP_OK'
+      - name: Open gateway in Chrome
+        run: |
+          cat > .check-invite.cjs <<'JS'
+          const { chromium }=require('playwright-core');
+          const { execFileSync }=require('child_process');
+          (async()=>{
+            let exe='';
+            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            if(!exe)throw new Error('Chrome binary missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            const page=await browser.newPage();
+            const errs=[],fails=[];
+            page.on('pageerror',e=>errs.push(String(e.message||e)));
+            page.on('requestfailed',r=>fails.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
+            try{
+              const base='https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi';
+              let r=await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('Giriş Yap')&&t.includes('E-posta')},{timeout:15000});
+              console.log('ROOT_STATUS:',r?.status());
+              const rootText=await page.locator('#app').innerText();
+              console.log('ROOT_TEXT:',rootText.slice(0,250));
+              if(r?.status()!==200)throw new Error('Gateway root status '+r?.status());
+              if(errs.length||fails.length)throw new Error('Root browser errors: '+JSON.stringify({errs,fails}));
+              errs.length=0;fails.length=0;
+              r=await page.goto(base+'?join=CHAR-INVALID-SMOKE-ONLY',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(4500);
+              const inviteText=await page.locator('body').innerText();
+              console.log('INVITE_STATUS:',r?.status());
+              console.log('INVITE_TEXT:',inviteText.slice(0,500));
+              console.log('INVITE_PAGE_ERRORS:',JSON.stringify(errs));
+              console.log('INVITE_REQUEST_FAILURES:',JSON.stringify(fails));
+              if(r?.status()!==200)throw new Error('Invite gateway document status '+r?.status());
+              if(!inviteText.includes('Çatlak Çağı'))throw new Error('Invite page app did not load');
+              if(errs.length||fails.length)throw new Error('Invite browser errors: '+JSON.stringify({errs,fails}));
+              console.log('INVITE_GATEWAY_OK');
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node .check-invite.cjs
