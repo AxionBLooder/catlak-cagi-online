@@ -1,0 +1,29 @@
+name: Fix World Observer Loop
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fix-world-observer.py'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Remove recursive world observer
+        run: python3 scripts/fix-world-observer.py
+      - name: Verify source
+        run: |
+          node --check simple-world-upload-patch.js
+          ! grep -q 'const swObs=new MutationObserver' simple-world-upload-patch.js
+          grep -q 'Navigasyonun tek sahibi nav-lite-patch.js' simple-world-upload-patch.js
+      - name: Commit fixed world layer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add simple-world-upload-patch.js
+          git commit -m "Görsel Arşivi sonsuz observer döngüsünü kaldır"
+          git pull --rebase origin main
+          git push
