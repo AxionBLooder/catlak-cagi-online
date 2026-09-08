@@ -10,18 +10,21 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
-      - name: Verify PageShare prepared-character invite
+      - name: Verify permanent Netlify prepared-character invite
         run: |
           set -euo pipefail
-          BASE='https://hidden-spring-7923.hosted.pageshare.ai/'
-          BUNDLE='a482f946f39acc1d660973bf0f352c90af887983'
-          curl -fsSL -D /tmp/headers.txt "$BASE?verify=invite" -o /tmp/page.html
+          BASE='https://catlak-cagi-online.netlify.app/'
+          curl -fsSL -D /tmp/headers.txt "$BASE?verify=invite-$(date +%s)" -o /tmp/page.html
           cat /tmp/headers.txt
           grep -qi 'content-type: text/html' /tmp/headers.txt
-          grep -q "$BUNDLE" /tmp/page.html
-          curl -fsSL "https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@$BUNDLE/browser-app.js?verify=$(date +%s)" -o /tmp/app.js
-          grep -q 'https://hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
-          ! grep -q 'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=' /tmp/app.js
+          curl -fsSL "$BASE/browser-app.js?verify=$(date +%s)" -o /tmp/app.js
+          node --check /tmp/app.js
+          test "$(wc -c </tmp/app.js)" -gt 300000
+          grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
+          grep -q 'Kalıcı Siteye Geç' /tmp/app.js
+          grep -q 'catlak-transfer-ready' /tmp/app.js
+          ! grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
+          ! grep -q 'ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-cagi?join=' /tmp/app.js
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           set +e
@@ -35,4 +38,4 @@ jobs:
           grep -q 'Çatlak Çağı' /tmp/dom.html
           grep -q 'Karakter daveti kullanılmış veya süresi dolmuş' /tmp/dom.html
           if grep -q '&lt;!doctype html&gt;' /tmp/dom.html; then echo 'HTML_RENDERED_AS_TEXT'; exit 1; fi
-          echo 'PREPARED_CHARACTER_INVITE_OK'
+          echo 'PERMANENT_NETLIFY_INVITE_OK'
