@@ -26,10 +26,12 @@ jobs:
           cp index.html browser-app.js catalog.b64 _headers netlify-site/
           touch netlify-site/.nojekyll
           node --check netlify-site/browser-app.js
+          grep -q 'catlak-cagi-online.netlify.app/?join=' netlify-site/browser-app.js
+          grep -q 'Kalıcı Siteye Geç' netlify-site/browser-app.js
+          grep -q 'catlak-transfer-ready' netlify-site/browser-app.js
       - name: Deploy to Netlify production
         working-directory: netlify-site
         run: |
           npx -y @netlify/mcp@latest \
             --site-id f08d5c89-8c67-470c-9a35-013839260f6d \
-            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..fqcPh8jF7Kt5Q0rj.I1-oHr8FzEPqGmjfaRHvW4KZHUOScATKGdLPcJl6p4gpAHPscj5T_7X-SdgpZoysAp_G-lANvMIj6xmc_2mxcPaH7WRO60x9uv3hyFAtbVMbFtHZ74Uddl1BKFlJUzAfFGrohPV8qsdFpn6qFXJP1Tfm_wuGZhl1GNqUhA-ZaoXDc3eENHtQ0_UplgO-qKyoQYqUzrp4fTQ2gzufe5lWp5v8VpDNRhMeJvBFSTnREslwKRT2i8oCAzZ78tsBbmNCDVvvU3B79fPa7LXqp4y0y08rA5qS2-0SB9P4FFeeXZpuHT79fM9k_Q0mqQ_Sg75_E6uftZLOzjd3sTZEpXaSd_4gBWF3lI-XPgYvclC6UzSL3-_hSXGgGZIF0je6hidj_eV-CPEd.aLATgVk1MEjJNJGhgdCENw" \
-            --no-wait
+            --proxy-path "https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..WHupqVn_2dLb_rV8.V__6xl7qGPz2dshoYybxHqFGzDpWMqSzBrEt1jEXJG5jLuQrc5jV72m0Zij-7eNWZ0VvREBjp0Uj8VXxmlJMFIK57JlRMjmMoj2f5QRZi2z-CFT7McHlF4VViEIBeT0DhiEw4HL2CPSFBKo-f7L6GbF0ah6JrU6VUXF2kmxO3VmCs1kvGx6SjDzDeD-Gz8Pg9G3UvekyEiVErINrlZgT2DfNZb5pVPTXv4JD0mTBc1sJTKO6nFLVDDty26_x9H6Erx5OSYERJ7WwYu41VBGrzocGcrBs2MUXamAon987bLR_KP-KnkYXAReVkbTO_bECFbO8asaVbEtMYQarasqXx9VL-qpar0ytMbDUg3Kn9ACScwqNLuHSbdo9hwn8LQLgKuiDcgok.a7Gjds0KVnf3WOMDnGE7_A"
