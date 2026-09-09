@@ -28,7 +28,11 @@ if(!document.querySelector('#cc-presence-style')){
   `;document.head.appendChild(s);
 }
 
-let ccPrChannel=null,ccPrUid=null,ccPrMyChars=[],ccPrGmChars=null,ccPrGmFetch=null,ccPrOnline=new Set(),ccPrScheduled=false,ccPrPlayerFetch=null;
+let ccPrChannel=null,ccPrWatch=null,ccPrUid=null,ccPrMyChars=null,ccPrGmChars=null,ccPrGmFetch=null,ccPrPlayerFetch=null,ccPrOnline=new Set();
+let ccPrLastView='',ccPrLastGmSig='',ccPrLastPlayerSig='';
+
+function ccPrSig(v){try{return JSON.stringify(v)}catch{return String(Date.now())}}
+function ccPrCurrentView(){return `${ccPrIsGM()?'gm':'player'}:${ccPrTab()}`}
 
 function ccPrCollectOnline(){
   const next=new Set();
@@ -37,8 +41,9 @@ function ccPrCollectOnline(){
     if(p?.type!=='player')continue;
     for(const id of (Array.isArray(p.character_ids)?p.character_ids:[]))next.add(String(id));
   }
+  const before=[...ccPrOnline].sort().join('|'),after=[...next].sort().join('|');
   ccPrOnline=next;
-  ccPrRenderAll();
+  if(before!==after){ccPrLastGmSig='';ccPrRenderGm()}
 }
 
 async function ccPrLoadGmChars(force=false){
@@ -47,7 +52,8 @@ async function ccPrLoadGmChars(force=false){
   if(ccPrGmChars&&!force){ccPrRenderGm();return}
   ccPrGmFetch=(async()=>{
     const {data,error}=await CC_PRES_S.from('catlak_characters').select('id,name,species_name,level,data,play_status,created_at').eq('play_status','active').order('created_at',{ascending:true});
-    if(error)throw error;ccPrGmChars=data||[];ccPrRenderGm();
+    if(error)throw error;
+    ccPrGmChars=data||[];ccPrLastGmSig='';ccPrRenderGm();
   })().catch(e=>console.warn('CC_PRES_GM',e)).finally(()=>{ccPrGmFetch=null});
   return ccPrGmFetch;
 }
@@ -62,21 +68,24 @@ function ccPrRenderGm(){
   if(!ccPrIsGM()||ccPrTab()!=='gm'||!ccPrGmChars)return;
   const main=CC_PRES_APP.querySelector('main');if(!main)return;
   let sec=main.querySelector('[data-cc-presence-roster]');
-  if(!sec){sec=document.createElement('section');sec.className='card cc-presence-roster';sec.dataset.ccPresenceRoster='1';const live=main.querySelector('.cc-live-two');live?live.before(sec):main.prepend(sec)}
-  sec.innerHTML=ccPrRosterMarkup();
+  if(!sec){sec=document.createElement('section');sec.className='card cc-presence-roster';sec.dataset.ccPresenceRoster='1';const live=main.querySelector('.cc-live-two');live?live.before(sec):main.prepend(sec);ccPrLastGmSig=''}
+  const sig=ccPrSig({rows:ccPrGmChars.map(c=>[c.id,c.name,c.species_name,c.level,c.data?.vampire_kp]),online:[...ccPrOnline].sort()});
+  if(sig!==ccPrLastGmSig){sec.innerHTML=ccPrRosterMarkup();ccPrLastGmSig=sig}
   for(const c of ccPrGmChars){
     const on=ccPrOnline.has(String(c.id));
     const badge=main.querySelector(`[data-cc-gm-character="${CSS.escape(String(c.id))}"] .cc-status`);
-    if(badge){badge.className=`cc-status ${on?'cc-online':'cc-offline'}`;badge.textContent=on?'● ÇEVRİMİÇİ':'○ ÇEVRİMDIŞI';}
+    if(badge){const cls=`cc-status ${on?'cc-online':'cc-offline'}`,txt=on?'● ÇEVRİMİÇİ':'○ ÇEVRİMDIŞI';if(badge.className!==cls)badge.className=cls;if(badge.textContent!==txt)badge.textContent=txt}
   }
 }
 
 async function ccPrLoadPlayer(force=false){
   if(!ccPrUid||ccPrIsGM()||ccPrTab()!=='sheet')return;
   if(ccPrPlayerFetch&&!force)return ccPrPlayerFetch;
+  if(ccPrMyChars!==null&&!force){ccPrRenderPlayer();return}
   ccPrPlayerFetch=(async()=>{
     const {data,error}=await CC_PRES_S.from('catlak_characters').select('id,name,species_name,level,data,play_status,owner_id').eq('owner_id',ccPrUid).eq('play_status','active');
-    if(error)throw error;ccPrMyChars=data||[];ccPrRenderPlayer();
+    if(error)throw error;
+    ccPrMyChars=data||[];ccPrLastPlayerSig='';ccPrRenderPlayer();
   })().catch(e=>console.warn('CC_PRES_PLAYER',e)).finally(()=>{ccPrPlayerFetch=null});
   return ccPrPlayerFetch;
 }
@@ -84,37 +93,55 @@ async function ccPrLoadPlayer(force=false){
 function ccPrRenderPlayer(){
   if(!ccPrUid||ccPrIsGM()||ccPrTab()!=='sheet')return;
   const main=CC_PRES_APP.querySelector('main');if(!main)return;
-  const c=ccPrMyChars[0];if(!c)return;
+  const c=(ccPrMyChars||[])[0];if(!c)return;
   let card=main.querySelector('[data-cc-player-live-card]');
-  if(!card){card=document.createElement('section');card.className='card cc-player-live-card';card.dataset.ccPlayerLiveCard='1';const hero=main.querySelector('section.hero');hero?hero.insertAdjacentElement('afterend',card):main.prepend(card)}
+  if(!card){card=document.createElement('section');card.className='card cc-player-live-card';card.dataset.ccPlayerLiveCard='1';const hero=main.querySelector('section.hero');hero?hero.insertAdjacentElement('afterend',card):main.prepend(card);ccPrLastPlayerSig=''}
+  const sig=ccPrSig([c.id,c.name,c.species_name,c.level,c.data?.vampire_kp]);
+  if(sig===ccPrLastPlayerSig)return;
   card.innerHTML=`<div class="cc-player-live-row"><div><div class="eyebrow">CANLI DURUM</div><h2>${ccPrEsc(c.name)}</h2></div><span class="cc-online">● ÇEVRİMİÇİ</span></div><small class="muted">GM seni şu anda çevrimiçi görüyor.</small>${ccPrIsVampire(c)?`<div class="cc-player-live-kp">VAMPİR • KP ${ccPrKpNow(c)} / ${ccPrKpMax(c)}</div>`:''}`;
+  ccPrLastPlayerSig=sig;
 }
 
-function ccPrRenderAll(){ccPrRenderGm();ccPrRenderPlayer()}
+async function ccPrStopPresence(){
+  if(!ccPrChannel)return;
+  try{await ccPrChannel.untrack()}catch{}
+  try{CC_PRES_S.removeChannel(ccPrChannel)}catch{}
+  ccPrChannel=null;
+}
 
 async function ccPrStart(){
   const {data:{session}}=await CC_PRES_S.auth.getSession();
-  const uid=session?.user?.id||null;if(!uid)return;
+  const uid=session?.user?.id||null;
+  if(!uid){ccPrUid=null;ccPrMyChars=null;await ccPrStopPresence();return}
   if(ccPrUid===uid&&ccPrChannel)return;
-  if(ccPrChannel){try{await ccPrChannel.untrack()}catch{}try{CC_PRES_S.removeChannel(ccPrChannel)}catch{}}
-  ccPrUid=uid;
+  await ccPrStopPresence();
+  ccPrUid=uid;ccPrMyChars=null;ccPrLastPlayerSig='';
   const {data,error}=await CC_PRES_S.from('catlak_characters').select('id,name,species_name,level,data,play_status,owner_id').eq('owner_id',uid).eq('play_status','active');
-  if(!error)ccPrMyChars=data||[];
+  if(!error)ccPrMyChars=data||[];else ccPrMyChars=[];
   ccPrChannel=CC_PRES_S.channel('catlak-online-presence',{config:{presence:{key:String(uid)}}});
   ccPrChannel.on('presence',{event:'sync'},ccPrCollectOnline).on('presence',{event:'join'},ccPrCollectOnline).on('presence',{event:'leave'},ccPrCollectOnline);
   ccPrChannel.subscribe(async status=>{
     if(status==='SUBSCRIBED'){
-      if(ccPrMyChars.length){try{await ccPrChannel.track({type:'player',user_id:uid,character_ids:ccPrMyChars.map(c=>String(c.id)),online_at:new Date().toISOString()})}catch{}}
+      if((ccPrMyChars||[]).length){try{await ccPrChannel.track({type:'player',user_id:uid,character_ids:ccPrMyChars.map(c=>String(c.id)),online_at:new Date().toISOString()})}catch{}}
       ccPrCollectOnline();
     }
   });
-  ccPrRenderAll();
+  ccPrTick(true);
 }
 
-function ccPrSchedule(){if(ccPrScheduled)return;ccPrScheduled=true;queueMicrotask(()=>{ccPrScheduled=false;if(ccPrIsGM()&&ccPrTab()==='gm'){ccPrLoadGmChars(false);ccPrRenderGm()}else if(ccPrTab()==='sheet'){ccPrLoadPlayer(false);ccPrRenderPlayer()}})}
-new MutationObserver(ccPrSchedule).observe(CC_PRES_APP,{childList:true,subtree:true});
-CC_PRES_S.auth.onAuthStateChange(()=>setTimeout(ccPrStart,0));
-CC_PRES_S.channel('cc-presence-character-watch').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccPrGmChars=null;ccPrLoadGmChars(true);ccPrLoadPlayer(true)}).subscribe();
+function ccPrTick(force=false){
+  const view=ccPrCurrentView();
+  if(view!==ccPrLastView){ccPrLastView=view;ccPrLastGmSig='';ccPrLastPlayerSig='';force=true}
+  if(ccPrIsGM()&&ccPrTab()==='gm')ccPrLoadGmChars(force&&ccPrGmChars===null);
+  else if(!ccPrIsGM()&&ccPrTab()==='sheet')ccPrLoadPlayer(force&&ccPrMyChars===null);
+}
+
+CC_PRES_S.auth.onAuthStateChange(()=>setTimeout(()=>ccPrStart().catch(e=>console.warn('CC_PRES_AUTH',e)),0));
+ccPrWatch=CC_PRES_S.channel('cc-presence-character-watch').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{
+  ccPrGmChars=null;ccPrMyChars=null;ccPrLastGmSig='';ccPrLastPlayerSig='';
+  if(ccPrIsGM()&&ccPrTab()==='gm')ccPrLoadGmChars(true);else if(!ccPrIsGM()&&ccPrTab()==='sheet')ccPrLoadPlayer(true);
+}).subscribe();
 window.addEventListener('beforeunload',()=>{try{ccPrChannel?.untrack()}catch{}});
-ccPrStart();
-ccPrSchedule();
+setInterval(()=>ccPrTick(false),700);
+ccPrStart().catch(e=>console.warn('CC_PRES_START',e));
+ccPrTick(true);
