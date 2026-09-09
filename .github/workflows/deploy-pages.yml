@@ -7,6 +7,7 @@ on:
       - 'browser-app.js'
       - 'browser-build.json'
       - 'gm-controls-patch.js'
+      - 'presence-patch.js'
       - 'catalog.b64'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -32,7 +33,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -44,6 +45,7 @@ jobs:
           PY
           node --check _site/browser-app.js
           node --check _site/gm-controls-patch.js
+          node --check _site/presence-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -55,4 +57,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-vampire-kp-note-controls-2026-09-09
+# trigger: realtime-presence-simple-live-table-2026-09-09
