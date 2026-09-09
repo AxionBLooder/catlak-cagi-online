@@ -29,6 +29,12 @@ jobs:
           grep -q 'axionblooder.github.io/catlak-cagi-online/?join=' /tmp/app.js
           grep -q 'catlak_generate_character_reconnect' /tmp/app.js
           grep -q 'Yeniden Bağlama Linki Oluştur' /tmp/app.js
+          grep -q '__catlakPreparedOwner' /tmp/app.js
+          grep -q 'cc-h-prepared-grid' /tmp/app.js
+          grep -q 'GM • KİŞİYE ÖZEL DURUM' /tmp/app.js
+          grep -q 'Aktif Etki / Debuff' /tmp/app.js
+          grep -q 'catlak_update_vampire_kp' /tmp/app.js
+          grep -q 'cc-hotfix-live' /tmp/app.js
           ! grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
           ! grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
           ! grep -q 'catlak-transfer-session' /tmp/app.js
