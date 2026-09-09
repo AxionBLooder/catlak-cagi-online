@@ -6,6 +6,7 @@ on:
       - 'index.html'
       - 'browser-app.js'
       - 'browser-build.json'
+      - 'gm-controls-patch.js'
       - 'catalog.b64'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -31,7 +32,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -42,6 +43,7 @@ jobs:
           p.write_text(s,encoding='utf-8')
           PY
           node --check _site/browser-app.js
+          node --check _site/gm-controls-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -53,4 +55,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: kp-notes-prepared-hotfix-2026-09-09
+# trigger: gm-vampire-kp-note-controls-2026-09-09
