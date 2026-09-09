@@ -57,4 +57,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: realtime-presence-simple-live-table-2026-09-09
+# trigger: reconnect-panel-prepared-only-2026-09-09
