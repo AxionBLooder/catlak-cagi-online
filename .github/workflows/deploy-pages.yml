@@ -53,4 +53,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: permanent-player-host-final-2026-09-09
+# trigger: kp-notes-prepared-hotfix-2026-09-09
