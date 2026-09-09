@@ -11,7 +11,7 @@ function ccMigToast(text){
   t.textContent=text;t.classList.remove('hidden');
   clearTimeout(ccMigToast.timer);ccMigToast.timer=setTimeout(()=>t.classList.add('hidden'),5200);
 }
-function ccMigEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
+function ccMigEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 async function ccMigEnsurePanel(){
   if(ccMigRendering||!ccMigIsGM())return;
