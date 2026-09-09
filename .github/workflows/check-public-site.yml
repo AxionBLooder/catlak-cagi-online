@@ -24,7 +24,7 @@ jobs:
           curl -fsSL --retry 4 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/index.html
           grep -q 'browser-app.js' /tmp/index.html
           grep -q 'gm-controls-patch.js' /tmp/index.html
-          grep -q 'presence-patch.js?v=presence-v2' /tmp/index.html
+          grep -q 'presence-patch.js?v=presence-v3' /tmp/index.html
           curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}browser-app.js?verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c < /tmp/app.js)" -gt 300000
@@ -52,6 +52,8 @@ jobs:
           grep -q 'ÇEVRİMDIŞI' /tmp/presence.js
           grep -q "ccPrIsVampire" /tmp/presence.js
           grep -q 'VAMPİR • KP' /tmp/presence.js
+          grep -q 'grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr)!important' /tmp/presence.js
+          grep -q 'ccPresenceCompact' /tmp/presence.js
           grep -q 'setInterval' /tmp/presence.js
           ! grep -q 'MutationObserver' /tmp/presence.js
           echo 'PAGES_STATIC_PRODUCTION_OK'
@@ -87,7 +89,7 @@ jobs:
                 const page=await browser.newPage();
                 const errors=[];
                 page.on('pageerror',e=>errors.push(String(e.message||e)));
-                const response=await page.goto(process.env.LIVE_URL+'?smoke=presence-v2-'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+                const response=await page.goto(process.env.LIVE_URL+'?smoke=presence-v3-'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
                 if(response?.status()!==200)throw new Error(`Root status ${response?.status()}`);
                 await page.waitForFunction(()=>{
                   const app=document.querySelector('#app')?.textContent||'';
@@ -95,7 +97,7 @@ jobs:
                 },{timeout:25000});
                 await page.waitForFunction(()=>{
                   const s=document.querySelector('script[data-cc-presence-loader]');
-                  return !!s && String(s.src||'').includes('presence-v2');
+                  return !!s && String(s.src||'').includes('presence-v3');
                 },{timeout:10000});
                 const before=await page.locator('#app').innerText();
                 await page.waitForTimeout(3500);
