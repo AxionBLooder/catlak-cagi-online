@@ -57,4 +57,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: reconnect-panel-prepared-only-2026-09-09
+# trigger: player-gallery-hidden-party-visual-large-2026-09-09
