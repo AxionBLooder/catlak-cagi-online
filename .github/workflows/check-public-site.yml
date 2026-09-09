@@ -24,6 +24,7 @@ jobs:
           curl -fsSL --retry 4 --retry-delay 2 "$LIVE_URL?verify=$(date +%s)" -o /tmp/index.html
           grep -q 'browser-app.js' /tmp/index.html
           grep -q 'gm-controls-patch.js' /tmp/index.html
+          grep -q 'presence-patch.js' /tmp/index.html
           curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}browser-app.js?verify=$(date +%s)" -o /tmp/app.js
           node --check /tmp/app.js
           test "$(wc -c < /tmp/app.js)" -gt 300000
@@ -44,6 +45,13 @@ jobs:
           grep -q "KP yalnız Vampir ırkına özeldir" /tmp/gm-controls.js
           grep -q 'catlak_gm_set_character_note' /tmp/gm-controls.js
           grep -q 'Oyuncuya Gönder / Kaydet' /tmp/gm-controls.js
+          curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}presence-patch.js?verify=$(date +%s)" -o /tmp/presence.js
+          node --check /tmp/presence.js
+          grep -q 'catlak-online-presence' /tmp/presence.js
+          grep -q 'ÇEVRİMİÇİ' /tmp/presence.js
+          grep -q 'ÇEVRİMDIŞI' /tmp/presence.js
+          grep -q "ccPrIsVampire" /tmp/presence.js
+          grep -q 'VAMPİR • KP' /tmp/presence.js
           echo 'PAGES_STATIC_PRODUCTION_OK'
 
       - name: Verify reconnect edge rejection safely
@@ -83,6 +91,7 @@ jobs:
                   const app=document.querySelector('#app')?.textContent||'';
                   return app.includes('E-posta')&&!app.includes('Uygulama yükleniyor');
                 },{timeout:25000});
+                await page.waitForFunction(()=>!!document.querySelector('script[data-cc-presence-loader]'),{timeout:10000});
                 console.log('ROOT_OK',JSON.stringify((await page.locator('#app').innerText()).slice(0,1200)));
                 if(errors.length)throw new Error('Root page errors: '+errors.join(' | '));
                 await page.close();
