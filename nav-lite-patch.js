@@ -8,6 +8,20 @@ const cnlIsPlayer=()=>!!cnlRole()&&!cnlIsGM();
 const CNL_PLAYER_HIDDEN=new Set(['builder','races','rules']);
 let cnlScheduled=false;
 
+if(!document.querySelector('#cnl-player-party-style')){
+  const style=document.createElement('style');
+  style.id='cnl-player-party-style';
+  style.textContent=`
+  [data-cc-party-visual-card]{padding:16px!important;border-color:#705f36!important;background:linear-gradient(135deg,#181a1d,#15111d)!important}
+  [data-cc-party-visual-card] .cc-party-mini{display:block!important}
+  [data-cc-party-visual-card] .cc-party-mini>img{display:block!important;width:100%!important;height:auto!important;max-height:72vh!important;object-fit:contain!important;background:#050b14!important;border-radius:16px!important;margin:10px 0 16px!important}
+  [data-cc-party-visual-card] .cc-party-mini>div{width:100%!important}
+  [data-cc-party-visual-card] h2{margin-top:4px!important}
+  @media(max-width:700px){[data-cc-party-visual-card]{padding:11px!important}[data-cc-party-visual-card] .cc-party-mini>img{max-height:64vh!important}}
+  `;
+  document.head.appendChild(style);
+}
+
 function cnlSelect(btn){
   const nav=CNL_APP.querySelector('.nav');
   if(!nav)return;
@@ -18,24 +32,28 @@ function cnlEnsureNav(){
   const nav=CNL_APP.querySelector('.nav');
   if(!nav)return;
 
-  // Oyuncular yalnız kendi masa/oyun ekranlarını görür. Irk Atölyesi, Kaynaklar ve
-  // Karakter Oluşturucu GM'ye özeldir. Hazır karakter ve normal davet oyuncuları aynıdır.
+  // Oyuncular yalnız kendi masa/oyun ekranlarını görür. Irk Atölyesi, Kaynaklar,
+  // Karakter Oluşturucu ve Görsel Arşivi GM'ye özeldir.
   if(cnlIsPlayer()){
     CNL_PLAYER_HIDDEN.forEach(id=>nav.querySelector(`[data-tab="${id}"]`)?.remove());
   }
 
   let world=nav.querySelector('[data-cc-world-tab]');
-  if(!world){
-    world=document.createElement('button');
-    world.type='button';
-    world.dataset.ccWorldTab='1';
-    const rules=nav.querySelector('[data-tab="rules"]');
-    rules?rules.before(world):nav.appendChild(world);
+  if(cnlIsGM()){
+    if(!world){
+      world=document.createElement('button');
+      world.type='button';
+      world.dataset.ccWorldTab='1';
+      const rules=nav.querySelector('[data-tab="rules"]');
+      rules?rules.before(world):nav.appendChild(world);
+    }
+    if(world.hasAttribute('data-tab'))world.removeAttribute('data-tab');
+    if(cnlTxt(world)!=='Görsel Arşivi')world.textContent='Görsel Arşivi';
+    if(world.getAttribute('aria-label')!=='Görsel Arşivi')world.setAttribute('aria-label','Görsel Arşivi');
+    if(world.dataset.ccUploadHint!=='Görsel Dosyası Seç')world.dataset.ccUploadHint='Görsel Dosyası Seç';
+  }else if(world){
+    world.remove();
   }
-  if(world.hasAttribute('data-tab'))world.removeAttribute('data-tab');
-  if(cnlTxt(world)!=='Görsel Arşivi')world.textContent='Görsel Arşivi';
-  if(world.getAttribute('aria-label')!=='Görsel Arşivi')world.setAttribute('aria-label','Görsel Arşivi');
-  if(world.dataset.ccUploadHint!=='Görsel Dosyası Seç')world.dataset.ccUploadHint='Görsel Dosyası Seç';
 
   let stats=nav.querySelector('[data-cc-stats-tab]');
   if(cnlIsGM()){
@@ -71,6 +89,16 @@ document.addEventListener('click',e=>{
     return;
   }
 
+  const world=e.target.closest?.('#app [data-cc-world-tab]');
+  if(world&&cnlIsPlayer()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    world.remove();
+    const sheet=CNL_APP.querySelector('.nav [data-tab="sheet"]');
+    if(sheet)requestAnimationFrame(()=>sheet.click());
+    return;
+  }
+
   const stats=e.target.closest?.('#app [data-cc-stats-tab]');
   if(stats){
     e.preventDefault();
@@ -90,4 +118,4 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
-// build trigger: player catalog visibility locked to GM
+// build trigger: player gallery hidden; party visual presentation enlarged
