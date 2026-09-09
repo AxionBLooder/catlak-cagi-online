@@ -11,12 +11,19 @@ function ccMigToast(text){
   t.textContent=text;t.classList.remove('hidden');
   clearTimeout(ccMigToast.timer);ccMigToast.timer=setTimeout(()=>t.classList.add('hidden'),5200);
 }
-function ccMigEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function ccMigEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
 
 async function ccMigEnsurePanel(){
-  if(ccMigRendering||!ccMigIsGM()||ccMigTab()!=='gm')return;
+  if(ccMigRendering||!ccMigIsGM())return;
   const main=CC_MIG_APP?.querySelector('main');
-  if(!main||main.querySelector('[data-cc-reconnect-panel]'))return;
+  if(!main)return;
+
+  if(ccMigTab()!=='characters'){
+    main.querySelectorAll('[data-cc-reconnect-panel]').forEach(el=>el.remove());
+    return;
+  }
+  if(main.querySelector('[data-cc-reconnect-panel]'))return;
+
   ccMigRendering=true;
   try{
     const {data,error}=await CC_MIG_S.from('catlak_characters')
@@ -25,14 +32,13 @@ async function ccMigEnsurePanel(){
       .not('owner_id','is',null)
       .order('updated_at',{ascending:false});
     if(error)throw error;
-    if(!ccMigIsGM()||ccMigTab()!=='gm'||!main.isConnected||main.querySelector('[data-cc-reconnect-panel]'))return;
+    if(!ccMigIsGM()||ccMigTab()!=='characters'||!main.isConnected||main.querySelector('[data-cc-reconnect-panel]'))return;
+
     const rows=data||[];
-    if(!rows.length)return;
     const section=document.createElement('section');
     section.className='card';section.dataset.ccReconnectPanel='1';
-    section.innerHTML=`<div class="eyebrow">KALICI GİTHUB PAGES</div><h2>Kalıcı Site Bağlantısı</h2><p class="muted">Oyuncu Yeniden Bağlama: aktif oyuncu başka domaine geçerken karakter verisi taşınmaz; yalnız sahiplik yeni oyuncu oturumuna güvenli biçimde yeniden bağlanır. Bağlantı tek kullanımlıktır ve 24 saat geçerlidir.</p><div class="grid">${rows.map(c=>`<article class="card"><h3>${ccMigEsc(c.name)}</h3><p class="muted">${ccMigEsc(c.species_name||'')} • ${ccMigEsc(c.class_name||'')}</p><button type="button" class="primary" data-cc-reconnect="${c.id}" data-cc-reconnect-name="${ccMigEsc(c.name)}">Yeniden Bağlama Linki Oluştur</button></article>`).join('')}</div>`;
-    const anchor=main.firstElementChild;
-    if(anchor?.nextSibling)main.insertBefore(section,anchor.nextSibling);else main.appendChild(section);
+    section.innerHTML=`<div class="eyebrow">AKTİF OYUNCULAR • KALICI BAĞLANTI</div><h2>Oyuncuyu Yeniden Bağla</h2><p class="muted">Bu alan yalnız Hazır Karakterler bölümünde tutulur; Canlı Oyun Masası sade kalır. Aktif bir oyuncu tarayıcı veya cihaz değiştirirse buradan tek kullanımlık, 24 saat geçerli yeniden bağlama linki oluşturabilirsin.</p>${rows.length?`<div class="grid">${rows.map(c=>`<article class="card"><h3>${ccMigEsc(c.name)}</h3><p class="muted">${ccMigEsc(c.species_name||'')} • ${ccMigEsc(c.class_name||'')}</p><button type="button" class="primary" data-cc-reconnect="${c.id}" data-cc-reconnect-name="${ccMigEsc(c.name)}">Yeniden Bağlama Linki Oluştur</button></article>`).join('')}</div>`:'<div class="cc-empty">Şu anda yeniden bağlanabilecek aktif oyuncu yok.</div>'}`;
+    main.appendChild(section);
   }catch(error){console.warn('CATLAK_RECONNECT_PANEL',error)}
   finally{ccMigRendering=false}
 }
