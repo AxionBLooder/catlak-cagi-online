@@ -12,19 +12,21 @@ const ccPrKpNow=c=>Math.max(0,Math.min(ccPrKpMax(c),Number(c?.data?.vampire_kp??
 
 if(!document.querySelector('#cc-presence-style')){
   const s=document.createElement('style');s.id='cc-presence-style';s.textContent=`
-  .cc-live-two{grid-template-columns:1fr!important}
-  .cc-live-two>section:nth-child(2){display:none!important}
-  .cc-presence-roster{border-color:#31506c!important}
-  .cc-presence-summary{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
-  .cc-presence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
-  .cc-presence-player{border:1px solid #29445e;border-radius:14px;padding:12px;background:#071321;display:flex;justify-content:space-between;gap:12px;align-items:center}
-  .cc-presence-player h3{margin:0 0 3px;font-size:1rem}.cc-presence-player small{color:var(--muted)}
-  .cc-online,.cc-offline{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:.72rem;font-weight:900;white-space:nowrap}
+  .cc-live-two{display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr)!important;gap:16px!important}
+  .cc-live-two>section:nth-child(2){display:block!important}
+  .cc-presence-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .cc-presence-head h2{margin:.15em 0 0}
+  .cc-presence-summary{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .cc-presence-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+  .cc-presence-player{border:1px solid #29445e;border-radius:10px;padding:9px 10px;background:#071321;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .cc-presence-player h3{margin:0 0 2px;font-size:.95rem}.cc-presence-player small{color:var(--muted);font-size:.75rem}
+  .cc-online,.cc-offline{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 7px;font-size:.66rem;font-weight:900;white-space:nowrap}
   .cc-online{color:#a7f3c8;border:1px solid #357a58;background:#0c2b20}.cc-offline{color:#aeb8c5;border:1px solid #485563;background:#141a22}
-  .cc-presence-kp{margin-top:5px;font-size:.78rem;color:#ffbdc8;font-weight:800}
+  .cc-presence-kp{margin-top:3px;font-size:.72rem;color:#ffbdc8;font-weight:800}
   .cc-player-live-card{border-color:#315f50!important;background:linear-gradient(135deg,#0d201b,#0a1521)!important}
   .cc-player-live-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
   .cc-player-live-kp{margin-top:9px;padding-top:9px;border-top:1px solid #315044;font-weight:900;color:#ffbdc8}
+  @media(max-width:800px){.cc-live-two{grid-template-columns:1fr!important}.cc-presence-head{display:block}.cc-presence-summary{margin-top:8px}}
   `;document.head.appendChild(s);
 }
 
@@ -61,21 +63,16 @@ async function ccPrLoadGmChars(force=false){
 function ccPrRosterMarkup(){
   const rows=ccPrGmChars||[];
   const onlineCount=rows.filter(c=>ccPrOnline.has(String(c.id))).length;
-  return `<div class="eyebrow">CANLI OYUNCULAR</div><h2>Oyuncu Durumu</h2><div class="cc-presence-summary"><span class="cc-online">● ${onlineCount} ÇEVRİMİÇİ</span><span class="cc-offline">○ ${Math.max(0,rows.length-onlineCount)} ÇEVRİMDIŞI</span><small class="muted">Oyuncu siteyi açık tuttuğu sürece çevrimiçi görünür.</small></div>${rows.length?`<div class="cc-presence-grid">${rows.map(c=>{const on=ccPrOnline.has(String(c.id));return `<div class="cc-presence-player" data-cc-presence-character="${c.id}"><div><h3>${ccPrEsc(c.name)}</h3><small>${ccPrEsc(c.species_name||'Irk')} • Seviye ${Number(c.level||1)}</small>${ccPrIsVampire(c)?`<div class="cc-presence-kp">Vampir KP ${ccPrKpNow(c)} / ${ccPrKpMax(c)}</div>`:''}</div><span class="${on?'cc-online':'cc-offline'}">${on?'● ÇEVRİMİÇİ':'○ ÇEVRİMDIŞI'}</span></div>`}).join('')}</div>`:'<div class="cc-empty">Aktif karakter yok.</div>'}`;
+  return `<div class="cc-presence-head"><div><div class="eyebrow">OYUNCULAR</div><h2>Canlı Karakterler</h2></div><div class="cc-presence-summary"><span class="cc-online">● ${onlineCount}</span><span class="cc-offline">○ ${Math.max(0,rows.length-onlineCount)}</span></div></div>${rows.length?`<div class="cc-presence-grid">${rows.map(c=>{const on=ccPrOnline.has(String(c.id));return `<div class="cc-presence-player" data-cc-presence-character="${c.id}"><div><h3>${ccPrEsc(c.name)}</h3><small>${ccPrEsc(c.species_name||'Irk')} • Seviye ${Number(c.level||1)}</small>${ccPrIsVampire(c)?`<div class="cc-presence-kp">Vampir KP ${ccPrKpNow(c)} / ${ccPrKpMax(c)}</div>`:''}</div><span class="${on?'cc-online':'cc-offline'}">${on?'● ÇEVRİMİÇİ':'○ ÇEVRİMDIŞI'}</span></div>`}).join('')}</div>`:'<div class="cc-empty">Aktif karakter yok.</div>'}`;
 }
 
 function ccPrRenderGm(){
   if(!ccPrIsGM()||ccPrTab()!=='gm'||!ccPrGmChars)return;
   const main=CC_PRES_APP.querySelector('main');if(!main)return;
-  let sec=main.querySelector('[data-cc-presence-roster]');
-  if(!sec){sec=document.createElement('section');sec.className='card cc-presence-roster';sec.dataset.ccPresenceRoster='1';const live=main.querySelector('.cc-live-two');live?live.before(sec):main.prepend(sec);ccPrLastGmSig=''}
+  const sec=main.querySelector('.cc-live-two>section:nth-child(2)');if(!sec)return;
+  if(sec.dataset.ccPresenceCompact!=='1')ccPrLastGmSig='';
   const sig=ccPrSig({rows:ccPrGmChars.map(c=>[c.id,c.name,c.species_name,c.level,c.data?.vampire_kp]),online:[...ccPrOnline].sort()});
-  if(sig!==ccPrLastGmSig){sec.innerHTML=ccPrRosterMarkup();ccPrLastGmSig=sig}
-  for(const c of ccPrGmChars){
-    const on=ccPrOnline.has(String(c.id));
-    const badge=main.querySelector(`[data-cc-gm-character="${CSS.escape(String(c.id))}"] .cc-status`);
-    if(badge){const cls=`cc-status ${on?'cc-online':'cc-offline'}`,txt=on?'● ÇEVRİMİÇİ':'○ ÇEVRİMDIŞI';if(badge.className!==cls)badge.className=cls;if(badge.textContent!==txt)badge.textContent=txt}
-  }
+  if(sig!==ccPrLastGmSig){sec.innerHTML=ccPrRosterMarkup();sec.dataset.ccPresenceCompact='1';ccPrLastGmSig=sig}
 }
 
 async function ccPrLoadPlayer(force=false){
