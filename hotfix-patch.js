@@ -74,6 +74,7 @@ function ccHRenderPreparedSync(){
 async function ccHRefreshPrepared(force=false){
   if(!ccHIsGM()||ccHTab()!=='characters')return;
   ccHRenderPreparedSync();
+  if(!force&&ccHPreparedCache)return;
   if(ccHPreparedFetch&&!force)return ccHPreparedFetch;
   ccHPreparedFetch=(async()=>{
     const {data,error}=await CC_HOTFIX_S.from('catlak_characters').select('*').eq('play_status','prepared').order('created_at',{ascending:false});
@@ -87,19 +88,21 @@ async function ccHRefreshPrepared(force=false){
 }
 
 // ---------- GM notunu yalnız karakter sahibine görünür durum/debuff olarak göster ----------
-let ccHNotesCache=new Map(),ccHNotesFetch=null,ccHNotesUser=null;
+let ccHNotesCache=new Map(),ccHNotesFetch=null,ccHNotesUser=null,ccHNotesLoaded=false;
 async function ccHLoadPlayerNotes(force=false){
   const {data:{session}}=await CC_HOTFIX_S.auth.getSession();
   const uid=session?.user?.id||null;
-  if(!uid||ccHIsGM()){ccHNotesCache=new Map();ccHNotesUser=uid;return}
-  if(!force&&ccHNotesUser===uid&&ccHNotesFetch)return ccHNotesFetch;
-  ccHNotesUser=uid;
+  if(!uid||ccHIsGM()){ccHNotesCache=new Map();ccHNotesUser=uid;ccHNotesLoaded=true;return}
+  if(ccHNotesUser!==uid){ccHNotesCache=new Map();ccHNotesUser=uid;ccHNotesLoaded=false}
+  if(!force&&ccHNotesLoaded){ccHRenderPlayerNotes();return}
+  if(ccHNotesFetch&&!force)return ccHNotesFetch;
   ccHNotesFetch=(async()=>{
     const {data,error}=await CC_HOTFIX_S.from('catlak_characters').select('id,name,data,owner_id,play_status').eq('owner_id',uid).eq('play_status','active');
     if(error)throw error;
     ccHNotesCache=new Map((data||[]).map(c=>[String(c.id),String(c.data?.gm_note||'').trim()]));
+    ccHNotesLoaded=true;
     ccHRenderPlayerNotes();
-  })().catch(e=>console.warn('CC_PLAYER_NOTE',e)).finally(()=>{ccHNotesFetch=null});
+  })().catch(e=>{ccHNotesLoaded=false;console.warn('CC_PLAYER_NOTE',e)}).finally(()=>{ccHNotesFetch=null});
   return ccHNotesFetch;
 }
 function ccHRenderPlayerNotes(){
@@ -115,7 +118,8 @@ function ccHRenderPlayerNotes(){
     let card=main.querySelector(`[data-cc-player-note-for="${id}"]`);
     if(!note){card?.remove();continue}
     if(!card){card=document.createElement('section');card.className='card cc-player-gm-note';card.dataset.ccPlayerNoteFor=id;hero.insertAdjacentElement('afterend',card)}
-    card.innerHTML=`<span class="cc-effect-badge">GM • KİŞİYE ÖZEL DURUM</span><h2>Aktif Etki / Debuff</h2><div class="cc-effect-text">${ccHx(note)}</div>`;
+    const next=`<span class="cc-effect-badge">GM • KİŞİYE ÖZEL DURUM</span><h2>Aktif Etki / Debuff</h2><div class="cc-effect-text">${ccHx(note)}</div>`;
+    if(card.innerHTML!==next)card.innerHTML=next;
   }
 }
 function ccHEnhanceGmNoteEditor(){
@@ -136,7 +140,7 @@ function ccHSchedule(){
   queueMicrotask(()=>{
     ccHScheduled=false;
     if(ccHIsGM()&&ccHTab()==='characters'){ccHRenderPreparedSync();ccHRefreshPrepared(false)}
-    if(!ccHIsGM()&&ccHTab()==='sheet'){ccHRenderPlayerNotes();if(!ccHNotesFetch)ccHLoadPlayerNotes(false)}
+    if(!ccHIsGM()&&ccHTab()==='sheet'){ccHRenderPlayerNotes();ccHLoadPlayerNotes(false)}
     ccHEnhanceGmNoteEditor();
   });
 }
@@ -149,6 +153,7 @@ CC_HOTFIX_APP.addEventListener('click',e=>{
 CC_HOTFIX_S.channel('cc-hotfix-live')
   .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{
     ccHPreparedCache=null;ccHPreparedVersion++;
+    ccHNotesLoaded=false;
     ccHLoadPlayerNotes(true);
     ccHSchedule();
   }).subscribe();
