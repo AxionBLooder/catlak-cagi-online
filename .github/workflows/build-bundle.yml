@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'live_*.txt'
+      - 'hotfix-patch.js'
       - 'ui-patch.js'
       - 'stability-patch.js'
       - 'gallery-quality-patch.js'
@@ -44,6 +45,7 @@ jobs:
               p.write_text(s,encoding='utf-8')
 
           base=''.join(Path(f'live_{i:02d}.txt').read_text(encoding='utf-8') for i in range(9))
+          hotfix=Path('hotfix-patch.js').read_text(encoding='utf-8')
           ui=Path('ui-patch.js').read_text(encoding='utf-8')
           stability=Path('stability-patch.js').read_text(encoding='utf-8')
           quality=Path('gallery-quality-patch.js').read_text(encoding='utf-8')
@@ -64,11 +66,15 @@ jobs:
               src=src.replace('https://cdn.jsdelivr.net/gh/AxionBLooder/catlak-cagi-online@main/catalog.b64',catalog)
               return src
 
-          base,ui,stability,quality,ux,nav,simple,migration=map(clean,(base,ui,stability,quality,ux,nav,simple,migration))
+          base,hotfix,ui,stability,quality,ux,nav,simple,migration=map(clean,(base,hotfix,ui,stability,quality,ux,nav,simple,migration))
 
           needle='async function renderLiveTable(){'
           if ui.count(needle)!=1: raise SystemExit('renderLiveTable beklenen biçimde bulunamadı')
           ui=ui.replace(needle,"async function renderLiveTable(){if(window.__catlakStableLiveOwner)return;",1)
+
+          prepared_owner='async function renderPrepared(){'
+          if ui.count(prepared_owner)!=1: raise SystemExit('renderPrepared beklenen biçimde bulunamadı')
+          ui=ui.replace(prepared_owner,"async function renderPrepared(){if(window.__catlakPreparedOwner)return;",1)
 
           prepared="if(error){main.dataset.ccPage='';toast(error.message);return}\n  main.innerHTML="
           if prepared not in ui: raise SystemExit('Hazır Karakterler async render kalıbı bulunamadı')
@@ -98,7 +104,8 @@ jobs:
           entry=(
               "import {createClient} from '@supabase/supabase-js';\n"
               "const __catlakBaseReady=(async()=>{\n"+base+"\nwindow.__catlakSupabase=S;\nwindow.__catlakStableLiveOwner=true;\n})();\n"
-              "const __catlakUiReady=(async()=>{await __catlakBaseReady;\n"+ui+"\n})();\n"
+              "const __catlakHotfixReady=(async()=>{await __catlakBaseReady;\n"+hotfix+"\n})();\n"
+              "const __catlakUiReady=(async()=>{await __catlakHotfixReady;\n"+ui+"\n})();\n"
               "const __catlakStabilityReady=(async()=>{await __catlakUiReady;\n"+stability+"\n})();\n"
               "const __catlakQualityReady=(async()=>{await __catlakStabilityReady;\n"+quality+"\n})();\n"
               "const __catlakUxReady=(async()=>{await __catlakQualityReady;\n"+ux+"\n})();\n"
@@ -121,6 +128,7 @@ jobs:
       - name: Static verification
         run: |
           node --check browser-app.js
+          node --check hotfix-patch.js
           node --check ui-patch.js
           node --check stability-patch.js
           node --check gallery-quality-patch.js
@@ -131,7 +139,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('browser-app.js').read_text(encoding='utf-8')
-          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','axionblooder.github.io/catlak-cagi-online/?join=','Kalıcı Site Bağlantısı','catlak_generate_character_reconnect']
+          required=['Toplu Zar Sil','Partiye Yansıt','Stat Atölyesi','Hızlı Karakter Düzenleme','catlak_gm_update_character_sheet','Görsel Dosyası Seç','catlak-world-media','data-sw-upload','data-sw-delete','data-cc-world-tab','data-cc-map-tab','__catlakStableLiveOwner','__catlakRouteLoading','axionblooder.github.io/catlak-cagi-online/?join=','Kalıcı Site Bağlantısı','catlak_generate_character_reconnect','__catlakPreparedOwner','cc-hotfix-live','GM • KİŞİYE ÖZEL DURUM','cc-h-prepared-grid']
           missing=[x for x in required if x not in s]
           if missing: raise SystemExit('Üretim artifact özellikleri eksik: '+', '.join(missing))
           forbidden=['hidden-spring-7923.hosted.pageshare.ai/?join=','catlak-cagi-online.netlify.app/?join=','https://esm.sh/','catlak-transfer-session','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE','ccx-unified-world',"if(gm)gm.click()"]
