@@ -37,6 +37,9 @@ jobs:
           grep -q 'Aktif Etki / Debuff' /tmp/app.js
           grep -q 'catlak_update_vampire_kp' /tmp/app.js
           grep -q 'cc-hotfix-live' /tmp/app.js
+          grep -q 'cnl-player-party-style' /tmp/app.js
+          grep -q 'max-height:72vh' /tmp/app.js
+          grep -q '#app \[data-cc-world-tab\]' /tmp/app.js
           ! grep -q 'hidden-spring-7923.hosted.pageshare.ai/?join=' /tmp/app.js
           ! grep -q 'catlak-cagi-online.netlify.app/?join=' /tmp/app.js
           ! grep -q 'catlak-transfer-session' /tmp/app.js
@@ -89,7 +92,7 @@ jobs:
                 const page=await browser.newPage();
                 const errors=[];
                 page.on('pageerror',e=>errors.push(String(e.message||e)));
-                const response=await page.goto(process.env.LIVE_URL+'?smoke=presence-v3-'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+                const response=await page.goto(process.env.LIVE_URL+'?smoke=gallery-privacy-'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
                 if(response?.status()!==200)throw new Error(`Root status ${response?.status()}`);
                 await page.waitForFunction(()=>{
                   const app=document.querySelector('#app')?.textContent||'';
