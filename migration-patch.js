@@ -36,7 +36,7 @@ async function ccMigEnsurePanel(){
 
     const rows=data||[];
     const section=document.createElement('section');
-    section.className='card';section.dataset.ccReconnectPanel='1';
+    section.className='card';section.dataset.ccReconnectPanel='1';section.dataset.ccLegacyMarker='Kalıcı Site Bağlantısı';
     section.innerHTML=`<div class="eyebrow">AKTİF OYUNCULAR • KALICI BAĞLANTI</div><h2>Oyuncuyu Yeniden Bağla</h2><p class="muted">Bu alan yalnız Hazır Karakterler bölümünde tutulur; Canlı Oyun Masası sade kalır. Aktif bir oyuncu tarayıcı veya cihaz değiştirirse buradan tek kullanımlık, 24 saat geçerli yeniden bağlama linki oluşturabilirsin.</p>${rows.length?`<div class="grid">${rows.map(c=>`<article class="card"><h3>${ccMigEsc(c.name)}</h3><p class="muted">${ccMigEsc(c.species_name||'')} • ${ccMigEsc(c.class_name||'')}</p><button type="button" class="primary" data-cc-reconnect="${c.id}" data-cc-reconnect-name="${ccMigEsc(c.name)}">Yeniden Bağlama Linki Oluştur</button></article>`).join('')}</div>`:'<div class="cc-empty">Şu anda yeniden bağlanabilecek aktif oyuncu yok.</div>'}`;
     main.appendChild(section);
   }catch(error){console.warn('CATLAK_RECONNECT_PANEL',error)}
