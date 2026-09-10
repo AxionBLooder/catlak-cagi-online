@@ -53,17 +53,18 @@ async function plaRefreshNow(force=false){
     ]);
     for(const r of [vr,ir,rr])if(r.error)throw r.error;
     const inv=vr.data||[],items=ir.data||[],rolls=rr.data||[],itemMap=new Map(items.map(i=>[i.id,i]));
+    let equipmentDirty=false;
     for(const stack of stacks){
       const cid=plaCharId(stack);if(!cid)continue;
       const sec=plaInventorySection(stack),rows=inv.filter(x=>x.character_id===cid).map(r=>({r,i:itemMap.get(r.item_id)})).filter(x=>x.i&&x.i.is_active!==false);
       if(sec){
         const sig=plaSignature(rows.map(x=>({...x.r,item_name:x.i.name,item_type:x.i.item_type,attack_formula:x.i.attack_formula,damage_formula:x.i.damage_formula,effects:x.i.effects,ac_mode:x.i.ac_mode,ac_value:x.i.ac_value})),['id','item_id','quantity','equipped','equipped_slot','item_name','item_type','attack_formula','damage_formula','effects','ac_mode','ac_value']);
-        if(force||sec.dataset.plaInventorySig!==sig){sec.innerHTML=`<div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${rows.length?`<div class="iw-player-grid">${rows.map(x=>plaPlayerItem(x.r,x.i)).join('')}</div>`:'<div class="iw-empty">Envanter boş.</div>'}`;sec.dataset.plaInventorySig=sig;sec.dataset.iwPlayerInventory='1'}
+        if(sec.dataset.plaInventorySig!==sig){sec.innerHTML=`<div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${rows.length?`<div class="iw-player-grid">${rows.map(x=>plaPlayerItem(x.r,x.i)).join('')}</div>`:'<div class="iw-empty">Envanter boş.</div>'}`;sec.dataset.plaInventorySig=sig;sec.dataset.iwPlayerInventory='1';equipmentDirty=true}
       }
       const rs=plaRollSection(stack),own=rolls.filter(x=>x.character_id===cid).slice(0,10);
-      if(rs){const sig=plaSignature(own,['id','label','roll_kind','formula','modifier','total','dice','created_at']);if(force||rs.dataset.plaRollSig!==sig){rs.innerHTML=`<div class="eyebrow">SON ZARLAR</div>${own.length?`<div class="rolls">${own.map(plaRollRow).join('')}</div>`:'<div class="empty">Henüz zar yok.</div>'}`;rs.dataset.plaRollSig=sig}}
+      if(rs){const sig=plaSignature(own,['id','label','roll_kind','formula','modifier','total','dice','created_at']);if(rs.dataset.plaRollSig!==sig){rs.innerHTML=`<div class="eyebrow">SON ZARLAR</div>${own.length?`<div class="rolls">${own.map(plaRollRow).join('')}</div>`:'<div class="empty">Henüz zar yok.</div>'}`;rs.dataset.plaRollSig=sig}}
     }
-    PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());
+    if(equipmentDirty)PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());
   }catch(e){console.warn('CATLAK_PLAYER_LIVE_REFRESH',e)}finally{plaRefreshing=false}
 }
 function plaRefreshSoon(force=false,delay=60){clearTimeout(plaRefreshTimer);plaRefreshTimer=setTimeout(()=>plaRefreshNow(force),delay)}
@@ -85,7 +86,7 @@ document.addEventListener('pointerdown',plaCapture,true);
 document.addEventListener('click',plaCapture,true);
 
 const plaObserver=new MutationObserver(()=>{if(plaIsSheet())plaRefreshSoon(false,120)});plaObserver.observe(PLA_APP,{childList:true,subtree:true});
-const plaChannel=PLA_S.channel('cc-player-live-actions')
+PLA_S.channel('cc-player-live-actions')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>plaRefreshSoon(true,30))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>plaRefreshSoon(true,30))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>plaRefreshSoon(true,30))
