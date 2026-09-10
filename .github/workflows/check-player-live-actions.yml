@@ -5,6 +5,7 @@ on:
       - 'player-live-actions-patch.js'
       - 'player-sheet-patch.js'
       - 'item-system-patch.js'
+      - 'index.html'
       - '.github/workflows/check-player-live-actions.yml'
   workflow_dispatch:
 jobs:
@@ -26,11 +27,17 @@ jobs:
           ! grep -q 'catlak_roll_stat' player-live-actions-patch.js
           grep -q 'plaOptimisticEquip' player-live-actions-patch.js
           grep -q 'plaStaticStats' player-live-actions-patch.js
+          grep -q 'plaClaimInventory' player-live-actions-patch.js
+          grep -q '__catlakPlayerLiveOwnsInventory' player-live-actions-patch.js
+          grep -q 'Saldırı 1d20' player-live-actions-patch.js
+          grep -q 'bonusu' player-live-actions-patch.js
+          grep -q 'playerlive-v4' index.html
+          grep -q 'preclaimPlayerInventory' index.html
           grep -q "table:'catlak_inventory'" player-live-actions-patch.js
           grep -q "table:'catlak_rolls'" player-live-actions-patch.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Browser action and realtime smoke
+      - name: Browser action realtime and ghost smoke
         run: |
           cat > player-live-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');
@@ -46,11 +53,12 @@ jobs:
               await page.evaluate(()=>{
                 window.__db={
                   catlak_inventory:[{id:'inv-1',character_id:'char-1',item_id:'item-1',quantity:1,equipped:false,equipped_slot:null,player_note:'',granted_at:'2026-01-01'}],
-                  catlak_items:[{id:'item-1',name:'Test Kılıcı',item_type:'weapon',description:'',attack_stat:'DEX',attack_bonus:0,attack_formula:'1d8',damage_formula:'',damage_type:'Kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],
+                  catlak_items:[{id:'item-1',name:'Test Kılıcı',item_type:'weapon',description:'',attack_stat:'DEX',attack_bonus:0,attack_formula:'1d20',damage_formula:'1d8',damage_type:'Kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],
                   catlak_rolls:[]
                 };
-                window.__rpcCalls=[];window.__baseHits=0;window.__handlers={};
+                window.__rpcCalls=[];window.__baseHits=0;window.__handlers={};window.__ghostRenders=0;
                 document.querySelector('#app').addEventListener('click',e=>{if(e.target.closest('[data-a]'))window.__baseHits++});
+                new MutationObserver(()=>requestAnimationFrame(()=>{document.querySelectorAll('.ps-inventory-card').forEach(s=>{if(!s.dataset.iwPlayerInventory)window.__ghostRenders++})})).observe(document.querySelector('#app'),{childList:true,subtree:true});
                 function q(table){const obj={select(){return obj},in(){return obj},order(){return obj},limit(){return obj},then(ok,bad){return Promise.resolve({data:window.__db[table]||[],error:null}).then(ok,bad)}};return obj}
                 const channel={on(_ev,filter,cb){(window.__handlers[filter.table]??=[]).push(cb);return channel},subscribe(){return channel}};
                 window.__fire=table=>(window.__handlers[table]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
@@ -59,7 +67,11 @@ jobs:
                   rpc:async(name,args)=>{
                     window.__rpcCalls.push({name,args});
                     if(name==='catlak_set_equipped'){await new Promise(r=>setTimeout(r,220));const x=window.__db.catlak_inventory.find(v=>v.id===args.p_inventory_id);x.equipped=!!args.p_equipped;x.equipped_slot=x.equipped?'main_weapon':null;return{data:x.equipped_slot,error:null}}
-                    if(name==='catlak_roll_weapon'){const damage=args.p_action==='damage';const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:'char-1',label:'Test Kılıcı • '+(damage?'Hasar':'Saldırı'),roll_kind:damage?'weapon_damage':'weapon_attack',formula:damage?'1d8':'1d20',modifier:damage?0:2,total:damage?6:17,dice:[damage?6:15],created_at:new Date().toISOString()};window.__db.catlak_rolls.unshift(r);return{data:r,error:null}}
+                    if(name==='catlak_roll_weapon'){
+                      const damage=args.p_action==='damage';
+                      const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:'char-1',label:'Test Kılıcı • '+(damage?'Hasar':'Saldırı'),roll_kind:damage?'weapon_damage':'weapon_attack',stat:'DEX',formula:damage?'1d8':'1d20',modifier:2,total:damage?8:17,dice:[damage?6:15],created_at:new Date().toISOString()};
+                      window.__db.catlak_rolls.unshift(r);return{data:r,error:null}
+                    }
                     return{data:null,error:null}
                   }
                 };
@@ -68,29 +80,41 @@ jobs:
               await page.waitForFunction(()=>document.body.textContent.includes('Test Kılıcı')&&document.body.textContent.includes('Kuşan')&&document.body.textContent.includes('Hasar Vur'));
               const stat=await page.evaluate(()=>({a:document.querySelector('#dex')?.getAttribute('data-a'),small:document.querySelector('#dex small')?.textContent,h:document.querySelector('.ps-stat-card h2')?.textContent}));
               if(stat.a!==null||/d20/i.test(stat.small||'')||stat.h!=='Statlar')throw new Error('Stat d20 still active '+JSON.stringify(stat));
+              const weaponMeta=await page.locator('[data-pla-inv-row="inv-1"] .iw-meta').textContent();
+              if(!weaponMeta.includes('Saldırı 1d20 + DEX bonusu')||!weaponMeta.includes('Hasar 1d8 + DEX bonusu'))throw new Error('Weapon meta wrong '+weaponMeta);
               const equip=page.getByRole('button',{name:'Kuşan',exact:true});
               await equip.dispatchEvent('pointerdown');
               const instant=await page.evaluate(()=>({text:document.querySelector('[data-pla-inv-row="inv-1"] [data-a="equip"]')?.textContent,on:document.querySelector('[data-pla-inv-row="inv-1"]')?.classList.contains('on')}));
               if(instant.text!=='Çıkar'||!instant.on)throw new Error('Equip was not optimistic '+JSON.stringify(instant));
               await page.waitForFunction(()=>document.body.textContent.includes('Çıkar'));
               await page.getByRole('button',{name:'Saldırı At',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('17'));
+              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('1d20 [15] +2'));
               await page.getByRole('button',{name:'Hasar Vur',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('6'));
+              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('1d8 [6] +2'));
+              await page.evaluate(()=>{
+                const old=document.querySelector('.ps-inventory-card');
+                const fresh=document.createElement('section');fresh.className='card ps-inventory-card';fresh.innerHTML='<div class="eyebrow">CANLI ENVANTER</div>';
+                old.replaceWith(fresh);
+              });
+              await page.waitForFunction(()=>document.querySelector('.ps-inventory-card')?.dataset.plaInventoryOwner==='1');
+              await page.waitForTimeout(100);
+              const ghost=await page.evaluate(()=>({count:window.__ghostRenders,iw:document.querySelector('.ps-inventory-card')?.dataset.iwPlayerInventory,owner:document.querySelector('.ps-inventory-card')?.dataset.plaInventoryOwner}));
+              if(ghost.count!==0||ghost.iw!=='1'||ghost.owner!=='1')throw new Error('Inventory ghost ownership failed '+JSON.stringify(ghost));
               await page.evaluate(()=>{
                 window.__db.catlak_items.push({id:'item-2',name:'Canlı İksir',item_type:'item',description:'Yeni eşya',effects:{item_mode:'general'},is_active:true});
                 window.__db.catlak_inventory.push({id:'inv-2',character_id:'char-1',item_id:'item-2',quantity:2,equipped:false,equipped_slot:null,player_note:'',granted_at:'2026-01-02'});
                 window.__fire('catlak_inventory');
               });
               await page.waitForFunction(()=>document.querySelector('.ps-inventory-card')?.textContent.includes('Canlı İksir ×2'));
-              const out=await page.evaluate(()=>({calls:window.__rpcCalls,baseHits:window.__baseHits,inventory:document.querySelector('.ps-inventory-card')?.textContent,rolls:document.querySelector('.ps-roll-card')?.textContent}));
+              const out=await page.evaluate(()=>({calls:window.__rpcCalls,baseHits:window.__baseHits,inventory:document.querySelector('.ps-inventory-card')?.textContent,rolls:document.querySelector('.ps-roll-card')?.textContent,ghost:window.__ghostRenders,owner:window.__catlakPlayerLiveOwnsInventory}));
               const names=out.calls.map(x=>x.name),weapon=out.calls.filter(x=>x.name==='catlak_roll_weapon').map(x=>x.args.p_action);
               if(names.filter(x=>x==='catlak_set_equipped').length!==1)throw new Error('Equip duplicated '+JSON.stringify(out));
               if(names.filter(x=>x==='catlak_roll_weapon').length!==2||weapon.join(',')!=='attack,damage')throw new Error('Weapon rolls wrong '+JSON.stringify(out));
               if(names.includes('catlak_roll_stat'))throw new Error('Stat roll should be disabled '+JSON.stringify(out));
               if(out.baseHits!==0)throw new Error('Base handler was not suppressed '+JSON.stringify(out));
+              if(out.ghost!==0||out.owner!==true)throw new Error('Ghost regression '+JSON.stringify(out));
               if(errors.length)throw new Error('Page errors '+errors.join(' | '));
-              console.log('PLAYER_LIVE_ACTIONS_OK',JSON.stringify({rpc:names,weapon,baseHits:out.baseHits,realtimeItem:out.inventory.includes('Canlı İksir'),attack17:out.rolls.includes('17'),damage6:out.rolls.includes('6'),statStatic:stat}));
+              console.log('PLAYER_LIVE_ACTIONS_OK',JSON.stringify({rpc:names,weapon,baseHits:out.baseHits,realtimeItem:out.inventory.includes('Canlı İksir'),attackD20:out.rolls.includes('1d20 [15] +2'),damageStat:out.rolls.includes('1d8 [6] +2'),ghostFree:out.ghost===0,statStatic:stat}));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
