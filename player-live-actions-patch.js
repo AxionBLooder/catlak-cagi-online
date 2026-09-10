@@ -52,8 +52,8 @@ function plaStaticStats(){
 function plaPlayerItem(r,i){
   const fx=i.effects||{},note=fx.public_note||'',mode=fx.item_mode||'general',type=i.item_type;let meta='',actions='';
   if(type==='weapon'){
-    const stat=i.attack_stat&&i.attack_stat!=='NONE'?i.attack_stat:'STR',damage=i.damage_formula||'Hasar zarı tanımsız',weaponBonus=plaNum(i.attack_bonus);
-    meta=`Saldırı 1d20 + ${stat} bonusu${weaponBonus?` ${weaponBonus>0?'+':'-'} ${Math.abs(weaponBonus)} silah`:''} • Hasar ${damage} + ${stat} bonusu`;
+    const stat=i.attack_stat&&i.attack_stat!=='NONE'?i.attack_stat:'STR',weaponBonus=plaNum(i.attack_bonus);
+    meta=`Saldırı • ${stat} bonusu${weaponBonus?` ${weaponBonus>0?'+':'-'} ${Math.abs(weaponBonus)} silah`:''} • Hasar • ${stat} bonusu`;
     actions=`<button type="button" data-a="equip" data-id="${r.id}" data-v="${r.equipped?'0':'1'}">${r.equipped?'Çıkar':'Kuşan'}</button><button type="button" class="primary" data-a="weapon" data-id="${r.id}" data-k="attack">Saldırı At</button><button type="button" data-a="weapon" data-id="${r.id}" data-k="damage">Hasar Vur</button>`;
   }else if(type==='armor'){
     meta=i.ac_mode==='set'?`AC Tabanı ${i.ac_value}`:i.ac_mode==='bonus'?`AC +${i.ac_value}`:'AC etkisi yok';
@@ -66,8 +66,8 @@ function plaPlayerItem(r,i){
   return `<article class="iw-player-item ${r.equipped?'on':''}" data-pla-inv-row="${r.id}"><span class="tag">${type==='weapon'?'SİLAH':type==='armor'?'ZIRH':'EŞYA'}</span><h3>${plaEsc(i.name)} ${r.quantity>1?'×'+r.quantity:''}</h3><p>${plaEsc(i.description||'')}</p><div class="iw-meta">${plaEsc(meta)}</div>${note?`<div class="iw-player-note">${plaEsc(note)}</div>`:''}${actions?`<div class="actions" style="margin-top:10px">${actions}</div>`:''}</article>`;
 }
 function plaRollRow(r){
-  const die=Array.isArray(r.dice)?Number(r.dice[0]):NaN,crit=die===20?' cc-critical':die===1?' cc-fumble':'',diceTxt=Array.isArray(r.dice)&&r.dice.length?` [${r.dice.map(plaNum).join(', ')}]`:'';
-  return `<div class="roll${crit}" data-pla-roll="${r.id}"><div class="die">${r.total==null?'?':plaEsc(r.total)}</div><div><b>${plaEsc(r.label||r.roll_kind||'Zar')}</b><br><small>${plaEsc(r.formula||'')}${plaEsc(diceTxt)}${r.modifier?` ${r.modifier>0?'+':''}${plaNum(r.modifier)}`:''} • ${new Date(r.created_at).toLocaleTimeString('tr-TR')}</small>${Number(r.total)===0?'<div class="ccr-critical">KRİTİK BAŞARISIZLIK</div>':''}</div></div>`;
+  const die=Array.isArray(r.dice)?Number(r.dice[0]):NaN,crit=die===20?' cc-critical':die===1?' cc-fumble':'',diceTxt=Array.isArray(r.dice)&&r.dice.length?`[${r.dice.map(plaNum).join(', ')}]`:'';
+  return `<div class="roll${crit}" data-pla-roll="${r.id}"><div class="die">${r.total==null?'?':plaEsc(r.total)}</div><div><b>${plaEsc(r.label||r.roll_kind||'Zar')}</b><br><small>${plaEsc(diceTxt)}${r.modifier?` ${r.modifier>0?'+':''}${plaNum(r.modifier)}`:''} • ${new Date(r.created_at).toLocaleTimeString('tr-TR')}</small>${Number(r.total)===0?'<div class="ccr-critical">KRİTİK BAŞARISIZLIK</div>':''}</div></div>`;
 }
 function plaSignature(rows,fields){return JSON.stringify(rows.map(r=>fields.map(k=>r?.[k]??null)))}
 async function plaRefreshNow(force=false){
