@@ -1,0 +1,75 @@
+name: Check Item System
+on:
+  push:
+    paths:
+      - '.github/workflows/check-item-system.yml'
+  workflow_dispatch:
+concurrency:
+  group: catlak-item-system-smoke
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify production item assets
+        env:
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-delay 2 "$LIVE_URL?item-smoke=$(date +%s)" -o /tmp/index.html
+          grep -q 'item-system-patch.js?v=item-v1' /tmp/index.html
+          curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}item-system-patch.js?item-smoke=$(date +%s)" -o /tmp/item.js
+          node --check /tmp/item.js
+          grep -q 'Silah Ayarları' /tmp/item.js
+          grep -q 'Zırh Ayarları' /tmp/item.js
+          grep -q 'Eşya Ayarları' /tmp/item.js
+          grep -q 'Pasif / Aksesuar' /tmp/item.js
+          grep -q 'Tüketilebilir' /tmp/item.js
+          grep -q 'catlak_gm_give_item' /tmp/item.js
+          grep -q 'catlak_gm_adjust_inventory_quantity' /tmp/item.js
+          grep -q 'catlak_use_inventory_item' /tmp/item.js
+          echo ITEM_STATIC_OK
+      - name: Verify no ghost fields in Chrome
+        env:
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
+        run: |
+          cat > .item-smoke.cjs <<'JS'
+          const { chromium }=require('playwright-core');
+          const { execFileSync }=require('child_process');
+          (async()=>{
+            let exe='';
+            for(const cmd of ['google-chrome','google-chrome-stable','chromium']){
+              try{exe=execFileSync('bash',['-lc',`command -v ${cmd}`],{encoding:'utf8'}).trim();if(exe)break}catch{}
+            }
+            if(!exe)throw new Error('Chrome binary missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              const res=await page.goto(process.env.LIVE_URL+'?item-browser-smoke='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+              if(res?.status()!==200)throw new Error('Root status '+res?.status());
+              await page.waitForFunction(()=>window.__catlakItemSystemTest&&document.querySelector('#app')?.textContent?.includes('E-posta'),{timeout:25000});
+              const out=await page.evaluate(()=>{
+                const t=window.__catlakItemSystemTest;
+                const weapon=t.fields('weapon',{}),armor=t.fields('armor',{}),item=t.fields('item',{effects:{item_mode:'general'}}),acc=t.itemExtra('accessory',{}),con=t.itemExtra('consumable',{});
+                return {
+                  weaponOk:weapon.includes('Saldırı Formülü')&&!weapon.includes('AC Değeri')&&!weapon.includes('Eşya Davranışı'),
+                  armorOk:armor.includes('AC Değeri')&&!armor.includes('Saldırı Formülü')&&!armor.includes('Eşya Davranışı'),
+                  itemOk:item.includes('Eşya Davranışı')&&!item.includes('Saldırı Formülü')&&!item.includes('AC Değeri'),
+                  accessoryOk:acc.includes('iw-fx-STR')&&acc.includes('hp_max'),
+                  consumableOk:con.includes('Kullanım Formülü')&&con.includes('HP Yenile')
+                };
+              });
+              if(!Object.values(out).every(Boolean))throw new Error('Ghost/type test failed: '+JSON.stringify(out));
+              await page.waitForTimeout(2000);
+              if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+              console.log('ITEM_BROWSER_SMOKE_OK',JSON.stringify(out));
+              await page.close();
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node .item-smoke.cjs
