@@ -13,10 +13,10 @@ const CRG_NAV_PLAN=[
   '[data-cc-map-tab]',
   '[data-cc-world-tab]',
   '[data-tab="items"]',
-  '[data-tab="builder"]',
   '[data-cc-stats-tab]',
-  '[data-tab="races"]',
   '[data-tab="rolls"]',
+  '[data-tab="races"]',
+  '[data-tab="builder"]',
   '[data-ccr-hub]'
 ];
 
