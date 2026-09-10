@@ -7,6 +7,16 @@ const crgIsGM=()=>crgTxt(CRG_APP.querySelector('.role'))==='GM';
 const crgToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(crgToast.t);crgToast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
 let crgScheduled=false;
 
+// GM özel d20/d100 zarları yalnız Zar Akışı'nda görünür.
+// Canlı Oyun Masası'ndaki eski hızlı zar kutusunu görsel olarak kaldırır;
+// event-rolls-patch içindeki Zar Akışı kontrollerine dokunmaz.
+if(!document.querySelector('#crg-live-dice-cleanup-style')){
+  const s=document.createElement('style');
+  s.id='crg-live-dice-cleanup-style';
+  s.textContent='.cc-live-two [data-dx-gm-dice]{display:none!important}';
+  document.head.appendChild(s);
+}
+
 const CRG_NAV_PLAN=[
   '[data-tab="gm"]',
   '[data-gmt-open]',
