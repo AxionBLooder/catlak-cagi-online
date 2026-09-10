@@ -24,7 +24,7 @@ jobs:
           grep -q 'Savaş & Durumlar' /tmp/gm-tools.js
           grep -q 'Olay Atölyesi' /tmp/gm-tools.js
           grep -q 'Oturum Günlüğü' /tmp/gm-tools.js
-          grep -q 'Takılı Teçhizat' /tmp/gm-tools.js
+          grep -q 'TAKILI TEÇHİZAT' /tmp/gm-tools.js
           grep -q 'catlak_gm_combat_next_turn' /tmp/gm-tools.js
           grep -q 'catlak_gm_add_condition' /tmp/gm-tools.js
           grep -q 'catlak_gm_update_event_rule' /tmp/gm-tools.js
