@@ -26,7 +26,7 @@ jobs:
           grep -q 'Pasif / Aksesuar' /tmp/item-system-patch.js
           grep -q 'Olay Geçmişini Temizle' /tmp/event-rolls-patch.js
           grep -q 'Savaş & Durumlar' /tmp/gm-tools-patch.js
-          grep -q 'Takılı Teçhizat' /tmp/gm-tools-patch.js
+          grep -q 'TAKILI TEÇHİZAT' /tmp/gm-tools-patch.js
           echo REGRESSION_STATIC_OK
       - name: Verify permanent site in Chrome
         env:
