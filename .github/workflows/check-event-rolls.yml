@@ -1,0 +1,52 @@
+name: Check Event Rolls
+on:
+  push:
+    paths:
+      - '.github/workflows/check-event-rolls.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify production event assets
+        env:
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 2 "$LIVE_URL?eventcheck=$(date +%s)" -o /tmp/index.html
+          grep -q 'event-rolls-patch.js?v=events-v1' /tmp/index.html
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}event-rolls-patch.js?eventcheck=$(date +%s)" -o /tmp/event-rolls.js
+          node --check /tmp/event-rolls.js
+          grep -q 'Olay Geçmişini Temizle' /tmp/event-rolls.js
+          grep -q 'Oyuncu Zarlarını Temizle' /tmp/event-rolls.js
+          grep -q 'GM Zarlarını Temizle' /tmp/event-rolls.js
+          grep -q 'Tamamen saçma bir olay' /tmp/event-rolls.js
+          grep -q 'Konuşan silahlar' /tmp/event-rolls.js
+          grep -q 'Mitik eşya' /tmp/event-rolls.js
+          ! grep -q 'data-er-delete' /tmp/event-rolls.js
+          echo EVENT_ASSETS_OK
+      - name: Verify GM event UI and thresholds in Chrome
+        run: |
+          cat > event-smoke.html <<'EOF'
+          <!doctype html><html lang="tr"><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button data-tab="rolls" class="on">Zar Akışı</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
+          window.__rpcCalls=[];
+          const rows=[
+            {id:1,character_id:'c1',roll_kind:'stat',label:'DEX Testi',formula:'1d20',dice:[5],modifier:2,total:0,dm_ruling:'',created_at:new Date().toISOString()},
+            {id:2,character_id:null,roll_kind:'gm_d20',label:'GM d20',formula:'1d20',dice:[12],modifier:0,total:12,dm_ruling:'',created_at:new Date().toISOString()},
+            {id:3,character_id:null,roll_kind:'gm_event_d6',label:'d6 Olay Tablosu',formula:'1d6',dice:[4],modifier:0,total:4,dm_ruling:'Hazine',created_at:new Date().toISOString()}
+          ];
+          function from(table){const chain={select(){return chain},order(){return chain},limit(){return Promise.resolve({data:table==='catlak_rolls'?rows:[{id:'c1',name:'Test Oyuncu'}],error:null})},eq(){return Promise.resolve({data:[{id:'c1',name:'Test Oyuncu'}],error:null})}};return chain}
+          window.__catlakSupabase={from,rpc:async(fn,args)=>{window.__rpcCalls.push([fn,args]);return {data:{total:6,dm_ruling:'Tamamen saçma bir olay'},error:null}},channel:()=>({on(){return this},subscribe(){return this}})};
+          </script><script src="./event-rolls-patch.js"></script></body></html>
+          EOF
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/event-http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > event-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await b.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/event-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForSelector('[data-er-event="d6"]');const state=await p.evaluate(()=>({cols:document.querySelector('.er-wrap')?.children.length,clears:document.querySelectorAll('[data-er-clear]').length,individual:document.querySelectorAll('[data-er-delete]').length,critical:(document.querySelector('.er-critical')?.textContent||''),d6:[1,2,3,4,5,6].map(n=>window.__catlakEventRollsTest.outcome('d6',n)),d20:[window.__catlakEventRollsTest.outcome('d20',10),window.__catlakEventRollsTest.outcome('d20',11)],d100:[window.__catlakEventRollsTest.outcome('d100',49),window.__catlakEventRollsTest.outcome('d100',50)],d200:[window.__catlakEventRollsTest.outcome('d200',100),window.__catlakEventRollsTest.outcome('d200',101)]}));if(state.cols!==2)throw new Error('Two-column layout missing');if(state.clears!==3||state.individual!==0)throw new Error('Bulk-only delete UI invalid');if(!state.critical.includes('KRİTİK BAŞARISIZLIK'))throw new Error('Critical failure badge missing');if(JSON.stringify(state.d6)!==JSON.stringify(['Tehlike','Garip NPC','Canavar','Hazine','Eski Dünya kalıntısı','Tamamen saçma bir olay']))throw new Error('d6 mapping invalid');if(JSON.stringify(state.d20)!==JSON.stringify(['İyi şeyler','Kötü şeyler']))throw new Error('d20 thresholds invalid');if(JSON.stringify(state.d100)!==JSON.stringify(['İyi şeyler olur','Belirsiz öğeler ve eşyalar']))throw new Error('d100 thresholds invalid');if(JSON.stringify(state.d200)!==JSON.stringify(['Konuşan silahlar','Mitik eşya']))throw new Error('d200 thresholds invalid');await p.click('[data-er-event="d6"]');await p.waitForTimeout(150);const calls=await p.evaluate(()=>window.__rpcCalls);if(!calls.some(x=>x[0]==='catlak_gm_roll_event'&&x[1]?.p_table==='d6'))throw new Error('d6 RPC not called');if(errors.length)throw new Error(errors.join(' | '));console.log('EVENT_ROLLS_BROWSER_OK',JSON.stringify(state));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node event-smoke.cjs
