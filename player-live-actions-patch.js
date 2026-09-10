@@ -2,7 +2,6 @@ const PLA_S=window.__catlakSupabase;
 const PLA_APP=document.querySelector('#app');
 if(!PLA_S||!PLA_APP)throw new Error('Çatlak Çağı oyuncu canlı aksiyon katmanı başlatılamadı.');
 
-const PLA_STATS=['STR','DEX','CON','INT','WIS','CHA'];
 const plaTxt=e=>String(e?.textContent||'').trim();
 const plaEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const plaNum=x=>Number(x||0);
@@ -14,16 +13,39 @@ let plaRefreshTimer=null,plaRefreshing=false,plaLastRefresh=0;
 const plaBusy=new Set();
 const plaActed=new WeakMap();
 
+if(!document.querySelector('#pla-player-live-style')){
+  const s=document.createElement('style');s.id='pla-player-live-style';s.textContent=`
+  .ps-player-sheet .pla-static-stats .eyebrow{display:none!important}
+  .ps-player-sheet .pla-static-stats .stat{cursor:default!important;pointer-events:none!important;transform:none!important}
+  .ps-player-sheet .pla-static-stats .stat:hover{transform:none!important;box-shadow:none!important}
+  .ps-player-sheet .iw-player-item.pla-equip-pending{opacity:.82}
+  `;document.head.appendChild(s)
+}
+
 function plaCharId(stack){return stack?.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||''}
 function plaEyebrow(sec){return plaTxt(sec?.querySelector(':scope > .eyebrow, :scope > .section-title .eyebrow'))}
 function plaInventorySection(stack){return [...stack.querySelectorAll('section.card')].find(s=>plaEyebrow(s)==='CANLI ENVANTER')||null}
 function plaRollSection(stack){return [...stack.querySelectorAll('section.card')].find(s=>plaEyebrow(s)==='SON ZARLAR')||null}
 function plaModeLabel(m){return m==='accessory'?'Pasif / Aksesuar':m==='consumable'?'Tüketilebilir':'Genel Eşya'}
+function plaStaticStats(){
+  if(!plaIsSheet())return;
+  PLA_APP.querySelectorAll('main .cc-character-stack section.card').forEach(sec=>{
+    if(plaEyebrow(sec)!=='D20 TESTLERİ'&&!sec.classList.contains('ps-stat-card'))return;
+    sec.classList.add('pla-static-stats');
+    const h=sec.querySelector('.section-title h2, :scope > h2');if(h&&h.textContent!=='Statlar')h.textContent='Statlar';
+    sec.querySelectorAll('.stat').forEach(b=>{
+      if(b.dataset.a==='stat'){b.removeAttribute('data-a');b.removeAttribute('data-id');b.removeAttribute('data-stat')}
+      b.classList.add('static');b.setAttribute('aria-disabled','true');b.tabIndex=-1;
+      const sm=b.querySelector('small');if(sm){const t=plaTxt(sm).replace(/\s*•\s*d20(?:\s*at)?\s*$/i,'').trim();if(sm.textContent!==t)sm.textContent=t}
+    })
+  })
+}
 function plaPlayerItem(r,i){
   const fx=i.effects||{},note=fx.public_note||'',mode=fx.item_mode||'general',type=i.item_type;let meta='',actions='';
   if(type==='weapon'){
-    meta=`${i.attack_formula||'1d20'}${i.attack_stat&&i.attack_stat!=='NONE'?' + '+i.attack_stat:''}${i.damage_formula?' • Hasar '+i.damage_formula:''}`;
-    actions=`<button type="button" data-a="equip" data-id="${r.id}" data-v="${r.equipped?'0':'1'}">${r.equipped?'Çıkar':'Kuşan'}</button><button type="button" class="primary" data-a="weapon" data-id="${r.id}" data-k="attack">Saldırı At</button>${i.damage_formula?`<button type="button" data-a="weapon" data-id="${r.id}" data-k="damage">Hasar At</button>`:''}`;
+    const damage=i.damage_formula||i.attack_formula||'GM Kararı';
+    meta=`${i.attack_formula||'1d20'}${i.attack_stat&&i.attack_stat!=='NONE'?' + '+i.attack_stat:''} • Hasar ${damage}`;
+    actions=`<button type="button" data-a="equip" data-id="${r.id}" data-v="${r.equipped?'0':'1'}">${r.equipped?'Çıkar':'Kuşan'}</button><button type="button" class="primary" data-a="weapon" data-id="${r.id}" data-k="attack">Saldırı At</button><button type="button" data-a="weapon" data-id="${r.id}" data-k="damage">Hasar Vur</button>`;
   }else if(type==='armor'){
     meta=i.ac_mode==='set'?`AC Tabanı ${i.ac_value}`:i.ac_mode==='bonus'?`AC +${i.ac_value}`:'AC etkisi yok';
     actions=`<button type="button" data-a="equip" data-id="${r.id}" data-v="${r.equipped?'0':'1'}">${r.equipped?'Çıkar':'Kuşan'}</button>`;
@@ -42,7 +64,7 @@ function plaSignature(rows,fields){return JSON.stringify(rows.map(r=>fields.map(
 async function plaRefreshNow(force=false){
   if(!plaIsSheet()||plaRefreshing)return;
   if(!force&&Date.now()-plaLastRefresh<180)return;
-  plaRefreshing=true;plaLastRefresh=Date.now();
+  plaStaticStats();plaRefreshing=true;plaLastRefresh=Date.now();
   try{
     const stacks=[...PLA_APP.querySelectorAll('main .cc-character-stack')];if(!stacks.length)return;
     const ids=[...new Set(stacks.map(plaCharId).filter(Boolean))];if(!ids.length)return;
@@ -65,33 +87,39 @@ async function plaRefreshNow(force=false){
       if(rs){const sig=plaSignature(own,['id','label','roll_kind','formula','modifier','total','dice','created_at']);if(rs.dataset.plaRollSig!==sig){rs.innerHTML=`<div class="eyebrow">SON ZARLAR</div>${own.length?`<div class="rolls">${own.map(plaRollRow).join('')}</div>`:'<div class="empty">Henüz zar yok.</div>'}`;rs.dataset.plaRollSig=sig}}
     }
     if(equipmentDirty)PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());
+    plaStaticStats();
   }catch(e){console.warn('CATLAK_PLAYER_LIVE_REFRESH',e)}finally{plaRefreshing=false}
 }
 function plaRefreshSoon(force=false,delay=60){clearTimeout(plaRefreshTimer);plaRefreshTimer=setTimeout(()=>plaRefreshNow(force),delay)}
-function plaActionButton(target){const b=target?.closest?.('[data-a="equip"][data-id],[data-a="weapon"][data-id],[data-a="stat"][data-id]');if(!b||!plaIsSheet()||!b.closest('main'))return null;return b}
+function plaActionButton(target){const b=target?.closest?.('[data-a="equip"][data-id],[data-a="weapon"][data-id]');if(!b||!plaIsSheet()||!b.closest('main'))return null;return b}
+function plaOptimisticEquip(b,equip){
+  const card=b.closest('.iw-player-item');if(!card)return()=>{};
+  const prev={on:card.classList.contains('on'),text:b.textContent,v:b.dataset.v};
+  const tag=plaTxt(card.querySelector('.tag')),off=tag==='EŞYA'?'Tak':'Kuşan';
+  card.classList.add('pla-equip-pending');card.classList.toggle('on',equip);b.dataset.v=equip?'0':'1';b.textContent=equip?'Çıkar':off;
+  return()=>{card.classList.toggle('on',prev.on);card.classList.remove('pla-equip-pending');b.textContent=prev.text;b.dataset.v=prev.v}
+}
 async function plaRun(b){
-  const a=b.dataset.a,id=b.dataset.id;if(!a||!id)return;const key=`${a}:${id}:${b.dataset.k||b.dataset.stat||b.dataset.v||''}`;if(plaBusy.has(key))return;plaBusy.add(key);b.disabled=true;
+  const a=b.dataset.a,id=b.dataset.id;if(!a||!id)return;const key=`${a}:${id}:${b.dataset.k||b.dataset.v||''}`;if(plaBusy.has(key))return;plaBusy.add(key);b.disabled=true;let rollback=null;
   try{
     if(a==='equip'){
-      const equip=b.dataset.v==='1',r=await PLA_S.rpc('catlak_set_equipped',{p_inventory_id:id,p_equipped:equip});if(r.error)throw r.error;plaToast(equip?'Teçhizat kuşanıldı.':'Teçhizat çıkarıldı.');plaRefreshSoon(true,20);
+      const equip=b.dataset.v==='1';rollback=plaOptimisticEquip(b,equip);const r=await PLA_S.rpc('catlak_set_equipped',{p_inventory_id:id,p_equipped:equip});if(r.error)throw r.error;b.closest('.iw-player-item')?.classList.remove('pla-equip-pending');plaToast(equip?'Teçhizat kuşanıldı.':'Teçhizat çıkarıldı.');PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());plaRefreshSoon(true,10);
     }else if(a==='weapon'){
-      const kind=b.dataset.k==='damage'?'damage':'attack',r=await PLA_S.rpc('catlak_roll_weapon',{p_inventory_id:id,p_action:kind});if(r.error)throw r.error;const d=r.data||{};plaToast(d.total==null?`${d.label||'Silah'}: GM Kararı`:`${d.label||'Silah'}: ${d.total}`);plaRefreshSoon(true,20);
-    }else if(a==='stat'){
-      const stat=String(b.dataset.stat||'').toUpperCase();if(!PLA_STATS.includes(stat))throw new Error('Geçersiz stat');const r=await PLA_S.rpc('catlak_roll_stat',{p_character_id:id,p_stat:stat});if(r.error)throw r.error;const d=r.data||{};plaToast(`${d.label||stat}: ${d.total}`);plaRefreshSoon(true,20);
+      const kind=b.dataset.k==='damage'?'damage':'attack',r=await PLA_S.rpc('catlak_roll_weapon',{p_inventory_id:id,p_action:kind});if(r.error)throw r.error;const d=r.data||{};plaToast(d.total==null?`${d.label||'Silah'}: GM Kararı`:`${d.label||'Silah'}: ${d.total}`);plaRefreshSoon(true,10);
     }
-  }catch(e){plaToast(e?.message||String(e))}finally{plaBusy.delete(key);if(b.isConnected)b.disabled=false}
+  }catch(e){rollback?.();plaToast(e?.message||String(e));plaRefreshSoon(true,40)}finally{plaBusy.delete(key);if(b.isConnected)b.disabled=false}
 }
 function plaCapture(e){const b=plaActionButton(e.target);if(!b)return;e.preventDefault();e.stopImmediatePropagation();if(e.type==='pointerdown'){plaActed.set(b,Date.now());plaRun(b);return}const at=plaActed.get(b)||0;if(Date.now()-at<900)return;plaActed.set(b,Date.now());plaRun(b)}
 document.addEventListener('pointerdown',plaCapture,true);
 document.addEventListener('click',plaCapture,true);
 
-const plaObserver=new MutationObserver(()=>{if(plaIsSheet())plaRefreshSoon(false,120)});plaObserver.observe(PLA_APP,{childList:true,subtree:true});
+const plaObserver=new MutationObserver(()=>{if(plaIsSheet()){plaStaticStats();plaRefreshSoon(false,120)}});plaObserver.observe(PLA_APP,{childList:true,subtree:true});
 PLA_S.channel('cc-player-live-actions')
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>plaRefreshSoon(true,30))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>{PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());plaRefreshSoon(true,20)})
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>plaRefreshSoon(true,30))
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>plaRefreshSoon(true,30))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>plaRefreshSoon(true,20))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>plaRefreshSoon(false,80))
  .subscribe();
-setInterval(()=>{if(plaIsSheet())plaRefreshSoon(false,0)},4000);
-setTimeout(()=>plaRefreshSoon(true,0),350);
-window.__catlakPlayerLiveTest={refresh:plaRefreshNow,item:plaPlayerItem,roll:plaRollRow};
+setInterval(()=>{if(plaIsSheet()){plaStaticStats();plaRefreshSoon(false,0)}},4000);
+setTimeout(()=>{plaStaticStats();plaRefreshSoon(true,0)},250);
+window.__catlakPlayerLiveTest={refresh:plaRefreshNow,item:plaPlayerItem,roll:plaRollRow,staticStats:plaStaticStats};
