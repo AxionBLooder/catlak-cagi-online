@@ -11,7 +11,7 @@ let dxBusy=false,dxGmBusy=false,dxKeepY=null,dxKeepUntil=0,dxPaintScheduled=fals
 const dxPlayerResults=new Map();
 
 const dxCss=`
-.cc-critical-fail{display:inline-flex;align-items:center;margin-top:6px;padding:4px 8px;border-radius:999px;border:1px solid #8b3948;background:#2b1118;color:#ffb7c2;font-size:.72rem;font-weight:900;letter-spacing:.07em}.cc-player-roll-result{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 12px;padding:12px 14px;border:1px solid #5c7f98;border-radius:13px;background:linear-gradient(135deg,#0b2030,#0b1723);box-shadow:inset 0 0 0 1px #6cdcff12}.cc-player-roll-result .cc-player-roll-label{font-size:.8rem;font-weight:900;letter-spacing:.11em;color:var(--cyan)}.cc-player-roll-result .cc-player-roll-total{font-size:2rem;line-height:1;font-weight:950;color:var(--text)}.cc-player-roll-result .cc-player-roll-critical{display:block;margin-top:5px;color:#ffb7c2;font-size:.7rem;font-weight:900;letter-spacing:.06em}.cc-gm-dice-box{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#08131f}.cc-gm-dice-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.cc-gm-dice-head h3{margin:2px 0 0}.cc-gm-dice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cc-gm-die-panel{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0b1723}.cc-gm-die-panel button.primary{width:100%;font-weight:900}.cc-gm-die-results{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px}.cc-gm-die-result{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:10px;padding:5px 7px;background:#07121d}.cc-gm-die-result b{font-size:1.05rem}.cc-gm-die-result button{padding:2px 6px;font-size:.72rem}.cc-gm-dice-note{font-size:.76rem;color:var(--muted);margin-top:8px}@media(max-width:640px){.cc-player-roll-result{padding:11px 12px}.cc-player-roll-result .cc-player-roll-total{font-size:1.75rem}.cc-gm-dice-grid{grid-template-columns:1fr}}
+.cc-critical-fail{display:inline-flex;align-items:center;margin-top:6px;padding:4px 8px;border-radius:999px;border:1px solid #8b3948;background:#2b1118;color:#ffb7c2;font-size:.72rem;font-weight:900;letter-spacing:.07em}.cc-player-roll-result{display:flex;align-items:center;justify-content:space-between;gap:14px;grid-column:1/-1;margin:0 0 2px;padding:11px 13px;border:1px solid #5c7f98;border-radius:13px;background:linear-gradient(135deg,#0b2030,#0b1723);box-shadow:inset 0 0 0 1px #6cdcff12}.cc-player-roll-result .cc-player-roll-label{font-size:.76rem;font-weight:900;letter-spacing:.11em;color:var(--cyan)}.cc-player-roll-result .cc-player-roll-total{font-size:2rem;line-height:1;font-weight:950;color:var(--text)}.cc-player-roll-result .cc-player-roll-critical{display:block;margin-top:5px;color:#ffb7c2;font-size:.7rem;font-weight:900;letter-spacing:.06em}.cc-gm-dice-box{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#08131f}.cc-gm-dice-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.cc-gm-dice-head h3{margin:2px 0 0}.cc-gm-dice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cc-gm-die-panel{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0b1723}.cc-gm-die-panel button.primary{width:100%;font-weight:950;font-size:1.15rem}.cc-gm-die-results{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px}.cc-gm-die-result{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:10px;padding:5px 7px;background:#07121d}.cc-gm-die-result b{font-size:1.05rem}.cc-gm-die-result button{padding:2px 6px;font-size:.72rem}.cc-gm-dice-note{font-size:.76rem;color:var(--muted);margin-top:8px}@media(max-width:640px){.cc-player-roll-result{padding:10px 11px}.cc-player-roll-result .cc-player-roll-total{font-size:1.7rem}.cc-gm-dice-grid{grid-template-columns:1fr}}
 `;
 if(!document.querySelector('#cc-dice-ux-style')){const s=document.createElement('style');s.id='cc-dice-ux-style';s.textContent=dxCss;document.head.appendChild(s)}
 
@@ -41,14 +41,15 @@ function dxSetPlayerResult(cid,value){
 function dxPaintPlayerResults(){
   if(dxIsGM()||dxTab()!=='sheet')return;
   DX_APP.querySelectorAll('main .cc-character-stack').forEach(stack=>{
-    const cid=stack.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||'';
-    if(!cid)return;
+    const hero=stack.querySelector('section.hero');
+    const cid=hero?.querySelector('[data-a="hp"][data-id]')?.dataset.id||'';
+    if(!cid||!hero)return;
     const value=dxGetPlayerResult(cid);if(!value)return;
-    let statCard=stack.querySelector('.ps-stat-card');
-    if(!statCard)statCard=[...stack.querySelectorAll('section.card')].find(sec=>dxTxt(sec.querySelector('.eyebrow'))==='D20 TESTLERİ');
-    if(!statCard)return;
-    let box=statCard.querySelector('[data-dx-player-result]');
-    if(!box){box=document.createElement('div');box.className='cc-player-roll-result';box.dataset.dxPlayerResult='1';const stats=statCard.querySelector('.stats');stats?statCard.insertBefore(box,stats):statCard.appendChild(box)}
+    const vitals=hero.querySelector('.vitals');if(!vitals)return;
+    stack.querySelectorAll('[data-dx-player-result]').forEach(x=>{if(x.parentElement!==vitals)x.remove()});
+    let box=vitals.querySelector(':scope > [data-dx-player-result]');
+    if(!box){box=document.createElement('div');box.className='cc-player-roll-result';box.dataset.dxPlayerResult='1';vitals.prepend(box)}
+    else if(vitals.firstElementChild!==box)vitals.prepend(box);
     const total=value.total==null?'SONUÇ YOK':String(value.total);
     const signature=`${value.label}|${total}|${Number(value.total)===0?'1':'0'}`;
     if(box.dataset.dxSignature===signature)return;
@@ -98,7 +99,7 @@ async function dxPaintGmDice(force=false){
     const rolls=await dxLoadGmRolls();
     const d20=rolls.filter(r=>r.roll_kind==='gm_d20').slice(0,6),d100=rolls.filter(r=>r.roll_kind==='gm_d100').slice(0,6);
     const signature=rolls.map(r=>`${r.id}:${r.roll_kind}:${r.total}`).join('|');
-    const html=`<div class="cc-gm-dice-head"><div><div class="eyebrow">GM • ÖZEL ZARLAR</div><h3>d20 & d100</h3></div><button type="button" class="danger small" data-dx-gm-clear>GM Zarlarını Temizle</button></div><div class="cc-gm-dice-grid"><div class="cc-gm-die-panel"><button type="button" class="primary" data-dx-gm-roll-kind="d20">🎲 d20 At</button><div class="cc-gm-die-results">${d20.length?d20.map(dxResultHtml).join(''):'<small class="muted">Henüz d20 yok.</small>'}</div></div><div class="cc-gm-die-panel"><button type="button" class="primary" data-dx-gm-roll-kind="d100">🎲 d100 At</button><div class="cc-gm-die-results">${d100.length?d100.map(dxResultHtml).join(''):'<small class="muted">Henüz d100 yok.</small>'}</div></div></div><div class="cc-gm-dice-note">Bu zarlar yalnız GM hesabında görünür; oyuncuların zar geçmişine düşmez.</div>`;
+    const html=`<div class="cc-gm-dice-head"><div><div class="eyebrow">GM • ÖZEL ZARLAR</div><h3>20 & 100</h3></div><button type="button" class="danger small" data-dx-gm-clear>GM Zarlarını Temizle</button></div><div class="cc-gm-dice-grid"><div class="cc-gm-die-panel"><button type="button" class="primary" data-dx-gm-roll-kind="d20">🎲 20</button><div class="cc-gm-die-results">${d20.length?d20.map(dxResultHtml).join(''):'<small class="muted">Henüz 20 zarı yok.</small>'}</div></div><div class="cc-gm-die-panel"><button type="button" class="primary" data-dx-gm-roll-kind="d100">🎲 100</button><div class="cc-gm-die-results">${d100.length?d100.map(dxResultHtml).join(''):'<small class="muted">Henüz 100 zarı yok.</small>'}</div></div></div><div class="cc-gm-dice-note">Sayıya basınca zar doğrudan atılır. Bu sonuçlar yalnız GM hesabında görünür.</div>`;
     if(!box){box=document.createElement('div');box.className='cc-gm-dice-box';box.dataset.dxGmDice='1';const title=left.querySelector('.section-title');title?.after(box)}
     if(box.dataset.dxSignature!==signature){box.innerHTML=html;box.dataset.dxSignature=signature}
     box.dataset.dxReady='1';
@@ -110,7 +111,7 @@ async function dxGmRoll(kind){
   try{
     const fn=kind==='d100'?'catlak_gm_roll_d100':'catlak_gm_roll_d20';
     const {data,error}=await DX_S.rpc(fn);if(error)throw error;
-    dxToast(`GM ${kind}: ${data?.total??'?'}`);const box=DX_APP.querySelector('[data-dx-gm-dice]');if(box)box.dataset.dxReady='';await dxPaintGmDice(true);
+    dxToast(`GM ${String(kind).replace(/^d/i,'')}: ${data?.total??'?'}`);const box=DX_APP.querySelector('[data-dx-gm-dice]');if(box)box.dataset.dxReady='';await dxPaintGmDice(true);
   }catch(e){dxToast('GM zarı atılamadı: '+(e?.message||String(e)))}finally{dxGmBusy=false}
 }
 async function dxGmDelete(id){
