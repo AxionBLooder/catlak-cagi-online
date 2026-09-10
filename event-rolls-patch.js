@@ -75,4 +75,4 @@ document.addEventListener('click',e=>{
 setInterval(()=>{if(erIsGM()&&erTab()==='rolls'){const main=ER_APP.querySelector('main');if(main&&!main.dataset.erRollCenter)erRender()}},450);
 ER_S.channel('cc-event-rolls-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const main=ER_APP.querySelector('main');if(main)main.dataset.erRollCenter='';setTimeout(()=>erRender(true),80)}).subscribe();
 setTimeout(()=>erRender(),80);
-window.__catlakEventRollsTest={outcome:erOutcomeFor,eventName:erEventName};
+window.__catlakEventRollsTest={outcome:erOutcomeFor,eventName:erEventName,playerRow:erPlayerRow};
