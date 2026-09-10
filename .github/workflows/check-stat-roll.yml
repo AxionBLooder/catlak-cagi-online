@@ -1,0 +1,50 @@
+name: Check Stat Roll
+on:
+  push:
+    paths:
+      - 'stat-roll-patch.js'
+      - 'index.html'
+      - '.github/workflows/check-stat-roll.yml'
+  workflow_dispatch:
+jobs:
+  stat-roll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          node --check stat-roll-patch.js
+          grep -q 'catlak_roll_stat' stat-roll-patch.js
+          grep -q 'statroll-v1' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Browser stat click smoke
+        run: |
+          cat > stat-roll-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          (async()=>{
+            let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            if(!exe)throw new Error('Chrome missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}.pla-static-stats .stat{pointer-events:none}</style><div id="app"><div class="role">OYUNCU</div><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button></nav><main class="ps-player-sheet"><div class="cc-character-stack"><section class="hero"><button data-a="hp" data-id="char-1">HP</button></section><section class="card ps-stat-card pla-static-stats"><h2>Statlar</h2><div class="stats"><button id="dex" class="stat static" aria-disabled="true" tabindex="-1"><b>DEX</b><strong>14</strong><small>+2</small></button></div></section></div></main></div><div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{window.__calls=[];window.__catlakSupabase={rpc:async(name,args)=>{window.__calls.push({name,args});return{data:{label:'DEX Testi',total:17,dice:[15],modifier:2},error:null}}};});
+              await page.addScriptTag({path:path.resolve('stat-roll-patch.js')});
+              await page.waitForFunction(()=>document.querySelector('#dex')?.dataset.srStat==='DEX');
+              const before=await page.evaluate(()=>({aria:document.querySelector('#dex').getAttribute('aria-disabled'),tab:document.querySelector('#dex').tabIndex,small:document.querySelector('#dex small').textContent}));
+              if(before.aria!==null||before.tab!==0||/d20/i.test(before.small))throw new Error('Stat activation/display wrong '+JSON.stringify(before));
+              await page.locator('#dex').click();
+              await page.waitForFunction(()=>window.__calls.length===1);
+              const out=await page.evaluate(()=>({calls:window.__calls,toast:document.querySelector('#toast').textContent}));
+              if(out.calls[0].name!=='catlak_roll_stat'||out.calls[0].args.p_character_id!=='char-1'||out.calls[0].args.p_stat!=='DEX')throw new Error('Stat RPC wrong '+JSON.stringify(out));
+              if(!out.toast.includes('17'))throw new Error('Stat result missing '+JSON.stringify(out));
+              if(errors.length)throw new Error('Page errors '+errors.join(' | '));
+              console.log('STAT_ROLL_OK',JSON.stringify(out));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node stat-roll-smoke.cjs
