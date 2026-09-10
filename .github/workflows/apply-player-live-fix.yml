@@ -1,0 +1,73 @@
+name: Apply Player Live Fix
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-player-live-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Stabilize player sheet DOM and consumable refresh
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('player-sheet-patch.js')
+          s=p.read_text(encoding='utf-8')
+          old="function psMove(sec,target,before=null){if(!sec||!target)return;if(before&&before.parentElement===target)target.insertBefore(sec,before);else target.appendChild(sec)}"
+          new="""function psPlace(target,items){
+            if(!target)return;const wanted=items.filter(Boolean),current=[...target.children].filter(x=>wanted.includes(x));
+            const same=current.length===wanted.length&&current.every((x,i)=>x===wanted[i])&&wanted.every(x=>x.parentElement===target);
+            if(same)return;wanted.forEach(x=>target.appendChild(x));
+          }"""
+          if old not in s: raise SystemExit('psMove marker missing')
+          s=s.replace(old,new,1)
+          old3="""  [...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory].forEach(x=>psMove(x,main));
+            [...ordered.note,...ordered.status,...ordered.combat,...ordered.rolls].forEach(x=>psMove(x,side));
+            [...ordered.detail,...ordered.other].forEach(x=>psMove(x,detail));"""
+          new3="""  psPlace(main,[...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory]);
+            psPlace(side,[...ordered.note,...ordered.status,...ordered.combat,...ordered.rolls]);
+            psPlace(detail,[...ordered.detail,...ordered.other]);"""
+          if old3 not in s: raise SystemExit('psArrange move block missing')
+          s=s.replace(old3,new3,1)
+          oldkp="  tile.innerHTML=`<span>KAN PUANI</span><b>${psEsc(m[1])}/${psEsc(m[2])}</b>`;"
+          newkp="  const next=`<span>KAN PUANI</span><b>${psEsc(m[1])}/${psEsc(m[2])}</b>`;if(tile.innerHTML!==next)tile.innerHTML=next;"
+          if oldkp not in s: raise SystemExit('KP marker missing')
+          s=s.replace(oldkp,newkp,1)
+          oldpv="""  const inv=col.querySelector('.ps-inventory-card');inv?col.insertBefore(v,inv):col.appendChild(v);"""
+          newpv="""  const inv=col.querySelector('.ps-inventory-card');
+            if(inv){if(v.parentElement!==col||v.nextElementSibling!==inv)col.insertBefore(v,inv)}
+            else if(v.parentElement!==col||v!==col.lastElementChild)col.appendChild(v);"""
+          if oldpv not in s: raise SystemExit('party visual marker missing')
+          s=s.replace(oldpv,newpv,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('item-system-patch.js')
+          s=p.read_text(encoding='utf-8')
+          old="async function iwUse(id){if(iwBusy||iwIsGM())return;iwBusy=true;try{const r=await IW_S.rpc('catlak_use_inventory_item',{p_inventory_id:id});if(r.error)throw r.error;iwToast(`${r.data.item_name}: +${r.data.amount} HP • ${r.data.hp_current}/${r.data.hp_max}`);iwBusy=false;setTimeout(()=>location.reload(),350)}catch(e){iwBusy=false;iwToast('Eşya kullanılamadı: '+(e?.message||String(e)))}}"
+          new="""async function iwUse(id){if(iwBusy||iwIsGM())return;iwBusy=true;try{const r=await IW_S.rpc('catlak_use_inventory_item',{p_inventory_id:id});if(r.error)throw r.error;iwToast(`${r.data.item_name}: +${r.data.amount} HP • ${r.data.hp_current}/${r.data.hp_max}`);iwBusy=false;setTimeout(()=>{IW_APP.querySelectorAll('main .card[data-iw-player-inventory]').forEach(s=>{s.removeAttribute('data-iw-player-inventory');s.removeAttribute('data-pla-inventory-sig')});iwRenderPlayerInventories()},80)}catch(e){iwBusy=false;iwToast('Eşya kullanılamadı: '+(e?.message||String(e)))}}"""
+          if old not in s: raise SystemExit('iwUse reload marker missing')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check player-sheet-patch.js
+          node --check item-system-patch.js
+          node --check player-live-actions-patch.js
+          ! grep -q 'location.reload()' item-system-patch.js
+          grep -q 'function psPlace' player-sheet-patch.js
+          grep -q 'cc-player-live-actions' player-live-actions-patch.js
+      - name: Commit source fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add player-sheet-patch.js item-system-patch.js
+          if git diff --cached --quiet; then echo 'Already fixed'; else
+            git commit -m "Oyuncu kağıdı DOM yarışını ve eşya reloadunu kaldır"
+            git pull --rebase origin main
+            git push
+          fi
