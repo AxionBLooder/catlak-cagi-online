@@ -1,0 +1,59 @@
+name: Check GM Tools
+on:
+  push:
+    paths:
+      - '.github/workflows/check-gm-tools.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify production GM tools asset
+        env:
+          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 2 "$LIVE_URL?gmtools=$(date +%s)" -o /tmp/index.html
+          grep -q 'gm-tools-patch.js?v=gmtools-v1' /tmp/index.html
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}gm-tools-patch.js?gmtools=$(date +%s)" -o /tmp/gm-tools.js
+          node --check /tmp/gm-tools.js
+          grep -q 'Savaş & Durumlar' /tmp/gm-tools.js
+          grep -q 'Olay Atölyesi' /tmp/gm-tools.js
+          grep -q 'Oturum Günlüğü' /tmp/gm-tools.js
+          grep -q 'Takılı Teçhizat' /tmp/gm-tools.js
+          grep -q 'catlak_gm_combat_next_turn' /tmp/gm-tools.js
+          grep -q 'catlak_gm_add_condition' /tmp/gm-tools.js
+          grep -q 'catlak_gm_update_event_rule' /tmp/gm-tools.js
+          echo GM_TOOLS_STATIC_OK
+      - name: Verify GM and player isolation in Chrome
+        run: |
+          cat > gm-tools-gm.html <<'EOF'
+          <!doctype html><html lang="tr"><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button><button data-tab="rolls">Zar Akışı</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
+          window.__rpcCalls=[];
+          const rules=[{id:1,table_key:'d6',min_roll:1,max_roll:1,outcome:'Tehlike',sort_order:1},{id:2,table_key:'d6',min_roll:2,max_roll:2,outcome:'Garip NPC',sort_order:2},{id:3,table_key:'d20',min_roll:1,max_roll:10,outcome:'İyi şeyler',sort_order:1},{id:4,table_key:'d100',min_roll:1,max_roll:49,outcome:'İyi şeyler olur',sort_order:1},{id:5,table_key:'d200',min_roll:1,max_roll:100,outcome:'Konuşan silahlar',sort_order:1}];
+          const db={catlak_combat_state:[{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null}],catlak_combatants:[],catlak_characters:[{id:'c1',name:'Test Oyuncu',hp_current:10,hp_max:10,base_ac:12,base_stats:{DEX:14},play_status:'active'}],catlak_character_conditions:[],catlak_event_rules:rules,catlak_session_log:[{id:1,kind:'note',message:'Test günlük',created_at:new Date().toISOString()}]};
+          function from(t){const c={select(){return c},eq(){return c},order(){return c},limit(){return Promise.resolve({data:db[t]||[],error:null})},maybeSingle(){return Promise.resolve({data:(db[t]||[])[0]||null,error:null})},then(ok,bad){return Promise.resolve({data:db[t]||[],error:null}).then(ok,bad)}};return c}
+          window.__catlakSupabase={from,rpc:async(fn,args)=>{window.__rpcCalls.push([fn,args]);return {data:fn==='catlak_gm_combat_next_turn'?{name:'Test Oyuncu',round:1}:true,error:null}},channel:()=>({on(){return this},subscribe(){return this}})};
+          </script><script src="./gm-tools-patch.js"></script></body></html>
+          EOF
+          cat > gm-tools-player.html <<'EOF'
+          <!doctype html><html lang="tr"><body><div id="app"><header><span class="role">OYUNCU</span></header><nav class="nav"><button class="on" data-tab="sheet">Karakterim</button></nav><main><section class="card hero"><h1>Batuhan</h1></section><section class="card"><div class="eyebrow">CANLI ENVANTER</div></section></main></div><div id="toast" class="hidden"></div><script>
+          const db={catlak_characters:[{id:'c1',name:'Batuhan'}],catlak_character_conditions:[{id:'k1',character_id:'c1',name:'Zehirli',note:'Saldırı -1',remaining_rounds:2,active:true}],catlak_inventory:[{id:'i1',character_id:'c1',item_id:'w1',equipped:true,equipped_slot:'main_weapon',quantity:1},{id:'i2',character_id:'c1',item_id:'a1',equipped:true,equipped_slot:'armor',quantity:1}],catlak_items:[{id:'w1',name:'Gece Nöbeti',item_type:'weapon',effects:{}},{id:'a1',name:'Kara Zırh',item_type:'armor',effects:{}}]};
+          function from(t){const c={select(){return c},eq(){return c},order(){return c},limit(){return Promise.resolve({data:db[t]||[],error:null})},maybeSingle(){return Promise.resolve({data:(db[t]||[])[0]||null,error:null})},then(ok,bad){return Promise.resolve({data:db[t]||[],error:null}).then(ok,bad)}};return c}
+          window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>({on(){return this},subscribe(){return this}})};
+          </script><script src="./gm-tools-patch.js"></script></body></html>
+          EOF
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/gmt-http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > gm-tools-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
+            const g=await b.newPage();const ge=[];g.on('pageerror',e=>ge.push(String(e.message||e)));await g.goto('http://127.0.0.1:4173/gm-tools-gm.html',{waitUntil:'domcontentloaded'});await g.waitForSelector('[data-gmt-open]');await g.click('[data-gmt-open]');await g.waitForSelector('[data-gmt-combat-start]');const gm0=await g.evaluate(()=>({nav:document.querySelector('[data-gmt-open]')?.classList.contains('on'),tabs:document.querySelectorAll('[data-gmt-sub]').length,playerPanel:document.querySelectorAll('[data-gmt-player-panel]').length}));if(!gm0.nav||gm0.tabs!==3||gm0.playerPanel!==0)throw new Error('GM shell isolation '+JSON.stringify(gm0));await g.click('[data-gmt-combat-start]');await g.waitForTimeout(80);let calls=await g.evaluate(()=>window.__rpcCalls);if(!calls.some(x=>x[0]==='catlak_gm_combat_start'))throw new Error('Combat start RPC missing');await g.click('[data-gmt-sub="events"]');await g.waitForSelector('[data-gmt-rule-save]');const ev=await g.evaluate(()=>({rules:document.querySelectorAll('[data-gmt-rule-save]').length,text:document.body.textContent.includes('Olay Sonuçlarını Düzenle')}));if(ev.rules<5||!ev.text)throw new Error('Event workshop missing '+JSON.stringify(ev));await g.click('[data-gmt-sub="logs"]');await g.waitForSelector('[data-gmt-log-add]');if(ge.length)throw new Error('GM page errors '+ge.join(' | '));await g.close();
+            const p=await b.newPage();const pe=[];p.on('pageerror',e=>pe.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/gm-tools-player.html',{waitUntil:'domcontentloaded'});await p.waitForSelector('[data-gmt-player-panel]');const po=await p.evaluate(()=>({gmButton:!!document.querySelector('[data-gmt-open]'),text:document.querySelector('[data-gmt-player-panel]')?.textContent||'',panels:document.querySelectorAll('[data-gmt-player-panel]').length}));if(po.gmButton||po.panels!==1||!po.text.includes('Zehirli')||!po.text.includes('Ana Silah')||!po.text.includes('Gece Nöbeti')||!po.text.includes('Kara Zırh'))throw new Error('Player isolation '+JSON.stringify(po));if(pe.length)throw new Error('Player page errors '+pe.join(' | '));console.log('GM_TOOLS_BROWSER_OK',JSON.stringify({gm0,ev,po}));await p.close();
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node gm-tools-smoke.cjs
