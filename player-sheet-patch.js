@@ -91,7 +91,11 @@ function psClassify(sec){
   if(e==='ÖZEL YOL'||e==='IRK GÜÇLERİ')return'detail';
   return'other';
 }
-function psMove(sec,target,before=null){if(!sec||!target)return;if(before&&before.parentElement===target)target.insertBefore(sec,before);else target.appendChild(sec)}
+function psPlace(target,items){
+  if(!target)return;const wanted=items.filter(Boolean),current=[...target.children].filter(x=>wanted.includes(x));
+  const same=current.length===wanted.length&&current.every((x,i)=>x===wanted[i])&&wanted.every(x=>x.parentElement===target);
+  if(same)return;wanted.forEach(x=>target.appendChild(x));
+}
 function psAddKpTile(stack){
   const hero=stack.querySelector('section.hero'),vamp=stack.querySelector('section.vampire');if(!hero)return;
   let tile=hero.querySelector('[data-ps-kp]');
@@ -100,7 +104,7 @@ function psAddKpTile(stack){
   if(!m[1])return;
   const vitals=hero.querySelector('.vitals');if(!vitals)return;
   if(!tile){tile=document.createElement('div');tile.className='vital ps-kp-vital';tile.dataset.psKp='1';vitals.appendChild(tile)}
-  tile.innerHTML=`<span>KAN PUANI</span><b>${psEsc(m[1])}/${psEsc(m[2])}</b>`;
+  const next=`<span>KAN PUANI</span><b>${psEsc(m[1])}/${psEsc(m[2])}</b>`;if(tile.innerHTML!==next)tile.innerHTML=next;
 }
 function psArrangeStack(stack){
   if(!stack||!stack.isConnected)return;
@@ -112,9 +116,9 @@ function psArrangeStack(stack){
     const k=psClassify(sec);
     if(k==='main-hero')ordered.hero.push(sec);else if(k==='main-stats'){sec.classList.add('ps-stat-card');ordered.stats.push(sec)}else if(k==='main-visual')ordered.visual.push(sec);else if(k==='main-inventory'){sec.classList.add('ps-inventory-card');ordered.inventory.push(sec)}else if(k==='side-note')ordered.note.push(sec);else if(k==='side-status')ordered.status.push(sec);else if(k==='side-rolls'){sec.classList.add('ps-roll-card');ordered.rolls.push(sec)}else if(k==='detail'){sec.classList.add('ps-lore-card');ordered.detail.push(sec)}else ordered.other.push(sec)
   }
-  [...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory].forEach(x=>psMove(x,main));
-  [...ordered.note,...ordered.status,...ordered.combat,...ordered.rolls].forEach(x=>psMove(x,side));
-  [...ordered.detail,...ordered.other].forEach(x=>psMove(x,detail));
+  psPlace(main,[...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory]);
+  psPlace(side,[...ordered.note,...ordered.status,...ordered.combat,...ordered.rolls]);
+  psPlace(detail,[...ordered.detail,...ordered.other]);
   psAddKpTile(stack);
   stack.dataset.psSheet='1';
 }
@@ -123,7 +127,9 @@ function psMovePartyVisual(main){
   const first=main.querySelector('.cc-character-stack');if(!first)return;
   const grid=psEnsureGrid(first),col=grid.querySelector('.ps-main-column');
   v.classList.add('ps-party-visual');
-  const inv=col.querySelector('.ps-inventory-card');inv?col.insertBefore(v,inv):col.appendChild(v);
+  const inv=col.querySelector('.ps-inventory-card');
+  if(inv){if(v.parentElement!==col||v.nextElementSibling!==inv)col.insertBefore(v,inv)}
+  else if(v.parentElement!==col||v!==col.lastElementChild)col.appendChild(v);
 }
 function psOpenBattle(){PS_APP.querySelector('.nav [data-ccr-battle]')?.click()}
 async function psRefreshCombat(force=false){
