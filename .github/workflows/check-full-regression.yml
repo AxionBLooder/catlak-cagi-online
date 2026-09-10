@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 5 --retry-delay 2 "$LIVE_URL?regression=$(date +%s)" -o /tmp/index.html
-          for marker in 'browser-app.js' 'gm-controls-patch.js' 'presence-patch.js?v=presence-v3' 'dice-ux-patch.js?v=dice-v1' 'item-system-patch.js?v=item-v1' 'event-rolls-patch.js?v=events-v1' 'gm-tools-patch.js?v=gmtools-v1' 'room-system-patch.js?v=rooms-v1'; do grep -q "$marker" /tmp/index.html; done
+          for marker in 'browser-app.js' 'gm-controls-patch.js' 'presence-patch.js?v=presence-v3' 'dice-ux-patch.js?v=dice-v1' 'item-system-patch.js?v=item-v1' 'event-rolls-patch.js?v=events-v1' 'gm-tools-patch.js?v=gmtools-v1' 'room-system-patch.js?v=rooms-v2'; do grep -q "$marker" /tmp/index.html; done
           for f in browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-system-patch.js; do curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}${f}?r=$(date +%s%N)" -o "/tmp/$f"; node --check "/tmp/$f"; done
           grep -q 'catlak_update_vampire_kp' /tmp/gm-controls-patch.js
           grep -q 'ÇEVRİMİÇİ' /tmp/presence-patch.js
