@@ -11,6 +11,7 @@ on:
       - 'nav-lite-patch.js'
       - 'simple-world-upload-patch.js'
       - 'weapon-slot-patch.js'
+      - 'gm-item-slot-patch.js'
       - 'dice-ux-patch.js'
       - 'event-rolls-patch.js'
       - 'index.html'
@@ -36,6 +37,7 @@ jobs:
           node --check nav-lite-patch.js
           node --check simple-world-upload-patch.js
           node --check weapon-slot-patch.js
+          node --check gm-item-slot-patch.js
           node --check dice-ux-patch.js
           node --check event-rolls-patch.js
           node --check browser-app.js
@@ -62,5 +64,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
+          if 'gm-item-slot-patch.js' not in html:
+              raise SystemExit('GM silah yuvası patchi index.html içinde yüklenmiyor')
           print('Source invariants OK')
           PY
