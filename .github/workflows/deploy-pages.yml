@@ -16,6 +16,7 @@ on:
       - 'room-system-patch.js'
       - 'invite-visibility-patch.js'
       - 'player-sheet-patch.js'
+      - 'player-live-actions-patch.js'
       - 'catalog.b64'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -41,7 +42,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js invite-visibility-patch.js player-sheet-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js invite-visibility-patch.js player-sheet-patch.js player-live-actions-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -62,6 +63,7 @@ jobs:
           node --check _site/room-system-patch.js
           node --check _site/invite-visibility-patch.js
           node --check _site/player-sheet-patch.js
+          node --check _site/player-live-actions-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -73,4 +75,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: invite-visibility-2026-09-10
+# trigger: player-live-actions-2026-09-10
