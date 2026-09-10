@@ -1,0 +1,57 @@
+name: Check Room System
+on:
+  push:
+    paths:
+      - 'room-system-patch.js'
+      - '.github/workflows/check-room-system.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check room-system-patch.js
+          grep -q 'Yönetim Odası' room-system-patch.js
+          grep -q 'Savaş Odası' room-system-patch.js
+          grep -q 'catlak_player_combat_snapshot' room-system-patch.js
+          grep -q 'catlak_roll_weapon' room-system-patch.js
+          grep -q 'KRİTİK BAŞARISIZLIK' room-system-patch.js
+          echo ROOM_STATIC_OK
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Mock GM and player rooms in Chrome
+        run: |
+          cat > room-gm.html <<'EOF'
+          <!doctype html><html lang="tr"><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-tab="gm">GM Masası</button><button data-tab="characters">Karakterler</button><button data-tab="rules">Kaynaklar</button><button data-tab="account">Hesap</button><button data-tab="races">Irk Atölyesi</button></nav><main><section class="card">BASE gm</section></main></div><div id="toast" class="hidden"></div><script>
+          window.__catlakSupabase={rpc:async()=>({data:{active:false,order:[]},error:null}),from:()=>({select(){return this},eq(){return this},order(){return this},limit(){return Promise.resolve({data:[],error:null})},then(ok,bad){return Promise.resolve({data:[],error:null}).then(ok,bad)}})};
+          document.querySelector('#app').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(!b)return;document.querySelectorAll('.nav button.on').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelector('main').innerHTML='<section class="card">BASE '+b.dataset.tab+'</section>'});
+          </script><script src="./room-system-patch.js"></script></body></html>
+          EOF
+          cat > room-player.html <<'EOF'
+          <!doctype html><html lang="tr"><body><div id="app"><header><span class="role">OYUNCU</span></header><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="rules">Kaynaklar</button><button data-tab="account">Oturum</button></nav><main><section class="card">SHEET</section></main></div><div id="toast" class="hidden"></div><script>
+          window.__calls=[];
+          const db={
+            catlak_characters:[{id:'c1',name:'Batuhan',hp_current:9,hp_max:12,base_ac:13,base_speed:30,base_stats:{STR:10,DEX:14,CON:12,INT:10,WIS:10,CHA:10},data:{},play_status:'active'}],
+            catlak_inventory:[{id:'inv1',character_id:'c1',item_id:'w1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:''}],
+            catlak_character_conditions:[{id:'k1',name:'Zehirli',note:'Saldırı -1',remaining_rounds:2,active:true,created_at:new Date().toISOString()}],
+            catlak_rolls:[{id:'r1',character_id:'c1',label:'Test Zar',roll_kind:'stat',formula:'1d20-2',modifier:-2,total:0,created_at:new Date().toISOString()}],
+            catlak_items:[{id:'w1',name:'Gece Nöbeti',item_type:'weapon',description:'',attack_stat:'DEX',attack_bonus:1,attack_formula:'1d20',damage_formula:'2d4',damage_type:'kesici',effects:{},ac_mode:'none',ac_value:0}]
+          };
+          function from(t){const c={select(){return c},eq(){return c},order(){return c},limit(){return c},in(){return c},then(ok,bad){return Promise.resolve({data:db[t]||[],error:null}).then(ok,bad)}};return c}
+          window.__catlakSupabase={from,rpc:async(fn,args)=>{window.__calls.push([fn,args]);if(fn==='catlak_player_combat_snapshot')return{data:{active:true,battle_name:'Test Savaş',round:2,current_name:'Batuhan',character_id:'c1',combatant_id:'cb1',in_combat:true,is_my_turn:true,order:[{id:'cb1',name:'Batuhan',kind:'player',initiative:18,is_current:true,is_self:true},{id:'cb2',name:'Çatlak Avcısı',kind:'enemy',initiative:12,is_current:false,is_self:false}]},error:null};if(fn==='catlak_roll_weapon')return{data:{label:'Gece Nöbeti Saldırı',total:17},error:null};if(fn==='catlak_roll_stat')return{data:{label:'DEX',total:15},error:null};return{data:true,error:null}}};
+          </script><script src="./room-system-patch.js"></script></body></html>
+          EOF
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/room-http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > room-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
+            const g=await b.newPage();const ge=[];g.on('pageerror',e=>ge.push(String(e.message||e)));await g.goto('http://127.0.0.1:4173/room-gm.html',{waitUntil:'domcontentloaded'});await g.waitForSelector('[data-ccr-hub]');const hidden=await g.evaluate(()=>['characters','rules','account'].every(t=>document.querySelector(`[data-tab="${t}"]`)?.classList.contains('ccr-managed-hidden')));if(!hidden)throw new Error('Managed tabs not hidden');await g.click('[data-ccr-hub]');await g.waitForSelector('[data-ccr-hub-head]');let gm=await g.evaluate(()=>({head:document.querySelector('[data-ccr-hub-head]')?.textContent||'',body:document.querySelector('main')?.textContent||''}));if(!gm.head.includes('Hazır Karakterler')||!gm.body.includes('BASE characters'))throw new Error('Hub characters '+JSON.stringify(gm));await g.click('[data-ccr-hub-tab="rules"]');await g.waitForFunction(()=>document.querySelector('main')?.textContent.includes('BASE rules'));await g.waitForSelector('[data-ccr-hub-head]');gm=await g.evaluate(()=>({head:document.querySelector('[data-ccr-hub-head]')?.textContent||'',body:document.querySelector('main')?.textContent||''}));if(!gm.head.includes('Kaynaklar')||!gm.body.includes('BASE rules'))throw new Error('Hub rules '+JSON.stringify(gm));if(ge.length)throw new Error('GM page errors '+ge.join(' | '));await g.close();
+            const p=await b.newPage();const pe=[];p.on('pageerror',e=>pe.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/room-player.html',{waitUntil:'domcontentloaded'});await p.waitForSelector('[data-ccr-battle]');if(await p.locator('[data-ccr-hub]').count())throw new Error('Player saw GM hub');await p.click('[data-ccr-battle]');await p.waitForSelector('[data-ccr-weapon]');const po=await p.evaluate(()=>({text:document.querySelector('main')?.textContent||'',gmHidden:!document.querySelector('[data-ccr-hub]')}));for(const m of ['Test Savaş','Round 2','SIRA SENDE','Zehirli','Gece Nöbeti','KRİTİK BAŞARISIZLIK','Çatlak Avcısı'])if(!po.text.includes(m))throw new Error('Battle room marker '+m+' '+JSON.stringify(po));if(po.text.includes('20 / 20')||po.text.includes('AC 14'))throw new Error('Enemy private stats leaked');await p.click('[data-ccr-weapon][data-kind="attack"]');await p.waitForTimeout(100);const calls=await p.evaluate(()=>window.__calls);if(!calls.some(x=>x[0]==='catlak_roll_weapon'))throw new Error('Weapon RPC missing');if(pe.length)throw new Error('Player page errors '+pe.join(' | '));console.log('ROOM_BROWSER_OK',JSON.stringify({gm,po,calls:calls.map(x=>x[0])}));await p.close();
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node room-smoke.cjs
