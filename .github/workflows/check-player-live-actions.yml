@@ -29,9 +29,9 @@ jobs:
           grep -q 'plaStaticStats' player-live-actions-patch.js
           grep -q 'plaClaimInventory' player-live-actions-patch.js
           grep -q '__catlakPlayerLiveOwnsInventory' player-live-actions-patch.js
-          grep -q 'Saldırı 1d20' player-live-actions-patch.js
+          grep -q 'meta=`Saldırı •' player-live-actions-patch.js
           grep -q 'bonusu' player-live-actions-patch.js
-          grep -q 'playerlive-v4' index.html
+          grep -q 'playerlive-v5' index.html
           grep -q 'preclaimPlayerInventory' index.html
           grep -q "table:'catlak_inventory'" player-live-actions-patch.js
           grep -q "table:'catlak_rolls'" player-live-actions-patch.js
@@ -81,16 +81,19 @@ jobs:
               const stat=await page.evaluate(()=>({a:document.querySelector('#dex')?.getAttribute('data-a'),small:document.querySelector('#dex small')?.textContent,h:document.querySelector('.ps-stat-card h2')?.textContent}));
               if(stat.a!==null||/d20/i.test(stat.small||'')||stat.h!=='Statlar')throw new Error('Stat d20 still active '+JSON.stringify(stat));
               const weaponMeta=await page.locator('[data-pla-inv-row="inv-1"] .iw-meta').textContent();
-              if(!weaponMeta.includes('Saldırı 1d20 + DEX bonusu')||!weaponMeta.includes('Hasar 1d8 + DEX bonusu'))throw new Error('Weapon meta wrong '+weaponMeta);
+              if(!weaponMeta.includes('Saldırı • DEX bonusu')||!weaponMeta.includes('Hasar • DEX bonusu')||/1d20|1d8/i.test(weaponMeta))throw new Error('Weapon meta wrong '+weaponMeta);
               const equip=page.getByRole('button',{name:'Kuşan',exact:true});
               await equip.dispatchEvent('pointerdown');
               const instant=await page.evaluate(()=>({text:document.querySelector('[data-pla-inv-row="inv-1"] [data-a="equip"]')?.textContent,on:document.querySelector('[data-pla-inv-row="inv-1"]')?.classList.contains('on')}));
               if(instant.text!=='Çıkar'||!instant.on)throw new Error('Equip was not optimistic '+JSON.stringify(instant));
               await page.waitForFunction(()=>document.body.textContent.includes('Çıkar'));
               await page.getByRole('button',{name:'Saldırı At',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('1d20 [15] +2'));
+              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('[15] +2'));
+              if(/1d20/i.test(await page.locator('.ps-roll-card').textContent()))throw new Error('Attack die type leaked into roll display');
               await page.getByRole('button',{name:'Hasar Vur',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('1d8 [6] +2'));
+              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('[6] +2'));
+              const rollText=await page.locator('.ps-roll-card').textContent();
+              if(/1d20|1d8/i.test(rollText))throw new Error('Die type leaked into roll display '+rollText);
               await page.evaluate(()=>{
                 const old=document.querySelector('.ps-inventory-card');
                 const fresh=document.createElement('section');fresh.className='card ps-inventory-card';fresh.innerHTML='<div class="eyebrow">CANLI ENVANTER</div>';
@@ -113,8 +116,9 @@ jobs:
               if(names.includes('catlak_roll_stat'))throw new Error('Stat roll should be disabled '+JSON.stringify(out));
               if(out.baseHits!==0)throw new Error('Base handler was not suppressed '+JSON.stringify(out));
               if(out.ghost!==0||out.owner!==true)throw new Error('Ghost regression '+JSON.stringify(out));
+              if(/1d20|1d8/i.test(out.rolls))throw new Error('Hidden die type regression '+JSON.stringify(out));
               if(errors.length)throw new Error('Page errors '+errors.join(' | '));
-              console.log('PLAYER_LIVE_ACTIONS_OK',JSON.stringify({rpc:names,weapon,baseHits:out.baseHits,realtimeItem:out.inventory.includes('Canlı İksir'),attackD20:out.rolls.includes('1d20 [15] +2'),damageStat:out.rolls.includes('1d8 [6] +2'),ghostFree:out.ghost===0,statStatic:stat}));
+              console.log('PLAYER_LIVE_ACTIONS_OK',JSON.stringify({rpc:names,weapon,baseHits:out.baseHits,realtimeItem:out.inventory.includes('Canlı İksir'),attackHidden:!out.rolls.includes('1d20'),damageHidden:!out.rolls.includes('1d8'),ghostFree:out.ghost===0,statStatic:stat}));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
