@@ -10,6 +10,7 @@ on:
       - 'ux-patch.js'
       - 'nav-lite-patch.js'
       - 'simple-world-upload-patch.js'
+      - 'weapon-slot-patch.js'
       - 'index.html'
       - 'browser-app.js'
       - 'browser-build.json'
@@ -32,6 +33,7 @@ jobs:
           node --check ux-patch.js
           node --check nav-lite-patch.js
           node --check simple-world-upload-patch.js
+          node --check weapon-slot-patch.js
           node --check browser-app.js
       - name: Check source invariants
         run: |
