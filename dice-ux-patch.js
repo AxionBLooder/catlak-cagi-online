@@ -8,9 +8,10 @@ const dxTab=()=>DX_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'
 const dxH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dxToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(dxToast.t);dxToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
 let dxBusy=false,dxGmBusy=false,dxKeepY=null,dxKeepUntil=0,dxPaintScheduled=false,dxGmPaintBusy=false;
+const dxPlayerResults=new Map();
 
 const dxCss=`
-.cc-critical-fail{display:inline-flex;align-items:center;margin-top:6px;padding:4px 8px;border-radius:999px;border:1px solid #8b3948;background:#2b1118;color:#ffb7c2;font-size:.72rem;font-weight:900;letter-spacing:.07em}.cc-gm-dice-box{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#08131f}.cc-gm-dice-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.cc-gm-dice-head h3{margin:2px 0 0}.cc-gm-dice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cc-gm-die-panel{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0b1723}.cc-gm-die-panel button.primary{width:100%;font-weight:900}.cc-gm-die-results{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px}.cc-gm-die-result{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:10px;padding:5px 7px;background:#07121d}.cc-gm-die-result b{font-size:1.05rem}.cc-gm-die-result button{padding:2px 6px;font-size:.72rem}.cc-gm-dice-note{font-size:.76rem;color:var(--muted);margin-top:8px}@media(max-width:640px){.cc-gm-dice-grid{grid-template-columns:1fr}}
+.cc-critical-fail{display:inline-flex;align-items:center;margin-top:6px;padding:4px 8px;border-radius:999px;border:1px solid #8b3948;background:#2b1118;color:#ffb7c2;font-size:.72rem;font-weight:900;letter-spacing:.07em}.cc-player-roll-result{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 12px;padding:12px 14px;border:1px solid #5c7f98;border-radius:13px;background:linear-gradient(135deg,#0b2030,#0b1723);box-shadow:inset 0 0 0 1px #6cdcff12}.cc-player-roll-result .cc-player-roll-label{font-size:.8rem;font-weight:900;letter-spacing:.11em;color:var(--cyan)}.cc-player-roll-result .cc-player-roll-total{font-size:2rem;line-height:1;font-weight:950;color:var(--text)}.cc-player-roll-result .cc-player-roll-critical{display:block;margin-top:5px;color:#ffb7c2;font-size:.7rem;font-weight:900;letter-spacing:.06em}.cc-gm-dice-box{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#08131f}.cc-gm-dice-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.cc-gm-dice-head h3{margin:2px 0 0}.cc-gm-dice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cc-gm-die-panel{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0b1723}.cc-gm-die-panel button.primary{width:100%;font-weight:900}.cc-gm-die-results{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px}.cc-gm-die-result{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:10px;padding:5px 7px;background:#07121d}.cc-gm-die-result b{font-size:1.05rem}.cc-gm-die-result button{padding:2px 6px;font-size:.72rem}.cc-gm-dice-note{font-size:.76rem;color:var(--muted);margin-top:8px}@media(max-width:640px){.cc-player-roll-result{padding:11px 12px}.cc-player-roll-result .cc-player-roll-total{font-size:1.75rem}.cc-gm-dice-grid{grid-template-columns:1fr}}
 `;
 if(!document.querySelector('#cc-dice-ux-style')){const s=document.createElement('style');s.id='cc-dice-ux-style';s.textContent=dxCss;document.head.appendChild(s)}
 
@@ -27,6 +28,35 @@ function dxCriticalize(){
   });
 }
 
+function dxResultStorageKey(cid){return `cc-player-roll-result:${cid}`}
+function dxGetPlayerResult(cid){
+  if(dxPlayerResults.has(cid))return dxPlayerResults.get(cid);
+  try{const raw=sessionStorage.getItem(dxResultStorageKey(cid));if(raw){const value=JSON.parse(raw);dxPlayerResults.set(cid,value);return value}}catch(_){ }
+  return null;
+}
+function dxSetPlayerResult(cid,value){
+  if(!cid||!value)return;dxPlayerResults.set(cid,value);
+  try{sessionStorage.setItem(dxResultStorageKey(cid),JSON.stringify(value))}catch(_){ }
+}
+function dxPaintPlayerResults(){
+  if(dxIsGM()||dxTab()!=='sheet')return;
+  DX_APP.querySelectorAll('main .cc-character-stack').forEach(stack=>{
+    const cid=stack.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||'';
+    if(!cid)return;
+    const value=dxGetPlayerResult(cid);if(!value)return;
+    let statCard=stack.querySelector('.ps-stat-card');
+    if(!statCard)statCard=[...stack.querySelectorAll('section.card')].find(sec=>dxTxt(sec.querySelector('.eyebrow'))==='D20 TESTLERİ');
+    if(!statCard)return;
+    let box=statCard.querySelector('[data-dx-player-result]');
+    if(!box){box=document.createElement('div');box.className='cc-player-roll-result';box.dataset.dxPlayerResult='1';const stats=statCard.querySelector('.stats');stats?statCard.insertBefore(box,stats):statCard.appendChild(box)}
+    const total=value.total==null?'SONUÇ YOK':String(value.total);
+    const signature=`${value.label}|${total}|${Number(value.total)===0?'1':'0'}`;
+    if(box.dataset.dxSignature===signature)return;
+    box.innerHTML=`<div><div class="cc-player-roll-label">${dxH(value.label||'ZAR SONUCU')}</div>${Number(value.total)===0?'<span class="cc-player-roll-critical">KRİTİK BAŞARISIZLIK</span>':''}</div><strong class="cc-player-roll-total">${dxH(total)}</strong>`;
+    box.dataset.dxSignature=signature;
+  });
+}
+
 async function dxPlayerRoll(btn){
   if(dxBusy||dxIsGM())return;
   const action=btn.dataset.a;if(action!=='stat'&&action!=='weapon')return;
@@ -37,7 +67,17 @@ async function dxPlayerRoll(btn){
     else ({data,error}=await DX_S.rpc('catlak_roll_weapon',{p_inventory_id:btn.dataset.id,p_action:btn.dataset.k}));
     if(error)throw error;
     const total=data?.total;
-    dxToast(total==null?`${data?.label||'Zar'}: sonuç yok`:`${data?.label||'Zar'}: ${total}${Number(total)===0?' • KRİTİK BAŞARISIZLIK':''}`);
+    if(action==='stat'){
+      const stat=String(btn.dataset.stat||'STAT').toUpperCase();
+      dxSetPlayerResult(btn.dataset.id,{label:`${stat} KONTROLÜ`,total});
+      dxPaintPlayerResults();
+      dxToast(total==null?`${stat} KONTROLÜ: sonuç yok`:`${stat} KONTROLÜ: ${total}${Number(total)===0?' • KRİTİK BAŞARISIZLIK':''}`);
+    }else{
+      const cid=btn.closest('.cc-character-stack')?.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||'';
+      const label=String(data?.label||'SİLAH ATIŞI').replace(/\bd\d+\b/gi,'').replace(/\s{2,}/g,' ').trim();
+      if(cid){dxSetPlayerResult(cid,{label:label||'SİLAH ATIŞI',total});dxPaintPlayerResults()}
+      dxToast(total==null?`${label||'SİLAH ATIŞI'}: DM Kararı`:`${label||'SİLAH ATIŞI'}: ${total}${Number(total)===0?' • KRİTİK BAŞARISIZLIK':''}`);
+    }
     [40,140,320,650,1100,1650].forEach(ms=>setTimeout(dxRestoreScroll,ms));
   }catch(e){dxToast('Zar atılamadı: '+(e?.message||String(e)))}finally{btn.disabled=false;dxBusy=false}
 }
@@ -92,10 +132,10 @@ document.addEventListener('click',e=>{
   const gc=e.target.closest('[data-dx-gm-clear]');if(gc&&dxIsGM()){e.preventDefault();e.stopImmediatePropagation();dxGmClear();return}
 },true);
 
-function dxPaint(){dxPaintScheduled=false;dxRestoreScroll();dxCriticalize();if(dxIsGM()&&dxTab()==='gm')dxPaintGmDice()}
+function dxPaint(){dxPaintScheduled=false;dxRestoreScroll();dxCriticalize();dxPaintPlayerResults();if(dxIsGM()&&dxTab()==='gm')dxPaintGmDice()}
 function dxSchedule(){if(dxPaintScheduled)return;dxPaintScheduled=true;requestAnimationFrame(dxPaint)}
 new MutationObserver(dxSchedule).observe(DX_APP,{childList:true,subtree:true});
 DX_S.channel('cc-dice-ux-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const box=DX_APP.querySelector('[data-dx-gm-dice]');if(box)box.dataset.dxReady='';setTimeout(dxSchedule,60)}).subscribe();
 dxSchedule();
 
-window.__catlakDiceUxTest={criticalize:dxCriticalize,rememberScroll:dxRememberScroll,restoreScroll:dxRestoreScroll};
+window.__catlakDiceUxTest={criticalize:dxCriticalize,rememberScroll:dxRememberScroll,restoreScroll:dxRestoreScroll,paintPlayerResults:dxPaintPlayerResults};
