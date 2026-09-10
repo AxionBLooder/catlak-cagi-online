@@ -135,13 +135,17 @@ async function psRefreshCombat(force=false){
 function psRenderCombat(s){
   if(psIsGM()||psTab()!=='sheet')return;
   const stacks=[...PS_APP.querySelectorAll('main .cc-character-stack')];
-  stacks.forEach(st=>st.querySelectorAll('[data-ps-combat-card]').forEach(x=>x.remove()));
-  if(!s?.active)return;
+  if(!s?.active){stacks.forEach(st=>st.querySelectorAll('[data-ps-combat-card]').forEach(x=>x.remove()));return}
   const current=(s.order||[]).find(x=>x.is_current),selfCurrent=!!current?.is_self;
   for(const stack of stacks){
-    const cid=psCharId(stack);if(s.character_id&&cid&&String(s.character_id)!==String(cid))continue;
-    const grid=psEnsureGrid(stack),side=grid.querySelector('.ps-side-column'),card=document.createElement('section');
-    card.className='card ps-combat-card';card.dataset.psCombatCard=cid||'1';
+    const cid=psCharId(stack),matches=!s.character_id||!cid||String(s.character_id)===String(cid);
+    const old=stack.querySelector('[data-ps-combat-card]');
+    if(!matches){old?.remove();continue}
+    const sig=[String(cid||'1'),Number(s.round||1),String(current?.name||''),selfCurrent?'1':'0'].join('|');
+    const grid=psEnsureGrid(stack),side=grid.querySelector('.ps-side-column');
+    if(old?.dataset.psCombatSig===sig){const rolls=side.querySelector('.ps-roll-card');if(rolls&&old.nextElementSibling!==rolls)side.insertBefore(old,rolls);continue}
+    const card=old||document.createElement('section');
+    card.className='card ps-combat-card';card.dataset.psCombatCard=cid||'1';card.dataset.psCombatSig=sig;
     card.innerHTML=`<div class="ps-combat-row"><div><div class="eyebrow">⚔ AKTİF SAVAŞ</div><h2>Round ${Number(s.round||1)}</h2><div class="${selfCurrent?'ps-turn-self':'ps-turn-other'}">${selfCurrent?'SIRA SENDE!':`Sıra: ${psEsc(current?.name||'—')}`}</div></div><button type="button" class="primary" data-ps-open-battle>Savaş Odasına Gir →</button></div>`;
     const rolls=side.querySelector('.ps-roll-card');rolls?side.insertBefore(card,rolls):side.appendChild(card);
   }
