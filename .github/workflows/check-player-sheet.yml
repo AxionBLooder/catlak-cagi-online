@@ -1,0 +1,94 @@
+name: Check Player Sheet
+on:
+  push:
+    paths:
+      - 'player-sheet-patch.js'
+      - '.github/workflows/check-player-sheet.yml'
+  workflow_dispatch:
+jobs:
+  player-sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Syntax check
+        run: node --check player-sheet-patch.js
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify player layout and handler preservation
+        run: |
+          cat > player-sheet-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          (async()=>{
+            let exe='';
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            if(!exe)throw new Error('Chrome missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.setContent(`<!doctype html><meta charset="utf-8"><body><div id="app">
+                <div class="role">OYUNCU</div>
+                <nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-ccr-battle>⚔ Savaş Odası</button></nav>
+                <main>
+                  <section class="card cc-party-show" data-cc-party-visual-card><div class="eyebrow">GM'NİN PARTİYE YANSITTIĞI GÖRSEL</div><div class="cc-party-mini"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><div><h2>Test Haritası</h2></div></div></section>
+                  <div class="cc-character-stack">
+                    <div class="cc-character-label">CANLI KARAKTER</div>
+                    <section class="card hero"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>Batuhan</h1><p>Vampir • Avcı 2</p></div><div class="vitals"><div class="vital"><span>HP</span><b>12/12</b><button data-a="hp" data-id="char-1">+</button></div><div class="vital"><span>AC</span><b>13</b></div><div class="vital"><span>HIZ</span><b>30</b></div><div class="vital"><span>SEVİYE</span><b>2</b></div></div></section>
+                    <section class="card cc-player-gm-note" data-cc-player-note-for="char-1"><div class="eyebrow">GM • KİŞİYE ÖZEL DURUM</div><h2>Aktif Etki / Debuff</h2></section>
+                    <section class="card" data-gmt-player-panel="char-1"><div class="gmt-player-two"><div><div class="eyebrow">AKTİF DURUMLAR</div><h2>Durum Etkileri</h2></div><div><div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Slotlar</h2></div></div></section>
+                    <section class="card"><div class="section-title"><div><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas</h2></div></div><div class="stats"><button id="stat-original" class="stat" data-a="stat" data-id="char-1" data-stat="DEX"><b>DEX</b><strong>16</strong><small>+3 • d20 at</small></button></div></section>
+                    <section class="card vampire"><div class="eyebrow">VAMPİR • KIRMIZI PUANI</div><h2>KP 3/3</h2><button data-a="vkp" data-id="char-1" data-d="-1">KP −</button></section>
+                    <section class="card"><div class="eyebrow">ÖZEL YOL</div><h2>Gece Avcısı</h2></section>
+                    <section class="card"><div class="eyebrow">IRK GÜÇLERİ</div><h2>Güçler</h2></section>
+                    <section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2><button id="weapon-original" data-a="weapon" data-id="inv-1" data-k="attack">Saldırı At</button></section>
+                    <section class="card"><div class="eyebrow">SON ZARLAR</div><div class="rolls"><div class="roll"><div class="die">17</div></div></div></section>
+                  </div>
+                </main>
+              </div></body>`);
+              await page.evaluate(()=>{
+                window.__statClicks=0;window.__battleClicks=0;window.__weaponClicks=0;
+                document.querySelector('#stat-original').addEventListener('click',()=>window.__statClicks++);
+                document.querySelector('#weapon-original').addEventListener('click',()=>window.__weaponClicks++);
+                document.querySelector('[data-ccr-battle]').addEventListener('click',()=>window.__battleClicks++);
+                const snapshot={active:true,character_id:'char-1',round:3,order:[{name:'Batuhan',is_current:true,is_self:true,kind:'player',initiative:18}]};
+                const channel={on(){return this},subscribe(){return this}};
+                window.__catlakSupabase={rpc:async(name)=>name==='catlak_player_combat_snapshot'?{data:snapshot,error:null}:{data:null,error:null},channel:()=>channel};
+              });
+              await page.addScriptTag({path:path.resolve('player-sheet-patch.js')});
+              await page.waitForFunction(()=>document.querySelector('main.ps-player-sheet .ps-sheet-grid')&&document.querySelector('[data-ps-combat-card]'));
+              const layout=await page.evaluate(()=>({
+                grid:!!document.querySelector('.ps-sheet-grid'),
+                hero:!!document.querySelector('.ps-main-column > section.hero'),
+                stats:!!document.querySelector('.ps-main-column > .ps-stat-card #stat-original'),
+                visual:!!document.querySelector('.ps-main-column > [data-cc-party-visual-card]'),
+                inventory:!!document.querySelector('.ps-main-column > .ps-inventory-card #weapon-original'),
+                note:!!document.querySelector('.ps-side-column > [data-cc-player-note-for]'),
+                status:!!document.querySelector('.ps-side-column > [data-gmt-player-panel]'),
+                combat:!!document.querySelector('.ps-side-column > [data-ps-combat-card]'),
+                rolls:!!document.querySelector('.ps-side-column > .ps-roll-card'),
+                detail:document.querySelectorAll('.ps-detail-column > .ps-lore-card').length>=3,
+                kp:document.querySelector('[data-ps-kp]')?.textContent.includes('3/3'),
+                turn:document.querySelector('[data-ps-combat-card]')?.textContent.includes('SIRA SENDE')
+              }));
+              if(!Object.values(layout).every(Boolean))throw new Error('Player layout failed '+JSON.stringify(layout));
+              await page.click('#stat-original');await page.click('#weapon-original');await page.click('[data-ps-open-battle]');
+              const clicks=await page.evaluate(()=>({stat:window.__statClicks,weapon:window.__weaponClicks,battle:window.__battleClicks}));
+              if(clicks.stat!==1||clicks.weapon!==1||clicks.battle!==1)throw new Error('Existing handlers lost '+JSON.stringify(clicks));
+              if(errors.length)throw new Error('Player page errors '+errors.join(' | '));
+              await page.close();
+
+              const gm=await browser.newPage();const gmErrors=[];gm.on('pageerror',e=>gmErrors.push(String(e.message||e)));
+              await gm.setContent('<!doctype html><meta charset="utf-8"><div id="app"><div class="role">GM</div><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main><section class="card hero"><h1>GM</h1></section></main></div>');
+              await gm.evaluate(()=>{const channel={on(){return this},subscribe(){return this}};window.__catlakSupabase={rpc:async()=>({data:null,error:null}),channel:()=>channel}});
+              await gm.addScriptTag({path:path.resolve('player-sheet-patch.js')});await gm.waitForTimeout(300);
+              const isolated=await gm.evaluate(()=>!document.querySelector('main.ps-player-sheet')&&!document.querySelector('.ps-sheet-grid'));
+              if(!isolated)throw new Error('Player sheet leaked into GM UI');if(gmErrors.length)throw new Error(gmErrors.join(' | '));
+              await gm.close();
+              console.log('PLAYER_SHEET_SMOKE_OK',JSON.stringify({layout,clicks,gmIsolated:isolated}));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node player-sheet-smoke.cjs
