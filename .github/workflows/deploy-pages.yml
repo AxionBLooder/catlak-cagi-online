@@ -12,6 +12,7 @@ on:
       - 'item-system-patch.js'
       - 'event-rolls-patch.js'
       - 'gm-tools-patch.js'
+      - 'room-guard-patch.js'
       - 'room-system-patch.js'
       - 'catalog.b64'
       - '.github/workflows/deploy-pages.yml'
@@ -38,7 +39,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-system-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -55,6 +56,7 @@ jobs:
           node --check _site/item-system-patch.js
           node --check _site/event-rolls-patch.js
           node --check _site/gm-tools-patch.js
+          node --check _site/room-guard-patch.js
           node --check _site/room-system-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -67,4 +69,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: rooms-v1-2026-09-10
+# trigger: room-guard-nav-order-2026-09-10
