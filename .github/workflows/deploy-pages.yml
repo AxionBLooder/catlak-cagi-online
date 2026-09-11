@@ -60,7 +60,7 @@ jobs:
           PY
           for f in _site/*.js; do node --check "$f"; done
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
-          grep -Fq 'gm-tools-patch.js?v=gmtools-v6' _site/index.html
+          grep -Fq 'gm-tools-patch.js?v=gmtools-v7' _site/index.html
           grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v6' _site/index.html
           grep -Fq 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
           grep -Fq 'room-guard-patch.js?v=guard-v4' _site/index.html
@@ -80,12 +80,18 @@ jobs:
           grep -Fq "window.addEventListener('pointerdown'" _site/gm-center-router-core.js
           grep -Fq "bar.dataset.gm2Stable='1'" _site/gm-hub-v2-patch.js
           grep -Fq "async function gmtLoad(sub=gmtSub,force=false)" _site/gm-tools-patch.js
+          grep -Fq "main_weapon:'1. Silah',off_weapon:'2. Silah'" _site/gm-tools-patch.js
+          grep -Fq "function gmtInvalidatePlayer(){setTimeout(()=>gmtRenderPlayerPanels(),30)}" _site/gm-tools-patch.js
+          grep -Fq "dataset.gmtStableEquipment='1'" _site/gm-tools-patch.js
+          ! grep -Fq "function gmtInvalidatePlayer(){GMT_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove())" _site/gm-tools-patch.js
+          grep -Fq "catlak_set_equipped_slot" _site/gm-item-slot-patch.js
           grep -Fq "main.dataset.gm2Route='ability'" _site/gm-hub-v2-patch.js
           grep -Fq "window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]')" _site/gm-hub-v2-patch.js
           grep -Fq "setTimeout(()=>gmtRender(false),0)" _site/gm-tools-patch.js
           grep -Fq 'window.__catlakGmCenterRouterCore?.active' _site/invite-visibility-patch.js
           grep -Fq "main.querySelectorAll('[data-cc-player-live-card]').forEach(x=>x.remove())" _site/presence-patch.js
           grep -Fq 'function plaSyncEquipmentPanel' _site/player-live-actions-patch.js
+          grep -Fq "'1. Silah':'main_weapon','2. Silah':'off_weapon'" _site/player-live-actions-patch.js
           ! grep -Fq "if(equipmentDirty)PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove())" _site/player-live-actions-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -98,4 +104,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: weapon-slot-duplicate-board-remove-v6-2026-09-11
+# trigger: stable-top-weapon-slots-v7-2026-09-11
