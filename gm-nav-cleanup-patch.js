@@ -157,7 +157,36 @@ window.addEventListener('click',e=>{
   const b=e.target.closest?.('[data-qol-long-rest]');
   if(b&&gncSheet())gncRefillKpAfterRest(b,b.dataset.qolLongRest).catch(()=>{})
 },true);
+
+let gncStatsOpening=false;
+function gncOpenStatsWorkshop(){
+  if(!gncIsGM()||gncStatsOpening)return false;
+  const nav=GNC_APP.querySelector('.nav'),stat=nav?.querySelector('[data-cc-stats-tab]'),render=window.__catlakRenderCompactStats;
+  if(!stat||typeof render!=='function')return false;
+  gncStatsOpening=true;
+  window.__catlakGmHubOwnsMain=false;
+  window.__catlakCreatureLibraryOpen=false;
+  window.__catlakGmToolsOpen=false;
+  const main=GNC_APP.querySelector('main');
+  if(main){delete main.dataset.sspStableView;delete main.dataset.gmtTools;delete main.dataset.qolCreatureLibrary}
+  nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));
+  stat.classList.add('on');
+  window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
+  window.__catlakRouteLoading?.('Stat Atölyesi');
+  requestAnimationFrame(()=>Promise.resolve(render(true)).catch(e=>gncToast('Stat Atölyesi açılamadı: '+(e?.message||String(e)))).finally(()=>{gncStatsOpening=false}));
+  return true;
+}
+window.addEventListener('click',e=>{
+  const b=e.target.closest?.('#app [data-gm2-route="stats"]');
+  if(!b||!gncIsGM())return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(gncOpenStatsWorkshop())return;
+  let tries=0;
+  const retry=()=>{if(gncOpenStatsWorkshop())return;if(++tries<20)setTimeout(retry,25);else gncToast('Stat Atölyesi yükleyicisi hazır değil.')};
+  setTimeout(retry,0);
+},true);
+
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
 setInterval(gncClean,1200);
 setTimeout(gncClean,80);
-window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear};
+window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear,openStatsWorkshop:gncOpenStatsWorkshop};
