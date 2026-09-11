@@ -119,20 +119,26 @@ jobs:
               if marker not in navclean:
                   raise SystemExit('GM navigasyon temizliği işareti eksik: '+marker)
           gmcombat=Path('gm-combat-v3-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_save_creature_template','Kütüphaneye Kaydet']:
+          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_save_creature_template','Kütüphaneye Kaydet','gcv3-compact-gm-combat']:
               if marker not in gmcombat:
-                  raise SystemExit('GM savaş v3/kütüphane işareti eksik: '+marker)
+                  raise SystemExit('GM savaş v3/kütüphane/panel işareti eksik: '+marker)
+          psea=Path('player-sheet-equipment-abilities-patch.js').read_text(encoding='utf-8')
+          for marker in ['psea-equipment-grid','grid-template-columns:repeat(2,minmax(0,1fr))','gmt-slot:nth-child(5)']:
+              if marker not in psea:
+                  raise SystemExit('Oyuncu ekipman 2 sütun işareti eksik: '+marker)
           if 'room-guard-patch.js?v=guard-v3' not in html:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
           if 'battle-room-v3-patch.js?v=battleroom-v1' not in html:
               raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
           if 'player-enemy-privacy-patch.js?v=privacy-v1' not in html:
               raise SystemExit('player-enemy-privacy cache sürümü privacy-v1 olmalı')
-          if 'battle-room-compact-patch.js?v=battlecompact-v3' not in html:
-              raise SystemExit('battle-room-compact cache sürümü battlecompact-v3 olmalı')
+          if 'battle-room-compact-patch.js?v=battlecompact-v4' not in html:
+              raise SystemExit('battle-room-compact cache sürümü battlecompact-v4 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
-          if 'gm-combat-v3-patch.js?v=gmcombat-v2' not in html:
-              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v2 olmalı')
+          if 'gm-combat-v3-patch.js?v=gmcombat-v3' not in html:
+              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v3 olmalı')
+          if 'player-sheet-equipment-abilities-patch.js?v=psea-v2' not in html:
+              raise SystemExit('player-sheet equipment cache sürümü psea-v2 olmalı')
           print('Source invariants OK')
           PY
