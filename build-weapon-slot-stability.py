@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 root=Path(sys.argv[1] if len(sys.argv)>1 else '_site')
@@ -125,3 +126,6 @@ s=s.replace('./weapon-slot-patch.js?v=weaponslot-v6','./weapon-slot-patch.js?v=w
 s=s.replace('./battle-ready-clean-patch.js?v=battleready-v2','./battle-ready-clean-patch.js?v=battleready-v3')
 s=s.replace('./quality-of-life-patch.js?v=qol-v2','./quality-of-life-patch.js?v=qol-v3')
 p.write_text(s,encoding='utf-8')
+
+# Ek silah çıkarma + Irk Güçleri yerleşim düzeltmesini mevcut build zincirinden çalıştır.
+subprocess.run([sys.executable,'build-weapon-remove-layout-fix.py',str(root)],check=True)
