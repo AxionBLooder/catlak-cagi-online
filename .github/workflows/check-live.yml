@@ -111,9 +111,9 @@ jobs:
               if marker not in battle:
                   raise SystemExit('Savaş Odası v3 işareti eksik: '+marker)
           privacy=Path('player-enemy-privacy-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakEnemyHpPrivacy','data-br3-creatures','data-br3-ability-target']:
+          for marker in ['__catlakEnemyHpPrivacy','data-br3-creatures','data-br3-ability-target',"mode:'ac-only'",'!/^AC\\s+/i']:
               if marker not in privacy:
-                  raise SystemExit('Oyuncu yaratık HP gizlilik işareti eksik: '+marker)
+                  raise SystemExit('Oyuncu yaratık AC-only gizlilik işareti eksik: '+marker)
           compact=Path('battle-room-compact-patch.js').read_text(encoding='utf-8')
           for marker in ['brc-compact-battle','brc-quick-card','brc-creatures-card','brc-abilities-card']:
               if marker not in compact:
@@ -142,8 +142,8 @@ jobs:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
           if 'battle-room-v3-patch.js?v=battleroom-v1' not in html:
               raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
-          if 'player-enemy-privacy-patch.js?v=privacy-v1' not in html:
-              raise SystemExit('player-enemy-privacy cache sürümü privacy-v1 olmalı')
+          if 'player-enemy-privacy-patch.js?v=privacy-v2' not in html:
+              raise SystemExit('player-enemy-privacy cache sürümü privacy-v2 olmalı')
           if 'battle-room-compact-patch.js?v=battlecompact-v4' not in html:
               raise SystemExit('battle-room-compact cache sürümü battlecompact-v4 olmalı')
           if 'battle-room-actions-layout-patch.js?v=battleactions-v1' not in html:
