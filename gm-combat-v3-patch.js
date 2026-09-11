@@ -5,9 +5,22 @@ const gcv3Txt=e=>String(e?.textContent||'').trim();
 const gcv3IsGM=()=>gcv3Txt(GCV3_APP.querySelector('.role'))==='GM';
 const gcv3Num=(x,f=0)=>Number.isFinite(Number(x))?Number(x):f;
 const gcv3Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gcv3Toast.t);gcv3Toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let gcv3Busy=false;
+let gcv3Busy=false,gcv3UiQueued=false;
 async function gcv3Active(){const r=await GCV3_S.from('catlak_combat_state').select('active').eq('id',1).maybeSingle();if(r.error)throw r.error;return !!r.data?.active}
-async function gcv3Refresh(){const m=GCV3_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>window.gmtRender?.(true),20);setTimeout(()=>window.__catlakCombatEnhancementsTest?.renderGM?.(true),120)}
+async function gcv3Refresh(){const m=GCV3_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>window.gmtRender?.(true),20);setTimeout(()=>window.__catlakCombatEnhancementsTest?.renderGM?.(true),120);setTimeout(gcv3NormalizeCustomForm,180)}
+function gcv3NormalizeCustomForm(){
+  gcv3UiQueued=false;if(!gcv3IsGM())return;
+  const btn=GCV3_APP.querySelector('[data-bcc-add-creature]');if(!btn)return;
+  btn.textContent='Kütüphaneye Kaydet';btn.title='Yaratığı kalıcı Yaratık Kütüphanesi’ne kaydeder.';
+  const init=GCV3_APP.querySelector('#bcc-init');init?.closest('label')?.remove();
+  const section=btn.closest('section.card');const eyebrow=section?.querySelector('.eyebrow');
+  if(eyebrow)eyebrow.textContent='OYUNCU / YARATIK KÜTÜPHANESİ';
+  const row=btn.closest('.bcc-gm-form,.gmt-toolbar');
+  if(row&&!row.querySelector('[data-gcv3-library-note]')){
+    const note=document.createElement('div');note.dataset.gcv3LibraryNote='1';note.className='mini muted';note.style.gridColumn='1/-1';note.textContent='Özel yaratık önce kütüphaneye kaydolur. Sonra aşağıdaki Yaratık Kütüphanesi kartından Goblin gibi Savaşa Ekle ile karşılaşmaya alınır.';row.insertBefore(note,btn);
+  }
+}
+function gcv3QueueUi(){if(gcv3UiQueued)return;gcv3UiQueued=true;requestAnimationFrame(gcv3NormalizeCustomForm)}
 async function gcv3AddTemplate(btn){if(gcv3Busy)return;gcv3Busy=true;btn.disabled=true;try{if(!await gcv3Active())throw new Error('Önce savaşı başlat.');const id=btn.dataset.cexTemplateAdd;if(!id)throw new Error('Yaratık şablonu bulunamadı.');const r=await GCV3_S.rpc('catlak_gm_combat_add_template',{p_template_id:id,p_initiative:null});if(r.error)throw r.error;if(!r.data)throw new Error('Yaratık savaşa eklenemedi.');gcv3Toast('Yaratık savaşa gönderildi. Oyuncu Savaş Odası’nda görünecek.');await gcv3Refresh()}finally{gcv3Busy=false;if(btn.isConnected)btn.disabled=false}}
 async function gcv3AddCustom(btn){
   if(gcv3Busy)return;gcv3Busy=true;btn.disabled=true;
@@ -30,4 +43,6 @@ async function gcv3AddCustom(btn){
   }finally{gcv3Busy=false;if(btn.isConnected)btn.disabled=false}
 }
 document.addEventListener('click',e=>{if(!gcv3IsGM())return;const t=e.target.closest?.('[data-cex-template-add]');if(t){e.preventDefault();e.stopImmediatePropagation();gcv3AddTemplate(t).catch(x=>gcv3Toast(x?.message||String(x)));return}const c=e.target.closest?.('[data-bcc-add-creature]');if(c){e.preventDefault();e.stopImmediatePropagation();gcv3AddCustom(c).catch(x=>gcv3Toast(x?.message||String(x)));return}},true);
-window.__catlakGmCombatV3Test={addTemplate:gcv3AddTemplate,addCustom:gcv3AddCustom};
+new MutationObserver(gcv3QueueUi).observe(GCV3_APP,{childList:true,subtree:true});
+setInterval(gcv3NormalizeCustomForm,1400);setTimeout(gcv3NormalizeCustomForm,220);
+window.__catlakGmCombatV3Test={addTemplate:gcv3AddTemplate,addCustom:gcv3AddCustom,normalizeCustomForm:gcv3NormalizeCustomForm};
