@@ -68,9 +68,11 @@ jobs:
           grep -Fq 'battle-ready-clean-patch.js?v=battleready-v2' _site/index.html
           grep -Fq 'presence-patch.js?v=presence-v4' _site/index.html
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v6' _site/index.html
-          grep -Fq 'weapon-slot-patch.js?v=weaponslot-v4' _site/index.html
-          grep -Fq '1. Silaha' _site/weapon-slot-patch.js
-          grep -Fq '2. Silaha' _site/weapon-slot-patch.js
+          grep -Fq 'weapon-slot-patch.js?v=weaponslot-v5' _site/index.html
+          grep -Fq '1. Yuvaya' _site/weapon-slot-patch.js
+          grep -Fq '2. Yuvaya' _site/weapon-slot-patch.js
+          grep -Fq '1. SİLAH YUVASI' _site/weapon-slot-patch.js
+          grep -Fq 'pos.hero.after(board)' _site/weapon-slot-patch.js
           grep -Fq 'button[data-a="equip"]' _site/weapon-slot-patch.js
           ! grep -Fq "querySelectorAll('button[data-a=\"equip\"]')" _site/weapon-slot-patch.js
           grep -Fq 'section.hero .vitals' _site/battle-ready-clean-patch.js
@@ -95,4 +97,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: weapon-slot-assign-buttons-v4-2026-09-11
+# trigger: weapon-slot-top-v5-2026-09-11
