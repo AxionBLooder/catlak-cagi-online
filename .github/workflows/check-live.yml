@@ -19,6 +19,7 @@ on:
       - 'battle-room-compact-patch.js'
       - 'battle-room-actions-layout-patch.js'
       - 'site-stability-patch.js'
+      - 'game-flow-stability-patch.js'
       - 'gm-nav-cleanup-patch.js'
       - 'gm-combat-v3-patch.js'
       - 'battle-creature-patch.js'
@@ -59,6 +60,7 @@ jobs:
           node --check battle-room-compact-patch.js
           node --check battle-room-actions-layout-patch.js
           node --check site-stability-patch.js
+          node --check game-flow-stability-patch.js
           node --check gm-nav-cleanup-patch.js
           node --check gm-combat-v3-patch.js
           node --check battle-creature-patch.js
@@ -92,7 +94,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
-          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
+          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
               if runtime not in html:
                   raise SystemExit(runtime+' index.html içinde yüklenmiyor')
           for retired in ['ability-system-patch.js','ability-workshop-state-patch.js','gm-hub-patch.js','gm-hub-route-fix-patch.js','battle-creature-patch.js','ability-player-patch.js']:
@@ -123,9 +125,13 @@ jobs:
               if marker not in actions:
                   raise SystemExit('Savaş hedef/yetenek kompakt yerleşim işareti eksik: '+marker)
           stability=Path('site-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakSiteStabilityTest']:
+          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest']:
               if marker not in stability:
                   raise SystemExit('Site geneli render stabilite işareti eksik: '+marker)
+          flow=Path('game-flow-stability-patch.js').read_text(encoding='utf-8')
+          for marker in ['data-gfs-live-turn','data-gfs-skip-creature','catlak_gm_skip_creature_turn','catlak_gm_combat_add_template','catlak_gm_combat_end','cc-game-flow-stability','__catlakGameFlowStabilityTest']:
+              if marker not in flow:
+                  raise SystemExit('Oyun akışı stabilite işareti eksik: '+marker)
           navclean=Path('gm-nav-cleanup-patch.js').read_text(encoding='utf-8')
           for marker in ['data-ccr-hub','__catlakGmNavCleanupTest']:
               if marker not in navclean:
@@ -148,8 +154,10 @@ jobs:
               raise SystemExit('battle-room-compact cache sürümü battlecompact-v4 olmalı')
           if 'battle-room-actions-layout-patch.js?v=battleactions-v1' not in html:
               raise SystemExit('battle-room-actions cache sürümü battleactions-v1 olmalı')
-          if 'site-stability-patch.js?v=stability-v1' not in html:
-              raise SystemExit('site-stability cache sürümü stability-v1 olmalı')
+          if 'site-stability-patch.js?v=stability-v2' not in html:
+              raise SystemExit('site-stability cache sürümü stability-v2 olmalı')
+          if 'game-flow-stability-patch.js?v=gameflow-v1' not in html:
+              raise SystemExit('game-flow-stability cache sürümü gameflow-v1 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
           if 'gm-combat-v3-patch.js?v=gmcombat-v3' not in html:
