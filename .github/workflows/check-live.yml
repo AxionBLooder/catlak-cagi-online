@@ -128,8 +128,8 @@ jobs:
               raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
           if 'player-enemy-privacy-patch.js?v=privacy-v1' not in html:
               raise SystemExit('player-enemy-privacy cache sürümü privacy-v1 olmalı')
-          if 'battle-room-compact-patch.js?v=battlecompact-v2' not in html:
-              raise SystemExit('battle-room-compact cache sürümü battlecompact-v2 olmalı')
+          if 'battle-room-compact-patch.js?v=battlecompact-v3' not in html:
+              raise SystemExit('battle-room-compact cache sürümü battlecompact-v3 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
           if 'gm-combat-v3-patch.js?v=gmcombat-v2' not in html:
