@@ -107,7 +107,7 @@ jobs:
               if marker not in guard:
                   raise SystemExit('Savaş/GM Merkezi stabilite işareti eksik: '+marker)
           battle=Path('battle-room-v3-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakBattleRoomV3','data-br3-creatures','data-br3-abilities','data-br3-clear-log','catlak_player_use_ability','catlak_player_weapon_strike']:
+          for marker in ['__catlakBattleRoomV3','data-br3-creatures','data-br3-abilities','data-br3-clear-log','catlak_player_use_ability','catlak_player_weapon_strike','br3BattleView','Promise.allSettled']:
               if marker not in battle:
                   raise SystemExit('Savaş Odası v3 işareti eksik: '+marker)
           privacy=Path('player-enemy-privacy-patch.js').read_text(encoding='utf-8')
@@ -140,8 +140,8 @@ jobs:
                   raise SystemExit('Oyuncu ekipman 2 sütun işareti eksik: '+marker)
           if 'room-guard-patch.js?v=guard-v3' not in html:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
-          if 'battle-room-v3-patch.js?v=battleroom-v1' not in html:
-              raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
+          if 'battle-room-v3-patch.js?v=battleroom-v2' not in html:
+              raise SystemExit('battle-room-v3 cache sürümü battleroom-v2 olmalı')
           if 'player-enemy-privacy-patch.js?v=privacy-v2' not in html:
               raise SystemExit('player-enemy-privacy cache sürümü privacy-v2 olmalı')
           if 'battle-room-compact-patch.js?v=battlecompact-v4' not in html:
