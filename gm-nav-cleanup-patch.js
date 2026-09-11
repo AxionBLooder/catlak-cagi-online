@@ -43,6 +43,11 @@ if(!document.querySelector('#gnc-player-rest-style')){
   #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-log{max-height:300px!important}
   #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-log-row .mini{font-size:.86rem!important;line-height:1.42!important}
 
+  @media(min-width:760px){
+    #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-battle-grid>div:first-child{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;align-items:start!important}
+    #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-battle-grid>div:first-child>[data-br3-turn]{grid-column:1/5!important;grid-row:1!important}
+    #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-battle-grid>div:first-child>.brc-order-card{grid-column:5/13!important;grid-row:1!important}
+  }
   @media(max-width:1050px){#app main.ps-player-sheet section.hero .vitals{min-width:0!important}}
   @media(max-width:700px){#app main.ps-player-sheet section.hero{padding:13px!important}#app main.ps-player-sheet .qol-rest{align-items:stretch!important}#app main.ps-player-sheet .qol-rest button,#app main.ps-player-sheet .qol-rest span{width:100%!important}}
   `;document.head.appendChild(s)
@@ -61,6 +66,17 @@ function gncEnsureRest(){
   })
 }
 
+function gncAlignBattleTop(){
+  if(gncIsGM()||window.__catlakBattleRoomOpen!==true)return;
+  const main=GNC_APP.querySelector('main.brc-compact-battle'),left=main?.querySelector('.ccr-battle-grid>div:first-child');
+  if(!left)return;
+  const turn=left.querySelector(':scope > [data-br3-turn]');
+  const order=left.querySelector(':scope > .brc-order-card')||left.querySelector(':scope > section.card .ccr-order')?.closest('section.card');
+  if(!turn||!order)return;
+  order.classList.add('brc-order-card');
+  if(turn.nextElementSibling!==order)turn.insertAdjacentElement('afterend',order);
+}
+
 async function gncRefillKpAfterRest(btn,id){
   if(!GNC_S||!btn?.isConnected)return;
   await new Promise(r=>setTimeout(r,0));
@@ -76,10 +92,10 @@ async function gncRefillKpAfterRest(btn,id){
   setTimeout(gncEnsureRest,60);
 }
 
-function gncClean(){gncQueued=false;if(gncIsGM())GNC_APP.querySelectorAll('.nav [data-ccr-hub]').forEach(x=>x.remove());else gncEnsureRest()}
+function gncClean(){gncQueued=false;if(gncIsGM())GNC_APP.querySelectorAll('.nav [data-ccr-hub]').forEach(x=>x.remove());else{gncEnsureRest();gncAlignBattleTop()}}
 function gncSchedule(){if(gncQueued)return;gncQueued=true;requestAnimationFrame(gncClean)}
 window.addEventListener('click',e=>{const b=e.target.closest?.('[data-qol-long-rest]');if(b&&gncSheet())gncRefillKpAfterRest(b,b.dataset.qolLongRest).catch(()=>{})},true);
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
 setInterval(gncClean,1200);
 setTimeout(gncClean,80);
-window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest};
+window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop};
