@@ -11,6 +11,7 @@ let ctsGmBusy=false,ctsPlayerBusy=false,ctsGmSig='',ctsPlayerSig='',ctsGmTimer=n
 
 if(!document.querySelector('#cts-style')){
   const s=document.createElement('style');s.id='cts-style';s.textContent=`
+  #app [data-gfs-live-turn]{display:none!important}
   #app [data-cts-turn-card]{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px!important;margin:0 0 10px!important;border-color:#35546b!important;background:#0a1723!important}
   #app [data-cts-turn-card].enemy{border-color:#8b673d!important;box-shadow:inset 0 0 0 1px #c08b4630}
   #app [data-cts-turn-card] h2{margin:.1rem 0 .2rem!important;font-size:1.08rem!important}
