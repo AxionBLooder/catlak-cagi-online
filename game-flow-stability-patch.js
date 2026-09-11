@@ -31,7 +31,9 @@ function gfsFreeze(ms=1200,reason='flow'){
 }
 function gfsPrimeDiceFreeze(e){
   const t=e.target?.closest?.('#app button[data-a="stat"],#app button[data-a="weapon"],#app [data-sr-stat],#app [data-dx-gm-roll-kind],#app [data-er-private],#app [data-er-event]');
-  if(t)gfsFreeze(1500,'dice');
+  if(!t)return;
+  gfsFreeze(1500,'dice');
+  if(e.type==='pointerdown'&&!gfsIsGM()&&t.matches('button[data-a="weapon"]'))e.stopImmediatePropagation();
 }
 window.addEventListener('pointerdown',gfsPrimeDiceFreeze,true);
 window.addEventListener('click',gfsPrimeDiceFreeze,true);
