@@ -70,5 +70,5 @@ p=root/'index.html'
 s=p.read_text(encoding='utf-8')
 s=s.replace('./presence-patch.js?v=presence-v3','./presence-patch.js?v=presence-v4')
 s=s.replace('./player-live-actions-patch.js?v=playerlive-v5','./player-live-actions-patch.js?v=playerlive-v6')
-s=s.replace('./weapon-slot-patch.js?v=weaponslot-v2','./weapon-slot-patch.js?v=weaponslot-v5')
+s=s.replace('./weapon-slot-patch.js?v=weaponslot-v2','./weapon-slot-patch.js?v=weaponslot-v6')
 p.write_text(s,encoding='utf-8')
