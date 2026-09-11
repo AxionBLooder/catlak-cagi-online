@@ -57,3 +57,4 @@ jobs:
           }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node gm-tools-smoke.cjs
+# audit trigger: full-site-gm-tools-2026-09-12-v1
