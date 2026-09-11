@@ -181,3 +181,17 @@ s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-acti
 s=s.replace('./weapon-slot-patch.js?v=weaponslot-v8','./weapon-slot-patch.js?v=weaponslot-v8&dual-actions-v4')
 s=s.replace('./player-sheet-patch.js?v=sheet-v3','./player-sheet-patch.js?v=sheet-v3&race-layout-v3')
 p.write_text(s,encoding='utf-8')
+
+# Canlı silah aksiyonunu ve birleşik oyuncu kağıdı temasını zaten yüklenen
+# slot-sync dosyasına ekle. Yeni script etiketi gerektirmeden tek kalıcı giriş noktası kullanılır.
+p=root/'slot-sync-hotfix.js'
+s=p.read_text(encoding='utf-8')
+for extra in ('weapon-live-actions-patch.js','player-sheet-theme-v2-patch.js'):
+    s+='\n'+(root/extra).read_text(encoding='utf-8')
+p.write_text(s,encoding='utf-8')
+
+# Tarayıcı eski slot-sync paketini tutmasın; workflow'un slotfix-v3 kontrolü korunur.
+p=root/'battle-ready-clean-patch.js'
+s=p.read_text(encoding='utf-8')
+s=s.replace('./slot-sync-hotfix.js?v=slotfix-v3','./slot-sync-hotfix.js?v=slotfix-v3&live-sheet-v2')
+p.write_text(s,encoding='utf-8')
