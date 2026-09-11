@@ -39,16 +39,20 @@ async function wsLoad(force=false){
 }
 function wsButton(slot,current){
   const first=slot==='main_weapon',active=current===slot;
-  return `<button type="button" class="${active?'ws-active':''}" data-ws-slot="${slot}">${active?'✓ ':''}${first?'1. Silah':'2. Silah'}${active?'':' Yap'}</button>`;
+  const name=first?'1. Silaha':'2. Silaha';
+  return `<button type="button" class="${active?'ws-active':''}" data-ws-slot="${slot}">${active?'✓ '+name+' Atandı':name+' Ata'}</button>`;
 }
 function wsPaintCard(card,row){
   const actions=card.querySelector('.actions');if(!actions)return;
-  actions.querySelectorAll('button[data-a="equip"]').forEach(b=>b.remove());
   card.querySelectorAll('.ws-slot-badge').forEach(x=>x.remove());
+  const equip=actions.querySelector('button[data-a="equip"]');
   let controls=actions.querySelector('[data-ws-controls]');
-  if(!controls){controls=document.createElement('div');controls.className='ws-slot-controls';controls.dataset.wsControls='1';actions.prepend(controls)}
+  if(!controls){
+    controls=document.createElement('div');controls.className='ws-slot-controls';controls.dataset.wsControls='1';
+    equip?actions.insertBefore(controls,equip):actions.prepend(controls);
+  }else if(equip&&controls.nextElementSibling!==equip){actions.insertBefore(controls,equip)}
   const current=row?.equipped?String(row.equipped_slot||''):'';
-  const html=wsButton('main_weapon',current)+wsButton('off_weapon',current)+(current?'<button type="button" data-ws-clear>Çıkar</button>':'');
+  const html=wsButton('main_weapon',current)+wsButton('off_weapon',current);
   if(controls.innerHTML!==html)controls.innerHTML=html;
   if(current){
     const tag=card.querySelector('.tag');if(tag){const badge=document.createElement('span');badge.className='tag ws-slot-badge';badge.textContent=current==='main_weapon'?'1. SİLAH':'2. SİLAH';tag.after(badge)}
@@ -85,13 +89,13 @@ async function wsSet(card,slot){
   try{
     const r=await WS_S.rpc('catlak_set_equipped_slot',{p_inventory_id:id,p_slot:slot});if(r.error)throw r.error;
     wsCacheAt=0;
-    wsToast(slot==='main_weapon'?'1. silah seçildi.':slot==='off_weapon'?'2. silah seçildi.':'Silah çıkarıldı.');
+    wsToast(slot==='main_weapon'?'Silah 1. silaha atandı.':slot==='off_weapon'?'Silah 2. silaha atandı.':'Silah çıkarıldı.');
     if(window.__catlakPlayerLiveTest?.refresh)await window.__catlakPlayerLiveTest.refresh(true);
     await wsPaint(true);
   }catch(e){wsToast(e?.message||String(e))}finally{wsBusy=false;wsSoon(true,20)}
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-ws-slot],[data-ws-clear]');if(!b||!wsIsSheet())return;
+  const b=e.target.closest('[data-ws-slot]');if(!b||!wsIsSheet())return;
   const card=b.closest('.iw-player-item[data-pla-inv-row]');if(!card)return;
   e.preventDefault();e.stopImmediatePropagation();wsSet(card,b.dataset.wsSlot||null);
 },true);
