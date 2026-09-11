@@ -129,7 +129,7 @@ jobs:
               if marker not in stability:
                   raise SystemExit('Site geneli render stabilite işareti eksik: '+marker)
           flow=Path('game-flow-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-gfs-live-turn','data-gfs-skip-creature','catlak_gm_skip_creature_turn','catlak_gm_combat_add_template','catlak_gm_combat_end','cc-game-flow-stability','__catlakGameFlowStabilityTest']:
+          for marker in ['data-gfs-live-turn','data-gfs-skip-creature','catlak_gm_skip_creature_turn','catlak_gm_combat_add_template','catlak_gm_combat_end','cc-game-flow-stability','pointerdown','button[data-a="weapon"]','__catlakGameFlowStabilityTest']:
               if marker not in flow:
                   raise SystemExit('Oyun akışı stabilite işareti eksik: '+marker)
           navclean=Path('gm-nav-cleanup-patch.js').read_text(encoding='utf-8')
@@ -156,8 +156,8 @@ jobs:
               raise SystemExit('battle-room-actions cache sürümü battleactions-v1 olmalı')
           if 'site-stability-patch.js?v=stability-v2' not in html:
               raise SystemExit('site-stability cache sürümü stability-v2 olmalı')
-          if 'game-flow-stability-patch.js?v=gameflow-v1' not in html:
-              raise SystemExit('game-flow-stability cache sürümü gameflow-v1 olmalı')
+          if 'game-flow-stability-patch.js?v=gameflow-v2' not in html:
+              raise SystemExit('game-flow-stability cache sürümü gameflow-v2 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
           if 'gm-combat-v3-patch.js?v=gmcombat-v3' not in html:
