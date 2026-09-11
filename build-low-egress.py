@@ -100,9 +100,10 @@ s=must_sub(
 )
 p.write_text(s,encoding='utf-8')
 
-# Yeni düşük-trafik paketinin eski browser cache'ine takılmaması için asset sürümlerini yükselt.
+# Yeni düşük-trafik paketinin ve auth kurtarma katmanının eski browser cache'ine takılmaması için asset sürümlerini yükselt.
 p=root/'index.html'
 s=p.read_text(encoding='utf-8')
 s=s.replace('./browser-app.js?v=bootwatch-171c9773','./browser-app.js?v=bootwatch-low-egress-v1')
 s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v9')
+s=s.replace('./site-stability-patch.js?v=stability-v2','./site-stability-patch.js?v=stability-v3')
 p.write_text(s,encoding='utf-8')
