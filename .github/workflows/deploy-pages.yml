@@ -38,6 +38,7 @@ jobs:
           python3 build-gm-route-fix.py _site
           python3 build-gm-click-fix.py _site
           python3 build-gm-shell-speed.py _site
+          python3 build-gm-shell-speed-guard.py _site
           python3 - <<'PY'
           from pathlib import Path
           p=Path('_site/index.html')
@@ -57,8 +58,8 @@ jobs:
           PY
           for f in _site/*.js; do node --check "$f"; done
           grep -q 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
-          grep -q 'gm-tools-patch.js?v=gmtools-v5' _site/index.html
-          grep -q 'gm-hub-v2-patch.js?v=gmhub-v5' _site/index.html
+          grep -q 'gm-tools-patch.js?v=gmtools-v6' _site/index.html
+          grep -q 'gm-hub-v2-patch.js?v=gmhub-v6' _site/index.html
           grep -q 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
           grep -q 'room-guard-patch.js?v=guard-v4' _site/index.html
           grep -q 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
@@ -66,6 +67,8 @@ jobs:
           grep -q "bar.dataset.gm2Stable='1'" _site/gm-hub-v2-patch.js
           grep -q "async function gmtLoad(sub=gmtSub,force=false)" _site/gm-tools-patch.js
           grep -q "main.dataset.gm2Route='ability'" _site/gm-hub-v2-patch.js
+          grep -q "window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]')" _site/gm-hub-v2-patch.js
+          grep -q "setTimeout(()=>gmtRender(false),0)" _site/gm-tools-patch.js
           grep -q 'window.__catlakGmCenterRouterCore?.active' _site/invite-visibility-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -78,4 +81,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-persistent-shell-speed-v1-2026-09-11
+# trigger: gm-center-persistent-shell-speed-v2-2026-09-11
