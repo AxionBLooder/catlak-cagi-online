@@ -81,21 +81,31 @@ function br3EnhanceWeapons(s){
     let invId=card.dataset.br3Inv||card.dataset.bccInv||card.querySelector('[data-ccr-weapon]')?.dataset.ccrWeapon||'';
     if(invId)card.dataset.br3Inv=invId;
     card.querySelectorAll('[data-ccr-weapon]').forEach(x=>x.remove());
-    card.querySelector('[data-br3-weapon-actions]')?.remove();
-    const box=document.createElement('div');box.dataset.br3WeaponActions='1';box.innerHTML=`<div class="br3-target-line">Hedef: <b>${target?br3Esc(target.name):'Seçilmedi'}</b>${!s.is_my_turn?' • <span class="muted">Sıra sende değil</span>':''}</div><div class="actions"><button type="button" class="primary" data-br3-strike="${br3Esc(invId)}" ${!invId||!target||!s.is_my_turn?'disabled':''}>⚔ Hedefe Vur</button></div>`;card.appendChild(box);
+    let box=card.querySelector('[data-br3-weapon-actions]');
+    if(!box){box=document.createElement('div');box.dataset.br3WeaponActions='1';card.appendChild(box)}
+    const targetName=target?target.name:'Seçilmedi',waiting=!s.is_my_turn;
+    const state=JSON.stringify([invId,target?.id||'',targetName,waiting]);
+    if(box.dataset.br3State!==state){
+      box.dataset.br3State=state;
+      box.innerHTML=`<div class="br3-target-line">Hedef: <b>${br3Esc(targetName)}</b>${waiting?' • <span class="muted">Sıra sende değil</span>':''}</div><div class="actions"><button type="button" class="primary" data-br3-strike="${br3Esc(invId)}" ${!invId||!target||waiting?'disabled':''}>⚔ Hedefe Vur</button></div>`;
+    }
   });
+}
+function br3Node(html){const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
+function br3ReplaceIfChanged(current,next){
+  if(!current)return next;
+  if(current.outerHTML===next.outerHTML)return current;
+  const y=window.scrollY;current.replaceWith(next);requestAnimationFrame(()=>{if(Math.abs(window.scrollY-y)>2)window.scrollTo({top:y,left:0,behavior:'auto'})});return next;
 }
 function br3Insert(d){
   const main=BR3_APP.querySelector('main');if(!main)return;
-  main.querySelectorAll('[data-br3-creatures],[data-br3-abilities],[data-br3-turn],[data-br3-log]').forEach(x=>x.remove());
-  const holder=document.createElement('div');holder.innerHTML=br3TurnSection(d.snap);const turn=holder.firstElementChild;
   const grid=main.querySelector('.ccr-battle-grid'),left=grid?.firstElementChild,aside=grid?.querySelector('aside');
-  if(left)left.insertBefore(turn,left.firstChild);else main.appendChild(turn);
-  const h1=document.createElement('div');h1.innerHTML=br3CreaturesSection(d.snap);const creatures=h1.firstElementChild;
-  const order=main.querySelector('.ccr-order')?.closest('section.card');order?order.insertAdjacentElement('afterend',creatures):(left?left.appendChild(creatures):main.appendChild(creatures));
-  const h2=document.createElement('div');h2.innerHTML=br3AbilitiesSection(d);const abilities=h2.firstElementChild;
-  const weapons=[...main.querySelectorAll('section.card')].find(s=>br3Txt(s.querySelector('.eyebrow'))==='TAKILI SİLAHLAR');weapons?weapons.insertAdjacentElement('afterend',abilities):(left?left.appendChild(abilities):main.appendChild(abilities));
-  const h3=document.createElement('div');h3.innerHTML=br3LogSection(d);const log=h3.firstElementChild;aside?aside.appendChild(log):main.appendChild(log);
+  let turn=main.querySelector('[data-br3-turn]'),creatures=main.querySelector('[data-br3-creatures]'),abilities=main.querySelector('[data-br3-abilities]'),log=main.querySelector('[data-br3-log]');
+  const nextTurn=br3Node(br3TurnSection(d.snap)),nextCreatures=br3Node(br3CreaturesSection(d.snap)),nextAbilities=br3Node(br3AbilitiesSection(d)),nextLog=br3Node(br3LogSection(d));
+  if(turn)turn=br3ReplaceIfChanged(turn,nextTurn);else{turn=nextTurn;left?left.insertBefore(turn,left.firstChild):main.appendChild(turn)}
+  if(creatures)creatures=br3ReplaceIfChanged(creatures,nextCreatures);else{creatures=nextCreatures;const order=main.querySelector('.ccr-order')?.closest('section.card');order?order.insertAdjacentElement('afterend',creatures):(left?left.appendChild(creatures):main.appendChild(creatures))}
+  if(abilities)abilities=br3ReplaceIfChanged(abilities,nextAbilities);else{abilities=nextAbilities;const weapons=[...main.querySelectorAll('section.card')].find(s=>br3Txt(s.querySelector('.eyebrow'))==='TAKILI SİLAHLAR');weapons?weapons.insertAdjacentElement('afterend',abilities):(left?left.appendChild(abilities):main.appendChild(abilities))}
+  if(log)log=br3ReplaceIfChanged(log,nextLog);else{log=nextLog;aside?aside.appendChild(log):main.appendChild(log)}
   br3EnhanceWeapons(d.snap);
 }
 async function br3Render(force=false){
@@ -107,31 +117,36 @@ async function br3Render(force=false){
     const sig=JSON.stringify([d.snap?.active,d.snap?.round,d.snap?.current_combatant_id,d.snap?.in_combat,d.snap?.is_my_turn,(d.snap?.order||[]).map(x=>[x.id,x.name,x.kind,x.hp_current,x.hp_max,x.ac,x.is_current,x.creature_type]),d.abilities.map(a=>[a.assignment_id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.uses_per_combat,a.uses_remaining,a.description]),d.logs.map(x=>[x.id,x.kind,x.message,x.created_at]),d.warnings,br3TargetId]);
     if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3EnhanceWeapons(d.snap);return}
     br3Sig=sig;br3Insert(d);
-  }catch(e){if(force)br3Toast('Savaş Odası v3 yüklenemedi: '+(e?.message||String(e)))}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(true),0)}}
+  }catch(e){if(force)br3Toast('Savaş Odası v3 yüklenemedi: '+(e?.message||String(e)))}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
 }
-async function br3Strike(btn){if(br3ActionBusy)return;if(!br3TargetId)throw new Error('Önce bir yaratık hedefle.');const invId=btn.dataset.br3Strike;if(!invId)throw new Error('Silah bulunamadı.');br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_weapon_strike',{p_inventory_id:invId,p_target_id:br3TargetId});if(r.error)throw r.error;const d=r.data||{};br3Toast(d.hit?`${d.target_name}: ${d.critical?'KRİTİK İSABET':'İSABET'} • ${d.damage_total} hasar`:`${d.target_name}: ISKA (${d.attack_total})`);if(br3Num(d.target_hp)<=0)br3TargetId='';br3Sig='';await window.__catlakRoomSystemTest?.renderBattle?.(true);await br3Render(true)}finally{br3ActionBusy=false}}
-async function br3Use(btn){if(br3ActionBusy)return;const id=btn.dataset.br3Use,sel=BR3_APP.querySelector(`[data-br3-ability-target="${CSS.escape(id)}"]`),target=sel?.value||null;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_use_ability',{p_assignment_id:id,p_target_id:target});if(r.error)throw r.error;br3LastResult=r.data||null;const d=r.data||{};let msg=d.ability||'Yetenek';if(d.hit===false)msg+=': ISKA';else if(d.effect_type==='damage')msg+=`: ${d.amount} hasar`;else if(d.effect_type==='heal')msg+=`: ${d.amount} iyileştirme`;else msg+=' kullanıldı';br3Toast(msg);br3Sig='';await window.__catlakRoomSystemTest?.renderBattle?.(true);await br3Render(true)}finally{br3ActionBusy=false}}
-async function br3EndTurn(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_end_turn');if(r.error)throw r.error;br3Toast('Tur bitti. Sıradaki: '+(r.data?.current_name||'—'));br3Sig='';await window.__catlakRoomSystemTest?.renderBattle?.(true);await br3Render(true)}finally{br3ActionBusy=false}}
+async function br3Strike(btn){if(br3ActionBusy)return;if(!br3TargetId)throw new Error('Önce bir yaratık hedefle.');const invId=btn.dataset.br3Strike;if(!invId)throw new Error('Silah bulunamadı.');br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_weapon_strike',{p_inventory_id:invId,p_target_id:br3TargetId});if(r.error)throw r.error;const d=r.data||{};br3Toast(d.hit?`${d.target_name}: ${d.critical?'KRİTİK İSABET':'İSABET'} • ${d.damage_total} hasar`:`${d.target_name}: ISKA (${d.attack_total})`);if(br3Num(d.target_hp)<=0)br3TargetId='';await br3Render(false)}finally{br3ActionBusy=false}}
+async function br3Use(btn){if(br3ActionBusy)return;const id=btn.dataset.br3Use,sel=BR3_APP.querySelector(`[data-br3-ability-target="${CSS.escape(id)}"]`),target=sel?.value||null;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_use_ability',{p_assignment_id:id,p_target_id:target});if(r.error)throw r.error;br3LastResult=r.data||null;const d=r.data||{};let msg=d.ability||'Yetenek';if(d.hit===false)msg+=': ISKA';else if(d.effect_type==='damage')msg+=`: ${d.amount} hasar`;else if(d.effect_type==='heal')msg+=`: ${d.amount} iyileştirme`;else msg+=' kullanıldı';br3Toast(msg);await br3Render(false)}finally{br3ActionBusy=false}}
+async function br3EndTurn(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_end_turn');if(r.error)throw r.error;br3Toast('Tur bitti. Sıradaki: '+(r.data?.current_name||'—'));await br3Render(false)}finally{br3ActionBusy=false}}
 async function br3ClearBattleLog(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_gm_clear_battle_log');if(r.error)throw r.error;br3Toast(`Canlı akış temizlendi${r.data!=null?' • '+r.data+' kayıt':''}.`)}finally{br3ActionBusy=false}}
 function br3EnsureGmClear(){
   if(!br3IsGM())return;const panel=BR3_APP.querySelector('main [data-cex-gm-panel]');if(!panel||panel.querySelector('[data-br3-clear-log]'))return;const sub=panel.querySelector('.cex-sub')||panel;const wrap=document.createElement('div');wrap.className='actions br3-gm-clear';wrap.innerHTML='<button type="button" class="danger" data-br3-clear-log>🧹 Canlı Akışı Temizle</button>';sub.appendChild(wrap)
 }
 function br3Soon(force=false,ms=60){clearTimeout(br3Timer);br3Timer=setTimeout(()=>{if(br3IsGM())br3EnsureGmClear();else br3Render(force)},ms)}
 document.addEventListener('click',e=>{
-  const t=e.target.closest?.('[data-br3-target]');if(t){e.preventDefault();e.stopImmediatePropagation();br3TargetId=String(t.dataset.br3Target||'');br3Sig='';br3Soon(true,0);return}
+  const t=e.target.closest?.('[data-br3-target]');if(t){e.preventDefault();e.stopImmediatePropagation();br3TargetId=String(t.dataset.br3Target||'');br3Soon(false,0);return}
   const s=e.target.closest?.('[data-br3-strike]');if(s){e.preventDefault();e.stopImmediatePropagation();br3Strike(s).catch(x=>br3Toast('Saldırı başarısız: '+(x?.message||String(x))));return}
   const u=e.target.closest?.('[data-br3-use]');if(u){e.preventDefault();e.stopImmediatePropagation();br3Use(u).catch(x=>br3Toast(x?.message||String(x)));return}
   if(e.target.closest?.('[data-br3-end-turn]')){e.preventDefault();e.stopImmediatePropagation();br3EndTurn().catch(x=>br3Toast(x?.message||String(x)));return}
   if(e.target.closest?.('[data-br3-clear-log]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş Canlı Akışı temizlensin mi?'))br3ClearBattleLog().catch(x=>br3Toast(x?.message||String(x)));return}
 },true);
-window.addEventListener('pointerup',e=>{if(e.target?.closest?.('[data-ccr-battle]'))setTimeout(()=>br3Soon(true,0),100)},true);
-new MutationObserver(()=>{if(br3IsGM())br3Soon(false,50);else if(br3BattleView())br3Soon(false,50)}).observe(BR3_APP,{childList:true,subtree:true});
+window.addEventListener('pointerup',e=>{if(e.target?.closest?.('[data-ccr-battle]'))setTimeout(()=>br3Soon(true,0),20)},true);
+new MutationObserver(()=>{
+  if(br3IsGM()){br3Soon(false,80);return}
+  if(!br3BattleView())return;
+  const main=BR3_APP.querySelector('main');
+  if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,25);
+}).observe(BR3_APP,{childList:true,subtree:true});
 BR3_S.channel('cc-battle-room-v3-live')
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{br3Sig='';br3Soon(true,20)})
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{br3Sig='';br3Soon(true,20)})
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{br3Sig='';br3Soon(true,20)})
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{br3Sig='';br3Soon(true,20)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>br3Soon(false,75))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>br3Soon(false,75))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>br3Soon(false,90))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))
  .subscribe();
-setInterval(()=>{if(br3IsGM())br3EnsureGmClear();else if(br3BattleView())br3Soon(false,0)},1300);
-setTimeout(()=>br3Soon(true,0),260);
-window.__catlakBattleRoomV3Test={render:br3Render,target:id=>{br3TargetId=id;br3Sig='';br3Soon(true,0)},clearLog:br3ClearBattleLog,isBattleView:br3BattleView};
+setInterval(()=>{if(br3IsGM())br3EnsureGmClear();else if(br3BattleView()){const main=BR3_APP.querySelector('main');if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0)}},5000);
+setTimeout(()=>br3Soon(true,0),80);
+window.__catlakBattleRoomV3Test={render:br3Render,target:id=>{br3TargetId=id;br3Soon(false,0)},clearLog:br3ClearBattleLog,isBattleView:br3BattleView};
