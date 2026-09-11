@@ -90,12 +90,12 @@ if(!document.querySelector('#bra-layout-style')){
   }
   @media(min-width:760px) and (max-width:1099px){
     #app main.brc-compact-battle.bra-action-layout .ccr-battle-grid{grid-template-columns:1fr!important}
-    #app main.brc-compact-battle.bra-action-layout .ccr-battle-grid>div:first-child{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
-    #app main.brc-compact-battle.bra-action-layout [data-br3-turn],
-    #app main.brc-compact-battle.bra-action-layout .brc-order-card,
+    #app main.brc-compact-battle.bra-action-layout .ccr-battle-grid>div:first-child{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:9px!important;align-items:start!important}
+    #app main.brc-compact-battle.bra-action-layout [data-br3-turn]{grid-column:1/5!important}
+    #app main.brc-compact-battle.bra-action-layout .brc-order-card{grid-column:5/13!important}
+    #app main.brc-compact-battle.bra-action-layout .brc-creatures-card{grid-column:1/7!important}
+    #app main.brc-compact-battle.bra-action-layout .brc-weapons-card{grid-column:7/13!important}
     #app main.brc-compact-battle.bra-action-layout .brc-abilities-card{grid-column:1/-1!important}
-    #app main.brc-compact-battle.bra-action-layout .brc-creatures-card{grid-column:1/2!important}
-    #app main.brc-compact-battle.bra-action-layout .brc-weapons-card{grid-column:2/3!important}
     #app main.brc-compact-battle.bra-action-layout .ccr-battle-grid>aside{position:static!important;max-height:none!important;overflow:visible!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
   }
   @media(max-width:759px){
