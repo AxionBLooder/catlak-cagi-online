@@ -58,6 +58,7 @@ jobs:
               s=s.replace(anchor,anchor+tag if after else tag+anchor,1)
           p.write_text(s,encoding='utf-8')
           PY
+          python3 build-weapon-slot-stability.py _site
           for f in _site/*.js; do node --check "$f"; done
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
           grep -Fq 'gm-tools-patch.js?v=gmtools-v7' _site/index.html
@@ -65,13 +66,19 @@ jobs:
           grep -Fq 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
           grep -Fq 'room-guard-patch.js?v=guard-v4' _site/index.html
           grep -Fq 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
-          grep -Fq 'battle-ready-clean-patch.js?v=battleready-v2' _site/index.html
+          grep -Fq 'battle-ready-clean-patch.js?v=battleready-v3' _site/index.html
           grep -Fq 'presence-patch.js?v=presence-v4' _site/index.html
-          grep -Fq 'player-live-actions-patch.js?v=playerlive-v6' _site/index.html
-          grep -Fq 'weapon-slot-patch.js?v=weaponslot-v6' _site/index.html
+          grep -Fq 'player-live-actions-patch.js?v=playerlive-v7' _site/index.html
+          grep -Fq 'weapon-slot-patch.js?v=weaponslot-v7' _site/index.html
+          grep -Fq 'data-ws-controls="1"' _site/player-live-actions-patch.js
+          grep -Fq '1. Yuvaya Ata' _site/player-live-actions-patch.js
+          grep -Fq '2. Yuvaya Ata' _site/player-live-actions-patch.js
           grep -Fq '1. Yuvaya' _site/weapon-slot-patch.js
           grep -Fq '2. Yuvaya' _site/weapon-slot-patch.js
           grep -Fq "querySelectorAll('[data-ws-slot-board]').forEach(x=>x.remove())" _site/weapon-slot-patch.js
+          ! grep -Fq "querySelectorAll('.ws-slot-badge').forEach(x=>x.remove())" _site/weapon-slot-patch.js
+          ! grep -Fq 'new MutationObserver' _site/slot-sync-hotfix.js
+          grep -Fq 'slot-sync-hotfix.js?v=slotfix-v3' _site/battle-ready-clean-patch.js
           ! grep -Fq '1. SİLAH YUVASI' _site/weapon-slot-patch.js
           ! grep -Fq 'pos.hero.after(board)' _site/weapon-slot-patch.js
           grep -Fq 'button[data-a="equip"]' _site/weapon-slot-patch.js
@@ -104,4 +111,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: stable-top-weapon-slots-v7-2026-09-11
+# trigger: weapon-slot-single-owner-v8-2026-09-11
