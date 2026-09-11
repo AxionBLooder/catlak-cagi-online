@@ -37,7 +37,7 @@
     if(document.querySelector('script[data-psfinal-runtime]'))return;
     const s=document.createElement('script');
     s.dataset.psfinalRuntime='1';
-    s.src='./player-sheet-final-patch.js?v=psfinal-runtime-v3';
+    s.src='./player-sheet-final-patch.js?v=psfinal-runtime-v2';
     s.async=false;
     s.onload=()=>setTimeout(()=>window.__catlakPlayerSheetFinal?.layout?.(),40);
     document.body.appendChild(s);
