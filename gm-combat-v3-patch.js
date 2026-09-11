@@ -9,6 +9,25 @@ let gcv3Busy=false;
 async function gcv3Active(){const r=await GCV3_S.from('catlak_combat_state').select('active').eq('id',1).maybeSingle();if(r.error)throw r.error;return !!r.data?.active}
 async function gcv3Refresh(){const m=GCV3_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>window.gmtRender?.(true),20);setTimeout(()=>window.__catlakCombatEnhancementsTest?.renderGM?.(true),120)}
 async function gcv3AddTemplate(btn){if(gcv3Busy)return;gcv3Busy=true;btn.disabled=true;try{if(!await gcv3Active())throw new Error('Önce savaşı başlat.');const id=btn.dataset.cexTemplateAdd;if(!id)throw new Error('Yaratık şablonu bulunamadı.');const r=await GCV3_S.rpc('catlak_gm_combat_add_template',{p_template_id:id,p_initiative:null});if(r.error)throw r.error;if(!r.data)throw new Error('Yaratık savaşa eklenemedi.');gcv3Toast('Yaratık savaşa gönderildi. Oyuncu Savaş Odası’nda görünecek.');await gcv3Refresh()}finally{gcv3Busy=false;if(btn.isConnected)btn.disabled=false}}
-async function gcv3AddCustom(btn){if(gcv3Busy)return;gcv3Busy=true;btn.disabled=true;try{if(!await gcv3Active())throw new Error('Önce savaşı başlat.');const name=GCV3_APP.querySelector('#bcc-name')?.value.trim()||'';if(!name)throw new Error('Yaratık adı gerekli.');const rawInit=GCV3_APP.querySelector('#bcc-init')?.value.trim()||'';const args={p_name:name,p_hp:Math.max(1,gcv3Num(GCV3_APP.querySelector('#bcc-hp')?.value,10)),p_ac:Math.max(0,gcv3Num(GCV3_APP.querySelector('#bcc-ac')?.value,10)),p_initiative:rawInit===''?null:gcv3Num(rawInit,0),p_creature_type:GCV3_APP.querySelector('#bcc-type')?.value.trim()||'',p_attack_name:GCV3_APP.querySelector('#bcc-attack-name')?.value.trim()||'',p_attack_formula:GCV3_APP.querySelector('#bcc-attack-formula')?.value.trim()||'',p_damage_formula:GCV3_APP.querySelector('#bcc-damage-formula')?.value.trim()||'',p_note:GCV3_APP.querySelector('#bcc-note')?.value.trim()||''};const r=await GCV3_S.rpc('catlak_gm_combat_add_creature',args);if(r.error)throw r.error;if(!r.data)throw new Error('Yaratık savaşa eklenemedi.');gcv3Toast(name+' savaşa gönderildi. Oyuncu Savaş Odası’nda görünecek.');['#bcc-name','#bcc-type','#bcc-attack-name','#bcc-attack-formula','#bcc-damage-formula','#bcc-note','#bcc-init'].forEach(q=>{const e=GCV3_APP.querySelector(q);if(e)e.value=''});await gcv3Refresh()}finally{gcv3Busy=false;if(btn.isConnected)btn.disabled=false}}
+async function gcv3AddCustom(btn){
+  if(gcv3Busy)return;gcv3Busy=true;btn.disabled=true;
+  try{
+    const name=GCV3_APP.querySelector('#bcc-name')?.value.trim()||'';if(!name)throw new Error('Yaratık adı gerekli.');
+    const args={
+      p_name:name,
+      p_creature_type:GCV3_APP.querySelector('#bcc-type')?.value.trim()||'',
+      p_hp:Math.max(1,gcv3Num(GCV3_APP.querySelector('#bcc-hp')?.value,10)),
+      p_ac:Math.max(0,gcv3Num(GCV3_APP.querySelector('#bcc-ac')?.value,10)),
+      p_attack_name:GCV3_APP.querySelector('#bcc-attack-name')?.value.trim()||'',
+      p_attack_formula:GCV3_APP.querySelector('#bcc-attack-formula')?.value.trim()||'',
+      p_damage_formula:GCV3_APP.querySelector('#bcc-damage-formula')?.value.trim()||'',
+      p_note:GCV3_APP.querySelector('#bcc-note')?.value.trim()||''
+    };
+    const r=await GCV3_S.rpc('catlak_gm_save_creature_template',args);if(r.error)throw r.error;if(!r.data)throw new Error('Yaratık kütüphaneye kaydedilemedi.');
+    gcv3Toast(name+' Yaratık Kütüphanesi’ne kaydedildi. Artık Goblin gibi Savaşa Ekle ile kullanabilirsin.');
+    ['#bcc-name','#bcc-type','#bcc-attack-name','#bcc-attack-formula','#bcc-damage-formula','#bcc-note'].forEach(q=>{const e=GCV3_APP.querySelector(q);if(e)e.value=''});
+    await gcv3Refresh();
+  }finally{gcv3Busy=false;if(btn.isConnected)btn.disabled=false}
+}
 document.addEventListener('click',e=>{if(!gcv3IsGM())return;const t=e.target.closest?.('[data-cex-template-add]');if(t){e.preventDefault();e.stopImmediatePropagation();gcv3AddTemplate(t).catch(x=>gcv3Toast(x?.message||String(x)));return}const c=e.target.closest?.('[data-bcc-add-creature]');if(c){e.preventDefault();e.stopImmediatePropagation();gcv3AddCustom(c).catch(x=>gcv3Toast(x?.message||String(x)));return}},true);
 window.__catlakGmCombatV3Test={addTemplate:gcv3AddTemplate,addCustom:gcv3AddCustom};
