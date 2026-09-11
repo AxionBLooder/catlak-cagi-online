@@ -60,6 +60,7 @@ jobs:
           p.write_text(s,encoding='utf-8')
           PY
           python3 build-weapon-slot-stability.py _site
+          python3 build-low-egress.py _site
           for f in _site/*.js; do node --check "$f"; done
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
           grep -Fq 'gm-tools-patch.js?v=gmtools-v7' _site/index.html
@@ -76,8 +77,14 @@ jobs:
           grep -Fq 'gm-live-switching' _site/gm-center-live-runtime.js
           grep -Fq 'player-sheet-final-patch.js?v=psfinal-runtime-v2' _site/player-sheet-final-loader.js
           grep -Fq 'presence-patch.js?v=presence-v4' _site/index.html
-          grep -Fq 'player-live-actions-patch.js?v=playerlive-v8' _site/index.html
+          grep -Fq 'player-live-actions-patch.js?v=playerlive-v9' _site/index.html
           grep -Fq 'weapon-slot-patch.js?v=weaponslot-v8' _site/index.html
+          grep -Fq 'browser-app.js?v=bootwatch-low-egress-v1' _site/index.html
+          grep -Fq 'window.__catlakLowEgressCore=true' _site/browser-app.js
+          grep -Fq 'window.__catlakLowEgressV1=true' _site/player-live-actions-patch.js
+          grep -Fq 'window.__catlakPlayerPollingDisabled=true' _site/player-live-actions-patch.js
+          grep -Fq 'window.__catlakPlayerLiveRealtimeOwnedByCore=true' _site/player-live-actions-patch.js
+          ! grep -Fq "cc-player-live-actions" _site/player-live-actions-patch.js
           grep -Fq 'data-psf-equip' _site/player-sheet-final-patch.js
           grep -Fq 'data-psf-remove' _site/player-sheet-final-patch.js
           grep -Fq "catlak_set_equipped_slot" _site/player-sheet-final-patch.js
@@ -129,4 +136,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: weapon-dual-visible-v1-2026-09-12
+# trigger: low-egress-stable-play-v1-2026-09-12
