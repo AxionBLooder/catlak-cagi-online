@@ -13,6 +13,7 @@ on:
       - 'weapon-slot-patch.js'
       - 'gm-item-slot-patch.js'
       - 'battle-creature-patch.js'
+      - 'combat-enhancements-patch.js'
       - 'dice-ux-patch.js'
       - 'event-rolls-patch.js'
       - 'index.html'
@@ -40,6 +41,7 @@ jobs:
           node --check weapon-slot-patch.js
           node --check gm-item-slot-patch.js
           node --check battle-creature-patch.js
+          node --check combat-enhancements-patch.js
           node --check dice-ux-patch.js
           node --check event-rolls-patch.js
           node --check browser-app.js
@@ -70,5 +72,7 @@ jobs:
               raise SystemExit('GM silah yuvası patchi index.html içinde yüklenmiyor')
           if 'battle-creature-patch.js' not in html:
               raise SystemExit('Savaş yaratık patchi index.html içinde yüklenmiyor')
+          if 'combat-enhancements-patch.js' not in html:
+              raise SystemExit('Savaş iyileştirme patchi index.html içinde yüklenmiyor')
           print('Source invariants OK')
           PY
