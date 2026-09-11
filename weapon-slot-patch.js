@@ -12,7 +12,7 @@ let wsBusy=false,wsTimer=null,wsCache=new Map(),wsCacheAt=0;
 
 if(!document.querySelector('#ws-weapon-slot-style')){
   const s=document.createElement('style');s.id='ws-weapon-slot-style';s.textContent=`
-  .ps-player-sheet .ws-slot-board{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 13px}
+  .ps-player-sheet .ws-slot-board{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 10px;width:100%}
   .ps-player-sheet .ws-slot-box{border:1px solid #4b4330;border-radius:13px;padding:11px 12px;background:linear-gradient(135deg,#15150f,#0a141e);min-width:0}
   .ps-player-sheet .ws-slot-box span{display:block;font-size:.67rem;font-weight:900;letter-spacing:.12em;color:#d7b86f;margin-bottom:5px}
   .ps-player-sheet .ws-slot-box strong{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -39,7 +39,7 @@ async function wsLoad(force=false){
 }
 function wsButton(slot,current){
   const first=slot==='main_weapon',active=current===slot;
-  const name=first?'1. Silaha':'2. Silaha';
+  const name=first?'1. Yuvaya':'2. Yuvaya';
   return `<button type="button" class="${active?'ws-active':''}" data-ws-slot="${slot}">${active?'✓ '+name+' Atandı':name+' Ata'}</button>`;
 }
 function wsPaintCard(card,row){
@@ -55,23 +55,37 @@ function wsPaintCard(card,row){
   const html=wsButton('main_weapon',current)+wsButton('off_weapon',current);
   if(controls.innerHTML!==html)controls.innerHTML=html;
   if(current){
-    const tag=card.querySelector('.tag');if(tag){const badge=document.createElement('span');badge.className='tag ws-slot-badge';badge.textContent=current==='main_weapon'?'1. SİLAH':'2. SİLAH';tag.after(badge)}
+    const tag=card.querySelector('.tag');if(tag){const badge=document.createElement('span');badge.className='tag ws-slot-badge';badge.textContent=current==='main_weapon'?'1. YUVA':'2. YUVA';tag.after(badge)}
   }
 }
 function wsWeaponName(id){
   const card=wsVisibleWeaponCards().find(x=>String(x.dataset.plaInvRow)===String(id));
   return wsTxt(card?.querySelector('h3'))||'Seçili silah';
 }
+function wsBoardHost(){
+  const main=WS_APP.querySelector('main.ps-player-sheet')||WS_APP.querySelector('main');if(!main)return null;
+  const col=main.querySelector('.ps-main-column');
+  const hero=col?.querySelector(':scope > section.hero')||main.querySelector('section.hero');
+  if(col&&hero)return{host:col,hero};
+  const inv=main.querySelector('.ps-inventory-card')||[...main.querySelectorAll('section.card')].find(x=>wsTxt(x.querySelector('.eyebrow'))==='CANLI ENVANTER');
+  return inv?{host:inv,hero:null}:null;
+}
 function wsPaintBoard(){
   if(!wsIsSheet())return;
-  const card=WS_APP.querySelector('main .ps-inventory-card')||[...WS_APP.querySelectorAll('main section.card')].find(x=>wsTxt(x.querySelector('.eyebrow'))==='CANLI ENVANTER');
-  if(!card)return;
-  let board=card.querySelector('[data-ws-slot-board]');
-  if(!board){board=document.createElement('div');board.className='ws-slot-board';board.dataset.wsSlotBoard='1';const grid=card.querySelector('.iw-player-grid');grid?card.insertBefore(board,grid):card.appendChild(board)}
+  const pos=wsBoardHost();if(!pos)return;
+  const main=WS_APP.querySelector('main');
+  let board=main?.querySelector('[data-ws-slot-board]');
+  if(!board){board=document.createElement('div');board.className='ws-slot-board';board.dataset.wsSlotBoard='1'}
+  if(pos.hero){
+    if(board.parentElement!==pos.host||pos.hero.nextElementSibling!==board)pos.hero.after(board);
+  }else{
+    const grid=pos.host.querySelector('.iw-player-grid');
+    if(board.parentElement!==pos.host||(grid&&board.nextElementSibling!==grid))grid?pos.host.insertBefore(board,grid):pos.host.appendChild(board);
+  }
   const rows=[...wsCache.values()].filter(r=>r?.equipped);
-  const main=rows.find(r=>r.equipped_slot==='main_weapon');
-  const off=rows.find(r=>r.equipped_slot==='off_weapon');
-  const html=`<div class="ws-slot-box ${main?'':'ws-empty'}"><span>1. SİLAH</span><strong>${main?wsEsc(wsWeaponName(main.id)):'BOŞ'}</strong></div><div class="ws-slot-box ${off?'':'ws-empty'}"><span>2. SİLAH</span><strong>${off?wsEsc(wsWeaponName(off.id)):'BOŞ'}</strong></div>`;
+  const mainWeapon=rows.find(r=>r.equipped_slot==='main_weapon');
+  const offWeapon=rows.find(r=>r.equipped_slot==='off_weapon');
+  const html=`<div class="ws-slot-box ${mainWeapon?'':'ws-empty'}"><span>1. SİLAH YUVASI</span><strong>${mainWeapon?wsEsc(wsWeaponName(mainWeapon.id)):'BOŞ'}</strong></div><div class="ws-slot-box ${offWeapon?'':'ws-empty'}"><span>2. SİLAH YUVASI</span><strong>${offWeapon?wsEsc(wsWeaponName(offWeapon.id)):'BOŞ'}</strong></div>`;
   if(board.innerHTML!==html)board.innerHTML=html;
 }
 async function wsPaint(force=false){
@@ -89,7 +103,7 @@ async function wsSet(card,slot){
   try{
     const r=await WS_S.rpc('catlak_set_equipped_slot',{p_inventory_id:id,p_slot:slot});if(r.error)throw r.error;
     wsCacheAt=0;
-    wsToast(slot==='main_weapon'?'Silah 1. silaha atandı.':slot==='off_weapon'?'Silah 2. silaha atandı.':'Silah çıkarıldı.');
+    wsToast(slot==='main_weapon'?'Silah 1. yuvaya atandı.':slot==='off_weapon'?'Silah 2. yuvaya atandı.':'Silah çıkarıldı.');
     if(window.__catlakPlayerLiveTest?.refresh)await window.__catlakPlayerLiveTest.refresh(true);
     await wsPaint(true);
   }catch(e){wsToast(e?.message||String(e))}finally{wsBusy=false;wsSoon(true,20)}
