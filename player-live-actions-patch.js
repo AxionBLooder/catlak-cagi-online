@@ -138,3 +138,4 @@ plaClaimInventory();
 setInterval(()=>{if(plaIsSheet()){plaClaimInventory();plaStaticStats();plaRefreshSoon(false,0)}},4000);
 setTimeout(()=>{plaClaimInventory();plaStaticStats();plaRefreshSoon(true,0)},120);
 window.__catlakPlayerLiveTest={refresh:plaRefreshNow,item:plaPlayerItem,roll:plaRollRow,staticStats:plaStaticStats,claimInventory:plaClaimInventory,rollToast:plaRollToast};
+// audit trigger: full-site-player-live-2026-09-12-v1
