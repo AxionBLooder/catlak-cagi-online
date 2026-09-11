@@ -28,6 +28,19 @@ function cnlSelect(btn){
   nav.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn));
 }
 
+function cnlOpenStats(){
+  if(!cnlIsGM())return;
+  cnlEnsureNav();
+  const stats=CNL_APP.querySelector('.nav [data-cc-stats-tab]');
+  if(!stats)return;
+  window.__catlakCreatureLibraryOpen=false;
+  window.__catlakGmHubOwnsMain=false;
+  window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
+  cnlSelect(stats);
+  window.__catlakRouteLoading?.('Stat Atölyesi');
+  requestAnimationFrame(()=>window.__catlakRenderCompactStats?.(true));
+}
+
 function cnlEnsureNav(){
   const nav=CNL_APP.querySelector('.nav');
   if(!nav)return;
@@ -80,6 +93,14 @@ function cnlSchedule(){
 }
 
 document.addEventListener('click',e=>{
+  const hubStats=e.target.closest?.('#app [data-gm2-route="stats"]');
+  if(hubStats&&cnlIsGM()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    cnlOpenStats();
+    return;
+  }
+
   const restricted=e.target.closest?.('#app .nav button[data-tab]');
   if(restricted&&cnlIsPlayer()&&CNL_PLAYER_HIDDEN.has(restricted.dataset.tab)){
     e.preventDefault();
@@ -103,10 +124,7 @@ document.addEventListener('click',e=>{
   if(stats){
     e.preventDefault();
     e.stopImmediatePropagation();
-    window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
-    cnlSelect(stats);
-    window.__catlakRouteLoading?.('Stat Atölyesi');
-    requestAnimationFrame(()=>window.__catlakRenderCompactStats?.(true));
+    cnlOpenStats();
     return;
   }
 
@@ -118,4 +136,4 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
-// build trigger: player gallery hidden; party visual presentation enlarged
+// build trigger: player gallery hidden; party visual presentation enlarged; GM Merkezi Stat direct route
