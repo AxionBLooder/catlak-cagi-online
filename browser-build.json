@@ -2,5 +2,6 @@
   "source_sha": "d2b0e26252349c93a0be547fcbe709c86f6771c8",
   "sha256": "762038e51972782bbf122f864c16f5bbf35fdcab5864221b2265995ba1613ea2",
   "bytes": 366670,
-  "format": "iife-es2018-browser-verified-single-owner-minified"
+  "format": "iife-es2018-browser-verified-single-owner-minified",
+  "sanity_trigger": "stat-workshop-route-v2"
 }
