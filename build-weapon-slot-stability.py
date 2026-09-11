@@ -55,6 +55,20 @@ new_paint=r'''function wsPaintCard(card,row){
 s=must_sub(s,r"function wsPaintCard\(card,row\)\{.*?\n\}\nfunction wsRemoveDuplicateBoard",new_paint+'\nfunction wsRemoveDuplicateBoard','idempotent weapon slot paint')
 p.write_text(s,encoding='utf-8')
 
+# Eski QOL katmanı Envanter içine ayrı 1./2. silah panosu ekliyordu.
+# Weapon slot katmanı bu panoyu kaldırdığı için iki script sonsuz ekle/sil döngüsüne giriyordu.
+# Artık QOL sadece eski panoyu temizler ve gerçek silah kartlarını gerektiğinde bir kez boyatır.
+p=root/'quality-of-life-patch.js'
+s=p.read_text(encoding='utf-8')
+new_slots=r'''function qolSlots(){
+  if(!qolSheet())return;
+  QOL_APP.querySelectorAll('[data-ws-slot-board]').forEach(x=>x.remove());
+  const ids=[...QOL_APP.querySelectorAll('main .iw-player-item[data-pla-inv-row]')].map(x=>x.dataset.plaInvRow).filter(Boolean).sort().join('|');
+  if(ids!==qolWeaponSig){qolWeaponSig=ids;setTimeout(()=>window.__catlakWeaponSlotTest?.paint?.(true),0)}
+}'''
+s=must_sub(s,r"function qolSlots\(\)\{.*?\n\}\nfunction qolCompact",new_slots+'\nfunction qolCompact','remove legacy qol weapon board')
+p.write_text(s,encoding='utf-8')
+
 # Eski hotfix'in sürekli MutationObserver + repaint döngüsünü kaldır.
 # Yalnız ilk açılışta eksik üst paneli ve slot durumunu bir kez senkronla.
 p=root/'slot-sync-hotfix.js'
@@ -70,4 +84,5 @@ s=p.read_text(encoding='utf-8')
 s=s.replace('./player-live-actions-patch.js?v=playerlive-v6','./player-live-actions-patch.js?v=playerlive-v7')
 s=s.replace('./weapon-slot-patch.js?v=weaponslot-v6','./weapon-slot-patch.js?v=weaponslot-v7')
 s=s.replace('./battle-ready-clean-patch.js?v=battleready-v2','./battle-ready-clean-patch.js?v=battleready-v3')
+s=s.replace('./quality-of-life-patch.js?v=qol-v2','./quality-of-life-patch.js?v=qol-v3')
 p.write_text(s,encoding='utf-8')
