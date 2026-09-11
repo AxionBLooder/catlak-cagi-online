@@ -30,6 +30,7 @@ on:
       - 'combat-enhancements-patch.js'
       - 'ability-player-patch.js'
       - 'gm-hub-v2-patch.js'
+      - 'gm-center-router-core.js'
       - 'invite-visibility-patch.js'
       - 'stat-workshop-route-fix.js'
       - 'route-stability-patch.js'
@@ -65,7 +66,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js battle-room-actions-layout-patch.js site-stability-patch.js game-flow-stability-patch.js turn-sync-patch.js battle-action-stability-patch.js battle-room-classic-stable-patch.js quality-of-life-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js invite-visibility-patch.js stat-workshop-route-fix.js route-stability-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js battle-room-actions-layout-patch.js site-stability-patch.js game-flow-stability-patch.js turn-sync-patch.js battle-action-stability-patch.js battle-room-classic-stable-patch.js quality-of-life-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js gm-center-router-core.js invite-visibility-patch.js stat-workshop-route-fix.js route-stability-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -80,8 +81,14 @@ jobs:
           from pathlib import Path
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
+          core_tag='<script src="./gm-center-router-core.js?v=gmrouter-v1"></script>'
           route_tag='<script src="./route-stability-patch.js?v=routes-v2"></script>'
           stat_tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
+          if core_tag not in text:
+              anchor='<div id="toast" class="toast hidden"></div>'
+              if anchor not in text:
+                  raise SystemExit('GM router core ekleme noktası bulunamadı')
+              text=text.replace(anchor,anchor+core_tag,1)
           if route_tag not in text:
               text=text.replace('</body>',route_tag+'</body>')
           if stat_tag not in text:
@@ -89,6 +96,7 @@ jobs:
           html.write_text(text,encoding='utf-8')
           PY
           node --check _site/browser-app.js
+          node --check _site/gm-center-router-core.js
           node --check _site/gm-controls-patch.js
           node --check _site/presence-patch.js
           node --check _site/dice-ux-patch.js
@@ -122,6 +130,7 @@ jobs:
           node --check _site/weapon-slot-patch.js
           node --check _site/gm-item-slot-patch.js
           node --check _site/stat-roll-patch.js
+          grep -q 'gm-center-router-core.js?v=gmrouter-v1' _site/index.html
           grep -q 'gm-tools-patch.js?v=gmtools-v3' _site/index.html
           grep -q 'gm-hub-v2-patch.js?v=gmhub-v3' _site/index.html
           grep -q 'route-stability-patch.js?v=routes-v2' _site/index.html
@@ -140,4 +149,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-hub-native-tools-v4-2026-09-11
+# trigger: gm-center-single-router-v1-2026-09-11
