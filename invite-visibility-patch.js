@@ -67,6 +67,17 @@ async function civDelete(id,name,mode){
     await civLoad(true);civSchedule();
   }catch(e){civToast('Silme başarısız: '+(e?.message||String(e)))}finally{civBusy=false}
 }
+function civPrepareGmRoute(e){
+  const route=e.target.closest?.('[data-gm2-route]');
+  if(!route||!civIsGM()||route.dataset.gm2Route==='creatures')return;
+  window.__catlakGmHubOwnsMain=false;
+  window.__catlakCreatureLibraryOpen=false;
+  window.__catlakGmToolsOpen=false;
+  const main=CIV_APP.querySelector('main');
+  if(main){delete main.dataset.sspStableView;delete main.dataset.gmtTools;delete main.dataset.qolCreatureLibrary}
+}
+window.addEventListener('pointerdown',civPrepareGmRoute,true);
+window.addEventListener('click',civPrepareGmRoute,true);
 CIV_APP.addEventListener('click',e=>{
   const a=e.target.closest('[data-civ-invite]');if(a){e.preventDefault();e.stopImmediatePropagation();civMake('invite',a.dataset.civInvite,a.dataset.civName||'Karakter');return}
   const r=e.target.closest('[data-civ-reconnect]');if(r){e.preventDefault();e.stopImmediatePropagation();civMake('reconnect',r.dataset.civReconnect,r.dataset.civName||'Karakter');return}
@@ -76,4 +87,4 @@ function civSchedule(){if(civScheduled)return;civScheduled=true;setTimeout(()=>{
 new MutationObserver(civSchedule).observe(CIV_APP,{childList:true,subtree:true});
 CIV_S.channel('cc-invite-visibility-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{civRows=null;civSchedule()}).subscribe();
 civSchedule();
-window.__catlakInviteVisibilityTest={card:civCard};
+window.__catlakInviteVisibilityTest={card:civCard,prepareGmRoute:civPrepareGmRoute};
