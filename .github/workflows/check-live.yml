@@ -15,6 +15,7 @@ on:
       - 'room-guard-patch.js'
       - 'room-system-patch.js'
       - 'battle-room-v3-patch.js'
+      - 'gm-combat-v3-patch.js'
       - 'battle-creature-patch.js'
       - 'combat-enhancements-patch.js'
       - 'ability-player-patch.js'
@@ -49,6 +50,7 @@ jobs:
           node --check room-guard-patch.js
           node --check room-system-patch.js
           node --check battle-room-v3-patch.js
+          node --check gm-combat-v3-patch.js
           node --check battle-creature-patch.js
           node --check combat-enhancements-patch.js
           node --check ability-player-patch.js
@@ -80,7 +82,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
-          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','gm-item-slot-patch.js','battle-creature-patch.js','combat-enhancements-patch.js','ability-player-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
+          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','battle-creature-patch.js','combat-enhancements-patch.js','ability-player-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
               if runtime not in html:
                   raise SystemExit(runtime+' index.html içinde yüklenmiyor')
           for retired in ['ability-system-patch.js','ability-workshop-state-patch.js','gm-hub-patch.js','gm-hub-route-fix-patch.js']:
@@ -98,9 +100,15 @@ jobs:
           for marker in ['__catlakBattleRoomV3','data-br3-creatures','data-br3-abilities','data-br3-clear-log','catlak_player_use_ability','catlak_player_weapon_strike']:
               if marker not in battle:
                   raise SystemExit('Savaş Odası v3 işareti eksik: '+marker)
+          gmcombat=Path('gm-combat-v3-patch.js').read_text(encoding='utf-8')
+          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_combat_add_creature']:
+              if marker not in gmcombat:
+                  raise SystemExit('GM savaş v3 işareti eksik: '+marker)
           if 'room-guard-patch.js?v=guard-v3' not in html:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
           if 'battle-room-v3-patch.js?v=battleroom-v1' not in html:
               raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
+          if 'gm-combat-v3-patch.js?v=gmcombat-v1' not in html:
+              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v1 olmalı')
           print('Source invariants OK')
           PY
