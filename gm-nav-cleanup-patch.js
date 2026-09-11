@@ -19,6 +19,30 @@ if(!document.querySelector('#gnc-player-rest-style')){
   #app main.ps-player-sheet .qol-rest{display:flex!important;align-items:center!important;gap:7px!important;flex-wrap:wrap!important;margin-top:9px!important}
   #app main.ps-player-sheet .qol-rest button{min-height:38px!important;padding:8px 12px!important;border-color:#866b39!important;background:linear-gradient(135deg,#201a0e,#151510)!important;color:#f4d584!important;font-size:.88rem!important;font-weight:900!important}
   #app main.ps-player-sheet .qol-rest span{font-size:.74rem!important;line-height:1.3!important;color:var(--muted)!important}
+
+  #app main.brc-compact-battle.bra-action-layout.qol-compact [data-br3-turn]{min-height:72px!important;padding:12px 14px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact [data-br3-turn] h2{font-size:1.08rem!important;line-height:1.15!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact [data-br3-turn] .mini{font-size:.78rem!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .brc-creatures-card,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .brc-weapons-card,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .brc-abilities-card,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .brc-order-card{padding:14px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-card,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-weapon{padding:12px!important;border-radius:13px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-card h3,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-weapon h3{font-size:1rem!important;line-height:1.25!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-pill{font-size:.78rem!important;padding:4px 8px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-note{font-size:.84rem!important;line-height:1.4!important;display:block!important;-webkit-line-clamp:unset!important;overflow:visible!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-target-line{font-size:.86rem!important;line-height:1.35!important;padding:8px 10px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-card button,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-card select,
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-weapon button{min-height:42px!important;font-size:.9rem!important;padding:8px 11px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-order-row{padding:8px 9px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .ccr-order-row .mini{font-size:.72rem!important;line-height:1.3!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact [data-br3-log]{padding:14px!important;min-height:220px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-log{max-height:300px!important}
+  #app main.brc-compact-battle.bra-action-layout.qol-compact .br3-log-row .mini{font-size:.86rem!important;line-height:1.42!important}
+
   @media(max-width:1050px){#app main.ps-player-sheet section.hero .vitals{min-width:0!important}}
   @media(max-width:700px){#app main.ps-player-sheet section.hero{padding:13px!important}#app main.ps-player-sheet .qol-rest{align-items:stretch!important}#app main.ps-player-sheet .qol-rest button,#app main.ps-player-sheet .qol-rest span{width:100%!important}}
   `;document.head.appendChild(s)
@@ -32,6 +56,8 @@ function gncEnsureRest(){
     let box=st.querySelector('[data-qol-rest]');
     if(!box){box=document.createElement('div');box.className='qol-rest';box.dataset.qolRest='1';lead.appendChild(box)}
     else if(box.parentElement!==lead)lead.appendChild(box);
+    const note=box.querySelector('span');
+    if(note)note.textContent='HP • KP • büyü / yetenek / özel güç kullanımları yenilenir.';
   })
 }
 
