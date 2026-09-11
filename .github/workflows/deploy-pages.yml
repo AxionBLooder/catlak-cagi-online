@@ -74,7 +74,7 @@ jobs:
           p.write_text(s,encoding='utf-8')
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
-          tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v2"></script>'
+          tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
           if tag not in text:
               text=text.replace('</body>',tag+'</body>')
           html.write_text(text,encoding='utf-8')
@@ -112,7 +112,7 @@ jobs:
           node --check _site/weapon-slot-patch.js
           node --check _site/gm-item-slot-patch.js
           node --check _site/stat-roll-patch.js
-          grep -q 'stat-workshop-route-fix.js?v=statsroute-v2' _site/index.html
+          grep -q 'stat-workshop-route-fix.js?v=statsroute-v3' _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -124,4 +124,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: stat-workshop-route-v2-2026-09-11
+# trigger: stat-workshop-route-v3-2026-09-11
