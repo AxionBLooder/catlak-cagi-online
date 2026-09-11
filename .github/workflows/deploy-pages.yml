@@ -31,6 +31,7 @@ on:
       - 'ability-player-patch.js'
       - 'gm-hub-v2-patch.js'
       - 'invite-visibility-patch.js'
+      - 'stat-workshop-route-fix.js'
       - 'player-sheet-patch.js'
       - 'player-sheet-equipment-abilities-patch.js'
       - 'player-live-actions-patch.js'
@@ -62,7 +63,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js battle-room-actions-layout-patch.js site-stability-patch.js game-flow-stability-patch.js turn-sync-patch.js battle-action-stability-patch.js battle-room-classic-stable-patch.js quality-of-life-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js invite-visibility-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js battle-room-actions-layout-patch.js site-stability-patch.js game-flow-stability-patch.js turn-sync-patch.js battle-action-stability-patch.js battle-room-classic-stable-patch.js quality-of-life-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js invite-visibility-patch.js stat-workshop-route-fix.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -71,6 +72,12 @@ jobs:
           s=p.read_text(encoding='utf-8')
           s=re.sub(r'https://cdn\.jsdelivr\.net/gh/AxionBLooder/catlak-cagi-online@[0-9a-f]+/catalog\.b64','./catalog.b64',s)
           p.write_text(s,encoding='utf-8')
+          html=Path('_site/index.html')
+          text=html.read_text(encoding='utf-8')
+          tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v2"></script>'
+          if tag not in text:
+              text=text.replace('</body>',tag+'</body>')
+          html.write_text(text,encoding='utf-8')
           PY
           node --check _site/browser-app.js
           node --check _site/gm-controls-patch.js
@@ -98,12 +105,14 @@ jobs:
           node --check _site/ability-player-patch.js
           node --check _site/gm-hub-v2-patch.js
           node --check _site/invite-visibility-patch.js
+          node --check _site/stat-workshop-route-fix.js
           node --check _site/player-sheet-patch.js
           node --check _site/player-sheet-equipment-abilities-patch.js
           node --check _site/player-live-actions-patch.js
           node --check _site/weapon-slot-patch.js
           node --check _site/gm-item-slot-patch.js
           node --check _site/stat-roll-patch.js
+          grep -q 'stat-workshop-route-fix.js?v=statsroute-v2' _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -115,4 +124,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: qol-rest-batch-compact-2026-09-11
+# trigger: stat-workshop-route-v2-2026-09-11
