@@ -20,6 +20,7 @@ on:
       - 'battle-room-actions-layout-patch.js'
       - 'site-stability-patch.js'
       - 'game-flow-stability-patch.js'
+      - 'turn-sync-patch.js'
       - 'gm-nav-cleanup-patch.js'
       - 'gm-combat-v3-patch.js'
       - 'battle-creature-patch.js'
@@ -61,6 +62,7 @@ jobs:
           node --check battle-room-actions-layout-patch.js
           node --check site-stability-patch.js
           node --check game-flow-stability-patch.js
+          node --check turn-sync-patch.js
           node --check gm-nav-cleanup-patch.js
           node --check gm-combat-v3-patch.js
           node --check battle-creature-patch.js
@@ -94,7 +96,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
-          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
+          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','turn-sync-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
               if runtime not in html:
                   raise SystemExit(runtime+' index.html içinde yüklenmiyor')
           for retired in ['ability-system-patch.js','ability-workshop-state-patch.js','gm-hub-patch.js','gm-hub-route-fix-patch.js','battle-creature-patch.js','ability-player-patch.js']:
@@ -132,6 +134,10 @@ jobs:
           for marker in ['data-gfs-live-turn','data-gfs-skip-creature','catlak_gm_skip_creature_turn','catlak_gm_combat_add_template','catlak_gm_combat_end','cc-game-flow-stability','pointerdown','button[data-a="weapon"]','__catlakGameFlowStabilityTest']:
               if marker not in flow:
                   raise SystemExit('Oyun akışı stabilite işareti eksik: '+marker)
+          turnsync=Path('turn-sync-patch.js').read_text(encoding='utf-8')
+          for marker in ['data-cts-turn-card','data-cts-skip','catlak_gm_skip_creature_turn','catlak_player_combat_snapshot','__catlakBattleRoomV3Test','cc-turn-sync','data-gfs-live-turn','__catlakTurnSyncTest']:
+              if marker not in turnsync:
+                  raise SystemExit('Tur senkronizasyonu işareti eksik: '+marker)
           navclean=Path('gm-nav-cleanup-patch.js').read_text(encoding='utf-8')
           for marker in ['data-ccr-hub','__catlakGmNavCleanupTest']:
               if marker not in navclean:
@@ -158,6 +164,8 @@ jobs:
               raise SystemExit('site-stability cache sürümü stability-v2 olmalı')
           if 'game-flow-stability-patch.js?v=gameflow-v2' not in html:
               raise SystemExit('game-flow-stability cache sürümü gameflow-v2 olmalı')
+          if 'turn-sync-patch.js?v=turnsync-v1' not in html:
+              raise SystemExit('turn-sync cache sürümü turnsync-v1 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
           if 'gm-combat-v3-patch.js?v=gmcombat-v3' not in html:
