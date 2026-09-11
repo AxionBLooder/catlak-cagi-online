@@ -76,9 +76,9 @@ jobs:
           p.write_text(s,encoding='utf-8')
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
-          route_tag='<script src="./route-stability-patch.js?v=routes-v1"></script>'
+          route_tag='<script src="./route-stability-patch.js?v=routes-v2"></script>'
           stat_tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
-          gmci_tag='<script src="./gm-center-tools-integration-patch.js?v=gmcenter-tools-v1"></script>'
+          gmci_tag='<script src="./gm-center-tools-integration-patch.js?v=gmcenter-tools-v2"></script>'
           if route_tag not in text:
               text=text.replace('</body>',route_tag+'</body>')
           if stat_tag not in text:
@@ -122,9 +122,9 @@ jobs:
           node --check _site/weapon-slot-patch.js
           node --check _site/gm-item-slot-patch.js
           node --check _site/stat-roll-patch.js
-          grep -q 'route-stability-patch.js?v=routes-v1' _site/index.html
+          grep -q 'route-stability-patch.js?v=routes-v2' _site/index.html
           grep -q 'stat-workshop-route-fix.js?v=statsroute-v3' _site/index.html
-          grep -q 'gm-center-tools-integration-patch.js?v=gmcenter-tools-v1' _site/index.html
+          grep -q 'gm-center-tools-integration-patch.js?v=gmcenter-tools-v2' _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -136,4 +136,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-tools-v1-2026-09-11
+# trigger: fast-tool-routes-v2-2026-09-11
