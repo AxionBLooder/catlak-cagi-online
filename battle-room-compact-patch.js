@@ -15,6 +15,10 @@ if(!document.querySelector('#brc-style')){
   main.brc-compact-battle [data-br3-turn] h2{font-size:1.05rem!important;margin:.08rem 0!important}
   main.brc-compact-battle [data-br3-turn] .mini{font-size:.72rem!important}
   main.brc-compact-battle [data-br3-turn] button{min-width:132px!important;padding:8px 11px!important}
+  main.brc-compact-battle .brc-quick-card{grid-column:1/-1!important;padding:8px 10px!important}
+  main.brc-compact-battle .brc-quick-card>.eyebrow{margin-bottom:5px!important}
+  main.brc-compact-battle .brc-quick-card>.actions{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+  main.brc-compact-battle .brc-quick-card>.actions button{padding:7px 6px!important;min-height:34px!important;font-size:.76rem!important}
   main.brc-compact-battle .brc-creatures-card{grid-column:1/2!important;padding:10px!important}
   main.brc-compact-battle .brc-weapons-card{grid-column:2/3!important;padding:10px!important}
   main.brc-compact-battle .brc-abilities-card{grid-column:1/-1!important;padding:10px!important}
@@ -56,7 +60,9 @@ if(!document.querySelector('#brc-style')){
   @media(max-width:700px){
     main.brc-compact-battle{padding:8px!important}
     main.brc-compact-battle .ccr-battle-grid>div:first-child{grid-template-columns:1fr!important;gap:7px!important}
-    main.brc-compact-battle .brc-creatures-card,main.brc-compact-battle .brc-weapons-card,main.brc-compact-battle .brc-abilities-card,main.brc-compact-battle .brc-order-card{grid-column:1/-1!important}
+    main.brc-compact-battle .brc-quick-card,main.brc-compact-battle .brc-creatures-card,main.brc-compact-battle .brc-weapons-card,main.brc-compact-battle .brc-abilities-card,main.brc-compact-battle .brc-order-card{grid-column:1/-1!important}
+    main.brc-compact-battle .brc-quick-card>.actions{display:flex!important;overflow-x:auto!important;gap:6px!important;padding-bottom:3px!important;scrollbar-width:thin}
+    main.brc-compact-battle .brc-quick-card>.actions button{flex:0 0 78px!important}
     main.brc-compact-battle .br3-grid{display:flex!important;overflow-x:auto!important;gap:6px!important;padding-bottom:4px!important;scrollbar-width:thin;overscroll-behavior-x:contain}
     main.brc-compact-battle .br3-card{flex:0 0 190px!important}
     main.brc-compact-battle .br3-ability{flex-basis:220px!important}
@@ -85,9 +91,10 @@ function brcArrange(){
     const abilities=left.querySelector(':scope > [data-br3-abilities]');
     const order=left.querySelector('.ccr-order')?.closest('section.card')||null;
     const weapons=brcSectionByEyebrow(left,'TAKILI SİLAHLAR');
-    [creatures,weapons,abilities,order].forEach(x=>x?.classList.remove('brc-creatures-card','brc-weapons-card','brc-abilities-card','brc-order-card'));
-    creatures?.classList.add('brc-creatures-card');weapons?.classList.add('brc-weapons-card');abilities?.classList.add('brc-abilities-card');order?.classList.add('brc-order-card');
-    const wanted=[turn,creatures,weapons,abilities,order].filter(Boolean);let anchor=left.firstElementChild;
+    const quick=brcSectionByEyebrow(left,'HIZLI D20');
+    [quick,creatures,weapons,abilities,order].forEach(x=>x?.classList.remove('brc-quick-card','brc-creatures-card','brc-weapons-card','brc-abilities-card','brc-order-card'));
+    quick?.classList.add('brc-quick-card');creatures?.classList.add('brc-creatures-card');weapons?.classList.add('brc-weapons-card');abilities?.classList.add('brc-abilities-card');order?.classList.add('brc-order-card');
+    const wanted=[turn,quick,creatures,weapons,abilities,order].filter(Boolean);let anchor=left.firstElementChild;
     for(const el of wanted){if(el===anchor){anchor=anchor?.nextElementSibling;continue}left.insertBefore(el,anchor)}
   }finally{brcApplying=false}
 }
