@@ -119,20 +119,20 @@ jobs:
               if marker not in navclean:
                   raise SystemExit('GM navigasyon temizliği işareti eksik: '+marker)
           gmcombat=Path('gm-combat-v3-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_combat_add_creature']:
+          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_save_creature_template','Kütüphaneye Kaydet']:
               if marker not in gmcombat:
-                  raise SystemExit('GM savaş v3 işareti eksik: '+marker)
+                  raise SystemExit('GM savaş v3/kütüphane işareti eksik: '+marker)
           if 'room-guard-patch.js?v=guard-v3' not in html:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
           if 'battle-room-v3-patch.js?v=battleroom-v1' not in html:
               raise SystemExit('battle-room-v3 cache sürümü battleroom-v1 olmalı')
           if 'player-enemy-privacy-patch.js?v=privacy-v1' not in html:
               raise SystemExit('player-enemy-privacy cache sürümü privacy-v1 olmalı')
-          if 'battle-room-compact-patch.js?v=battlecompact-v1' not in html:
-              raise SystemExit('battle-room-compact cache sürümü battlecompact-v1 olmalı')
+          if 'battle-room-compact-patch.js?v=battlecompact-v2' not in html:
+              raise SystemExit('battle-room-compact cache sürümü battlecompact-v2 olmalı')
           if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
               raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
-          if 'gm-combat-v3-patch.js?v=gmcombat-v1' not in html:
-              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v1 olmalı')
+          if 'gm-combat-v3-patch.js?v=gmcombat-v2' not in html:
+              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v2 olmalı')
           print('Source invariants OK')
           PY
