@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 5 --retry-delay 2 "$LIVE_URL?gmtools=$(date +%s)" -o /tmp/index.html
-          grep -q 'gm-tools-patch.js?v=gmtools-v1' /tmp/index.html
+          grep -q 'gm-tools-patch.js?v=gmtools-v7' /tmp/index.html
           curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}gm-tools-patch.js?gmtools=$(date +%s)" -o /tmp/gm-tools.js
           node --check /tmp/gm-tools.js
           grep -q 'Savaş & Durumlar' /tmp/gm-tools.js
@@ -57,4 +57,4 @@ jobs:
           }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node gm-tools-smoke.cjs
-# audit trigger: full-site-gm-tools-2026-09-12-v1
+# audit trigger: full-site-gm-tools-2026-09-12-v2
