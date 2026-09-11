@@ -8,7 +8,8 @@ if(!document.querySelector('#brclean-style')){
     #app main.brclean-ready-only [data-br3-turn],
     #app main.brclean-ready-only [data-br3-creatures],
     #app main.brclean-ready-only [data-br3-abilities],
-    #app main.brclean-ready-only [data-br3-log]{display:none!important}
+    #app main.brclean-ready-only [data-br3-log],
+    #app main.brclean-ready-only section.hero .vitals{display:none!important}
   `;
   document.head.appendChild(s);
 }
