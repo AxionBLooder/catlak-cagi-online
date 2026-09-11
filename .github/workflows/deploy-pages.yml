@@ -38,9 +38,73 @@ jobs:
           python3 build-gm-route-fix.py _site
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
+          def sub_once(path, pattern, repl, label):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              out,n=re.subn(pattern,repl,s,count=1,flags=re.S)
+              if n!=1:
+                  raise SystemExit(f'{label}: beklenen blok bulunamadı ({n})')
+              p.write_text(out,encoding='utf-8')
+
+          # Savaş yerleşimi artık GM Merkezi'ndeki Yaratık düğmesini taşımaz.
+          sub_once(
+              '_site/battle-room-actions-layout-patch.js',
+              r"function braPlaceCreatureLibrary\(\)\{.*?\n\}\n\nasync function braRefreshLiveLog",
+              """function braPlaceCreatureLibrary(){
+  const bar=BRA_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
+  const lib=bar.querySelector('[data-gm2-route=\"creatures\"]');
+  if(lib)lib.dataset.fupCreatures='1';
+}
+
+async function braRefreshLiveLog""",
+              'battle creature route ownership'
+          )
+
+          # Oda Koruması yeni GM Merkezi çubuğunu gizleyemez.
+          p=Path('_site/room-guard-patch.js')
+          s=p.read_text(encoding='utf-8')
+          old="""    #app [data-gm2-centerbar]{display:none!important}
+    #app:has(main .gmt-shell) [data-gm2-centerbar]{display:flex!important}"""
+          new="""    #app.gm2-gm [data-gm2-centerbar]{display:flex!important;pointer-events:auto!important}"""
+          if old not in s:
+              raise SystemExit('room guard gm center css bulunamadı')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+
+          # Invite görünürlük katmanı GM Merkezi rotalarının pointerdown'una müdahale etmez.
+          p=Path('_site/invite-visibility-patch.js')
+          s=p.read_text(encoding='utf-8')
+          old="function civPrepareGmRoute(e){\n  const route=e.target.closest?.('[data-gm2-route]');"
+          new="function civPrepareGmRoute(e){\n  if(window.__catlakGmCenterRouterCore?.active)return;\n  const route=e.target.closest?.('[data-gm2-route]');"
+          if old not in s:
+              raise SystemExit('invite gm route prepare bulunamadı')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
-          core_tag='<script src="./gm-center-router-core.js?v=gmrouter-v2"></script>'
+
+          # Eski inline Yaratık Kütüphanesi GM Merkezi düğmesini yönetemez/taşıyamaz.
+          text,n=re.subn(
+              r"function route\(\)\{if\(!gm\(\)\)return;var bar=.*?\}function openLib\(\)",
+              "function route(){return}function openLib()",
+              text,count=1,flags=re.S
+          )
+          if n!=1:
+              raise SystemExit(f'inline legacy creature route bulunamadı ({n})')
+          text=text.replace(
+              "if(b){e.preventDefault();e.stopImmediatePropagation();openLib();return}",
+              "if(b&&!(window.__catlakGmCenterRouterCore&&window.__catlakGmCenterRouterCore.active)){e.preventDefault();e.stopImmediatePropagation();openLib();return}",
+              1
+          )
+
+          # Yeni tıklama sahipliği için cache bust.
+          text=text.replace('./gm-center-router-core.js?v=gmrouter-v2','./gm-center-router-core.js?v=gmrouter-v3')
+          text=text.replace('./battle-room-actions-layout-patch.js?v=battleactions-v1','./battle-room-actions-layout-patch.js?v=battleactions-v2')
+          text=text.replace('./room-guard-patch.js?v=guard-v3','./room-guard-patch.js?v=guard-v4')
+          text=text.replace('./invite-visibility-patch.js?v=inviteui-v3','./invite-visibility-patch.js?v=inviteui-v4')
+
+          core_tag='<script src="./gm-center-router-core.js?v=gmrouter-v3"></script>'
           route_tag='<script src="./route-stability-patch.js?v=routes-v2"></script>'
           stat_tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
           if core_tag not in text:
@@ -55,17 +119,24 @@ jobs:
           html.write_text(text,encoding='utf-8')
           PY
           for f in _site/*.js; do node --check "$f"; done
-          grep -q 'gm-center-router-core.js?v=gmrouter-v2' _site/index.html
+          grep -q 'gm-center-router-core.js?v=gmrouter-v3' _site/index.html
+          grep -q 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
+          grep -q 'room-guard-patch.js?v=guard-v4' _site/index.html
+          grep -q 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
           grep -q 'gm-tools-patch.js?v=gmtools-v4' _site/index.html
           grep -q 'gm-hub-v2-patch.js?v=gmhub-v4' _site/index.html
           grep -q 'quality-of-life-patch.js?v=qol-v2' _site/index.html
           grep -q 'route-stability-patch.js?v=routes-v2' _site/index.html
           grep -q 'stat-workshop-route-fix.js?v=statsroute-v3' _site/index.html
           if grep -q 'gm-center-tools-integration-patch.js' _site/index.html; then exit 1; fi
+          if grep -q 'builder&&builder.nextElementSibling!==lib' _site/battle-room-actions-layout-patch.js; then exit 1; fi
+          if grep -q '#app \[data-gm2-centerbar\]{display:none!important}' _site/room-guard-patch.js; then exit 1; fi
+          grep -q 'window.__catlakGmCenterRouterCore?.active' _site/invite-visibility-patch.js
           grep -q "\['combat','Savaş & Durumlar'\]" _site/gm-hub-v2-patch.js
           grep -q 'window.__catlakGmTools={open:gmtOpenSub' _site/gm-tools-patch.js
           grep -q 'closeCreatureLibrary:qolCloseCreatureLibrary' _site/quality-of-life-patch.js
           grep -q 'window.__catlakGmCenterSelectedRoute=route' _site/gm-hub-v2-patch.js
+          grep -q "window.addEventListener('pointerdown'" _site/gm-center-router-core.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -77,4 +148,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-exclusive-routes-v2-2026-09-11
+# trigger: gm-center-click-ownership-v3-2026-09-11
