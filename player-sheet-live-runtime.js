@@ -1,7 +1,7 @@
 (()=>{
   // Build uyumluluk işareti: cc-player-weapon-live-v3
-  if(window.__catlakPlayerWeaponLiveV4)return;
-  window.__catlakPlayerWeaponLiveV4=true;
+  if(window.__catlakPlayerWeaponLiveV5)return;
+  window.__catlakPlayerWeaponLiveV5=true;
   const A=document.querySelector('#app');if(!A)return;
   const txt=e=>String(e?.textContent||'').trim();
   const toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),2200)};
@@ -16,7 +16,7 @@
       #app main.ps-player-sheet .actions button[data-a="equip"][data-pla-equip-kind="weapon"],
       #app main.ps-player-sheet .actions button[data-ws-remove],
       #app main.ps-player-sheet .actions [data-wlive-remove]{display:none!important}
-      #app main.ps-player-sheet [data-psf-action-row]{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important;width:100%!important}
+      #app main.ps-player-sheet [data-psf-action-row]{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important;width:100%!important;margin-top:7px!important}
       #app main.ps-player-sheet [data-psf-action-row] [data-psf-equip],#app main.ps-player-sheet [data-psf-action-row] [data-psf-remove]{display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;min-width:82px!important;min-height:36px!important;border-radius:9px!important;font-weight:850!important;pointer-events:auto!important}
       #app main.ps-player-sheet [data-psf-equip]{border:1px solid #4d96d2!important;background:#123b5c!important;color:#e7f5ff!important}
       #app main.ps-player-sheet [data-psf-remove]{border:1px solid #406985!important;background:#0b2233!important;color:#c8e7fb!important}
@@ -46,19 +46,19 @@
     function ensure(card){
       const actions=card?.querySelector('.actions');if(!actions)return;
       const x=id(card);if(!x)return;
-      let row=actions.querySelector('[data-psf-action-row]');
-      if(!row){row=document.createElement('div');row.dataset.psfActionRow='1';const controls=actions.querySelector('[data-ws-controls]');controls?controls.insertAdjacentElement('afterend',row):actions.prepend(row)}
-      let equip=actions.querySelector('[data-psf-equip]');
-      if(!equip){equip=document.createElement('button');equip.type='button';equip.textContent='Kuşan'}
+      let row=card.querySelector(':scope > [data-psf-action-row]');
+      if(!row){row=document.createElement('div');row.dataset.psfActionRow='1';actions.insertAdjacentElement('afterend',row)}
+      else if(row.previousElementSibling!==actions)actions.insertAdjacentElement('afterend',row);
+      card.querySelectorAll('[data-psf-equip],[data-psf-remove]').forEach(b=>{if(b.parentElement!==row)b.remove()});
+      let equip=row.querySelector('[data-psf-equip]');
+      if(!equip){equip=document.createElement('button');equip.type='button';row.appendChild(equip)}
       equip.dataset.psfEquip=x;equip.textContent='Kuşan';forceVisible(equip);
-      let remove=actions.querySelector('[data-psf-remove]');
-      if(!remove){remove=document.createElement('button');remove.type='button';remove.textContent='Çıkar'}
+      let remove=row.querySelector('[data-psf-remove]');
+      if(!remove){remove=document.createElement('button');remove.type='button';row.appendChild(remove)}
       remove.dataset.psfRemove=x;remove.textContent='Çıkar';forceVisible(remove);
-      if(equip.parentElement!==row)row.appendChild(equip);
-      if(remove.parentElement!==row)row.appendChild(remove);
       if(row.firstElementChild!==equip)row.prepend(equip);
       if(equip.nextElementSibling!==remove)equip.insertAdjacentElement('afterend',remove);
-      row.style.setProperty('display','flex','important');row.style.setProperty('visibility','visible','important');row.style.setProperty('opacity','1','important')
+      row.hidden=false;row.style.setProperty('display','flex','important');row.style.setProperty('visibility','visible','important');row.style.setProperty('opacity','1','important')
     }
 
     function paint(card,slot){
@@ -122,9 +122,9 @@
     function scan(){scanQueued=false;if(!isSheet())return;cards().forEach(ensure);repaint()}
     function queueScan(){if(scanQueued)return;scanQueued=true;requestAnimationFrame(scan)}
     window.addEventListener('pointerdown',own,true);window.addEventListener('click',own,true);
-    new MutationObserver(queueScan).observe(A,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
-    S.channel('cc-player-weapon-live-v4').on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>syncSoon(35)).subscribe();
-    setInterval(()=>{if(isSheet())syncSoon(0)},1600);setTimeout(()=>{queueScan();syncAll()},80);
+    new MutationObserver(queueScan).observe(A,{childList:true,subtree:true});
+    S.channel('cc-player-weapon-live-v5').on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>syncSoon(35)).subscribe();
+    setInterval(()=>{if(isSheet())syncSoon(0)},1200);setTimeout(()=>{queueScan();syncAll()},80);
     window.__catlakPlayerWeaponLive={sync:syncAll,scan:queueScan,setSlot,pending}
   }
   boot()
