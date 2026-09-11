@@ -1,7 +1,6 @@
 {
-  "source_sha": "cf44710ad10a72da566b49bcdb917774e5c43291",
-  "sha256": "6c0a970117a1bbe217f8333810b6943abb020e59b22bdd8d70587c8686da61bd",
-  "bytes": 366362,
-  "format": "iife-es2018-browser-verified-single-owner-minified",
-  "sanity_trigger": "gm-center-routes-2026-09-11"
+  "source_sha": "d2b0e26252349c93a0be547fcbe709c86f6771c8",
+  "sha256": "762038e51972782bbf122f864c16f5bbf35fdcab5864221b2265995ba1613ea2",
+  "bytes": 366670,
+  "format": "iife-es2018-browser-verified-single-owner-minified"
 }
