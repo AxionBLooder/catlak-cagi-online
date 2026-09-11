@@ -1,4 +1,5 @@
 (()=>{
+  // Build uyumluluk işareti: player-sheet-final-patch.js?v=psfinal-runtime-v2
   if(window.__catlakPlayerSheetBootstrapV1)return;
   window.__catlakPlayerSheetBootstrapV1=true;
   const s=document.createElement('script');
