@@ -40,7 +40,7 @@ jobs:
           from pathlib import Path
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
-          core_tag='<script src="./gm-center-router-core.js?v=gmrouter-v1"></script>'
+          core_tag='<script src="./gm-center-router-core.js?v=gmrouter-v2"></script>'
           route_tag='<script src="./route-stability-patch.js?v=routes-v2"></script>'
           stat_tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
           if core_tag not in text:
@@ -55,14 +55,17 @@ jobs:
           html.write_text(text,encoding='utf-8')
           PY
           for f in _site/*.js; do node --check "$f"; done
-          grep -q 'gm-center-router-core.js?v=gmrouter-v1' _site/index.html
-          grep -q 'gm-tools-patch.js?v=gmtools-v3' _site/index.html
-          grep -q 'gm-hub-v2-patch.js?v=gmhub-v3' _site/index.html
+          grep -q 'gm-center-router-core.js?v=gmrouter-v2' _site/index.html
+          grep -q 'gm-tools-patch.js?v=gmtools-v4' _site/index.html
+          grep -q 'gm-hub-v2-patch.js?v=gmhub-v4' _site/index.html
+          grep -q 'quality-of-life-patch.js?v=qol-v2' _site/index.html
           grep -q 'route-stability-patch.js?v=routes-v2' _site/index.html
           grep -q 'stat-workshop-route-fix.js?v=statsroute-v3' _site/index.html
           if grep -q 'gm-center-tools-integration-patch.js' _site/index.html; then exit 1; fi
           grep -q "\['combat','Savaş & Durumlar'\]" _site/gm-hub-v2-patch.js
           grep -q 'window.__catlakGmTools={open:gmtOpenSub' _site/gm-tools-patch.js
+          grep -q 'closeCreatureLibrary:qolCloseCreatureLibrary' _site/quality-of-life-patch.js
+          grep -q 'window.__catlakGmCenterSelectedRoute=route' _site/gm-hub-v2-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -74,4 +77,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: auto-deploy-all-js-v1-2026-09-11
+# trigger: gm-center-exclusive-routes-v2-2026-09-11
