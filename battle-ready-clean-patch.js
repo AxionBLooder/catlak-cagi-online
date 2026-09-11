@@ -49,7 +49,7 @@ setInterval(brcleanApply,1500);
 if(!document.querySelector('script[data-slot-sync-hotfix]')){
   const h=document.createElement('script');
   h.dataset.slotSyncHotfix='1';
-  h.src='./slot-sync-hotfix.js?v=slotfix-v2';
+  h.src='./slot-sync-hotfix.js?v=slotfix-v2&blue-live-v3';
   h.async=false;
   document.body.appendChild(h);
 }
