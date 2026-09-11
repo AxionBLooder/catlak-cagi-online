@@ -1,0 +1,56 @@
+name: Check Live Backend
+on:
+  push:
+    paths:
+      - '.github/workflows/check-live-backend.yml'
+  workflow_dispatch:
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify GitHub Pages low-egress build
+        run: |
+          set -euo pipefail
+          LIVE='https://axionblooder.github.io/catlak-cagi-online/'
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE}?health=$(date +%s)" -o /tmp/index.html
+          grep -Fq 'browser-app.js?v=bootwatch-low-egress-v1' /tmp/index.html
+          grep -Fq 'player-live-actions-patch.js?v=playerlive-v9' /tmp/index.html
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE}browser-app.js?health=$(date +%s%N)" -o /tmp/app.js
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE}player-live-actions-patch.js?health=$(date +%s%N)" -o /tmp/player.js
+          node --check /tmp/app.js
+          node --check /tmp/player.js
+          grep -Fq 'window.__catlakLowEgressCore=true' /tmp/app.js
+          grep -Fq 'window.__catlakLowEgressV1=true' /tmp/player.js
+          grep -Fq 'window.__catlakPlayerPollingDisabled=true' /tmp/player.js
+          ! grep -Fq 'cc-player-live-actions' /tmp/player.js
+          echo PAGES_LOW_EGRESS_OK
+
+      - name: Verify Supabase Auth endpoint
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS -o /tmp/auth.txt -w '%{http_code}' 'https://ygbereitlhjvoqgqlwfe.supabase.co/auth/v1/health')
+          echo "AUTH_HTTP=$CODE"
+          cat /tmp/auth.txt
+          if [ "$CODE" = '402' ] && grep -qi 'exceed_egress_quota' /tmp/auth.txt; then
+            echo SUPABASE_EGRESS_RESTRICTED
+            exit 42
+          fi
+          test "$CODE" = '200'
+          echo SUPABASE_AUTH_OK
+
+      - name: Verify invite function is externally usable
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS -o /tmp/invite.json -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -d '{"token":"RECON-INVALID-SMOKE-ONLY"}' \
+            'https://ygbereitlhjvoqgqlwfe.supabase.co/functions/v1/catlak-guest-join')
+          echo "EDGE_HTTP=$CODE"
+          cat /tmp/invite.json
+          if [ "$CODE" = '402' ] && grep -qi 'exceed_egress_quota' /tmp/invite.json; then
+            echo SUPABASE_EGRESS_RESTRICTED
+            exit 42
+          fi
+          test "$CODE" = '409'
+          echo SUPABASE_INVITE_FUNCTION_OK
