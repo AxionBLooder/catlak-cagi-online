@@ -1,4 +1,5 @@
 const GNC_APP=document.querySelector('#app');
+const GNC_S=window.__catlakSupabase||null;
 if(!GNC_APP)throw new Error('GM navigasyon temizliği başlatılamadı.');
 
 const gncTxt=e=>String(e?.textContent||'').trim();
@@ -33,8 +34,25 @@ function gncEnsureRest(){
     else if(box.parentElement!==lead)lead.appendChild(box);
   })
 }
+
+async function gncRefillKpAfterRest(btn,id){
+  if(!GNC_S||!btn?.isConnected)return;
+  await new Promise(r=>setTimeout(r,0));
+  if(!btn.disabled)return;
+  for(let i=0;i<30&&btn.isConnected&&btn.disabled;i++)await new Promise(r=>setTimeout(r,80));
+  if(!btn.isConnected||btn.disabled)return;
+  const snap=await GNC_S.rpc('catlak_player_combat_snapshot');
+  if(snap.error||snap.data?.in_combat)return;
+  const stack=btn.closest('.cc-character-stack');
+  if(!stack?.querySelector('[data-ps-kp],section.vampire'))return;
+  const kp=await GNC_S.rpc('catlak_update_vampire_kp',{p_character_id:id,p_delta:999});
+  if(kp.error)return;
+  setTimeout(gncEnsureRest,60);
+}
+
 function gncClean(){gncQueued=false;if(gncIsGM())GNC_APP.querySelectorAll('.nav [data-ccr-hub]').forEach(x=>x.remove());else gncEnsureRest()}
 function gncSchedule(){if(gncQueued)return;gncQueued=true;requestAnimationFrame(gncClean)}
+window.addEventListener('click',e=>{const b=e.target.closest?.('[data-qol-long-rest]');if(b&&gncSheet())gncRefillKpAfterRest(b,b.dataset.qolLongRest).catch(()=>{})},true);
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
 setInterval(gncClean,1200);
 setTimeout(gncClean,80);
