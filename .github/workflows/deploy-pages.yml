@@ -37,12 +37,13 @@ jobs:
           PY
           python3 build-gm-route-fix.py _site
           python3 build-gm-click-fix.py _site
+          python3 build-gm-shell-speed.py _site
           python3 - <<'PY'
           from pathlib import Path
           p=Path('_site/index.html')
           s=p.read_text(encoding='utf-8')
           tags=[
-            ('<script src="./gm-center-router-core.js?v=gmrouter-v3"></script>','<div id="toast" class="toast hidden"></div>',True),
+            ('<script src="./gm-center-router-core.js?v=gmrouter-v4"></script>','<div id="toast" class="toast hidden"></div>',True),
             ('<script src="./route-stability-patch.js?v=routes-v2"></script>','</body>',False),
             ('<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>','</body>',False),
           ]
@@ -55,11 +56,16 @@ jobs:
           p.write_text(s,encoding='utf-8')
           PY
           for f in _site/*.js; do node --check "$f"; done
-          grep -q 'gm-center-router-core.js?v=gmrouter-v3' _site/index.html
+          grep -q 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
+          grep -q 'gm-tools-patch.js?v=gmtools-v5' _site/index.html
+          grep -q 'gm-hub-v2-patch.js?v=gmhub-v5' _site/index.html
           grep -q 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
           grep -q 'room-guard-patch.js?v=guard-v4' _site/index.html
           grep -q 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
           grep -q "window.addEventListener('pointerdown'" _site/gm-center-router-core.js
+          grep -q "bar.dataset.gm2Stable='1'" _site/gm-hub-v2-patch.js
+          grep -q "async function gmtLoad(sub=gmtSub,force=false)" _site/gm-tools-patch.js
+          grep -q "main.dataset.gm2Route='ability'" _site/gm-hub-v2-patch.js
           grep -q 'window.__catlakGmCenterRouterCore?.active' _site/invite-visibility-patch.js
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -72,4 +78,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-click-ownership-v4-2026-09-11
+# trigger: gm-center-persistent-shell-speed-v1-2026-09-11
