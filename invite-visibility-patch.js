@@ -76,8 +76,29 @@ function civPrepareGmRoute(e){
   const main=CIV_APP.querySelector('main');
   if(main){delete main.dataset.sspStableView;delete main.dataset.gmtTools;delete main.dataset.qolCreatureLibrary}
 }
+function civOpenStatsRoute(e){
+  const route=e.target.closest?.('[data-gm2-route="stats"]');
+  if(!route||!civIsGM())return false;
+  e.preventDefault();e.stopImmediatePropagation();civPrepareGmRoute(e);
+  const nav=CIV_APP.querySelector('.nav'),stat=nav?.querySelector('[data-cc-stats-tab]');
+  if(!stat){civToast('Stat Atölyesi düğmesi henüz hazır değil.');return true}
+  nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));stat.classList.add('on');
+  window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
+  window.__catlakRouteLoading?.('Stat Atölyesi');
+  let tries=0;
+  const open=()=>{
+    const fn=window.__catlakRenderCompactStats;
+    if(typeof fn==='function'){
+      Promise.resolve(fn(true)).catch(err=>civToast('Stat Atölyesi açılamadı: '+(err?.message||String(err))));
+      setTimeout(()=>{if(stat.classList.contains('on'))Promise.resolve(fn(true)).catch(()=>{})},90);
+      return;
+    }
+    if(++tries<24)setTimeout(open,50);else civToast('Stat Atölyesi yükleyicisi hazır değil.')
+  };
+  requestAnimationFrame(open);return true
+}
 window.addEventListener('pointerdown',civPrepareGmRoute,true);
-window.addEventListener('click',civPrepareGmRoute,true);
+window.addEventListener('click',e=>{if(civOpenStatsRoute(e))return;civPrepareGmRoute(e)},true);
 CIV_APP.addEventListener('click',e=>{
   const a=e.target.closest('[data-civ-invite]');if(a){e.preventDefault();e.stopImmediatePropagation();civMake('invite',a.dataset.civInvite,a.dataset.civName||'Karakter');return}
   const r=e.target.closest('[data-civ-reconnect]');if(r){e.preventDefault();e.stopImmediatePropagation();civMake('reconnect',r.dataset.civReconnect,r.dataset.civName||'Karakter');return}
@@ -87,4 +108,4 @@ function civSchedule(){if(civScheduled)return;civScheduled=true;setTimeout(()=>{
 new MutationObserver(civSchedule).observe(CIV_APP,{childList:true,subtree:true});
 CIV_S.channel('cc-invite-visibility-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{civRows=null;civSchedule()}).subscribe();
 civSchedule();
-window.__catlakInviteVisibilityTest={card:civCard,prepareGmRoute:civPrepareGmRoute};
+window.__catlakInviteVisibilityTest={card:civCard,prepareGmRoute:civPrepareGmRoute,openStatsRoute:civOpenStatsRoute};
