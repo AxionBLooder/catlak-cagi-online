@@ -1,53 +1,112 @@
 const GMCR_APP=document.getElementById('app');
 if(!GMCR_APP)throw new Error('GM Merkezi yönlendiricisi başlatılamadı.');
 
+const GMCR_ROUTES=new Set(['ability','items','stats','races','builder','combat','events','logs','creatures','characters']);
 let gmcrLastRoute='';
 let gmcrLastAt=0;
+let gmcrToken=0;
 
-function gmcrIsGM(){return String(GMCR_APP.querySelector('.role')?.textContent||'').trim()==='GM'}
+function gmcrRole(){return String(GMCR_APP.querySelector('.role')?.textContent||'').trim()}
+function gmcrIsGM(){return gmcrRole()==='GM'||!!GMCR_APP.querySelector('[data-gm2-centerbar]')}
 function gmcrButton(target){return target?.closest?.('#app [data-gm2-route]')||null}
+function gmcrToast(text){const t=document.getElementById('toast');if(!t)return;t.textContent=String(text);t.classList.remove('hidden');clearTimeout(gmcrToast.t);gmcrToast.t=setTimeout(()=>t.classList.add('hidden'),3600)}
 
-window.addEventListener('pointerdown',e=>{
-  const button=gmcrButton(e.target);
-  if(!button||!gmcrIsGM())return;
-  e.stopImmediatePropagation();
-},true);
+function gmcrMakeButtonsClickable(){
+  const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
+  bar.style.pointerEvents='auto';
+  bar.style.position='relative';
+  bar.style.zIndex='50';
+  bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
+    b.disabled=false;
+    b.style.pointerEvents='auto';
+    b.style.cursor='pointer';
+  });
+}
+
+function gmcrSelect(route){
+  if(!GMCR_ROUTES.has(route))return;
+  window.__catlakGmCenterSelectedRoute=route;
+  GMCR_APP.querySelectorAll('[data-gm2-centerbar] [data-gm2-route]').forEach(b=>{
+    const on=String(b.dataset.gm2Route||'')===route;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+
+function gmcrLogicalRoute(){
+  const forced=String(window.__catlakGmCenterSelectedRoute||'');
+  if(GMCR_ROUTES.has(forced))return forced;
+  if(window.__catlakCreatureLibraryOpen===true)return'creatures';
+  if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return'ability';
+  const tool=window.__catlakGmTools?.active?.();
+  if(tool==='combat'||tool==='events'||tool==='logs')return tool;
+  if(GMCR_APP.querySelector('.nav [data-cc-stats-tab].on'))return'stats';
+  const native=String(GMCR_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'');
+  return GMCR_ROUTES.has(native)?native:'';
+}
+
+function gmcrGo(route){
+  if(!gmcrIsGM()||!GMCR_ROUTES.has(route))return false;
+  gmcrSelect(route);
+  const token=++gmcrToken;
+  const run=()=>{
+    if(token!==gmcrToken)return true;
+    const go=window.__catlakGmHubV2Test?.route;
+    if(typeof go==='function'){
+      go(route);
+      requestAnimationFrame(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect(route)}});
+      setTimeout(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect(route)}},80);
+      return true;
+    }
+    return false;
+  };
+  if(run())return true;
+  let tries=0;
+  const retry=()=>{
+    if(token!==gmcrToken)return;
+    if(run())return;
+    if(++tries<50)setTimeout(retry,20);
+    else gmcrToast('GM Merkezi yönlendiricisi henüz hazır değil. Sayfayı bir kez yenileyip tekrar dene.');
+  };
+  setTimeout(retry,0);
+  return true;
+}
 
 window.addEventListener('click',e=>{
   const button=gmcrButton(e.target);
-  if(!button||!gmcrIsGM())return;
+  if(button&&gmcrIsGM()){
+    const route=String(button.dataset.gm2Route||'');
+    if(!GMCR_ROUTES.has(route))return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
 
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation();
-
-  const route=String(button.dataset.gm2Route||'');
-  if(!route)return;
-
-  const now=performance.now();
-  if(route===gmcrLastRoute&&now-gmcrLastAt<180)return;
-  gmcrLastRoute=route;
-  gmcrLastAt=now;
-
-  const go=window.__catlakGmHubV2Test?.route;
-  if(typeof go==='function'){
-    go(route);
+    const now=performance.now();
+    if(route===gmcrLastRoute&&now-gmcrLastAt<140)return;
+    gmcrLastRoute=route;gmcrLastAt=now;
+    gmcrGo(route);
     return;
   }
 
-  let tries=0;
-  const retry=()=>{
-    const fn=window.__catlakGmHubV2Test?.route;
-    if(typeof fn==='function'){
-      fn(route);
-      return;
-    }
-    if(++tries<12)setTimeout(retry,20);
-  };
-  retry();
+  if(e.isTrusted&&e.target?.closest?.('#app .nav button')){
+    window.__catlakGmCenterSelectedRoute='';
+    gmcrToken++;
+  }
 },true);
+
+const gmcrObserver=new MutationObserver(()=>{
+  gmcrMakeButtonsClickable();
+  const selected=String(window.__catlakGmCenterSelectedRoute||'');
+  if(GMCR_ROUTES.has(selected))gmcrSelect(selected);
+});
+gmcrObserver.observe(GMCR_APP,{childList:true,subtree:true});
+setInterval(gmcrMakeButtonsClickable,1200);
+setTimeout(gmcrMakeButtonsClickable,0);
 
 window.__catlakGmCenterRouterCore={
   active:true,
-  reset:()=>{gmcrLastRoute='';gmcrLastAt=0}
+  route:gmcrGo,
+  current:gmcrLogicalRoute,
+  select:gmcrSelect,
+  reset:()=>{gmcrLastRoute='';gmcrLastAt=0;gmcrToken++;window.__catlakGmCenterSelectedRoute=''}
 };
