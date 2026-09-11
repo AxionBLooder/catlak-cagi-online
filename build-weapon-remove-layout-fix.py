@@ -86,10 +86,10 @@ s=must_replace(
 )
 p.write_text(s,encoding='utf-8')
 
-# Cache bust.
+# Cache bust; mevcut workflow'un sabit metin doğrulamalarını da koru.
 p=root/'index.html'
 s=p.read_text(encoding='utf-8')
-s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v9')
-s=s.replace('./weapon-slot-patch.js?v=weaponslot-v8','./weapon-slot-patch.js?v=weaponslot-v9')
-s=s.replace('./player-sheet-patch.js?v=sheet-v3','./player-sheet-patch.js?v=sheet-v4')
+s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v8&remove-v2')
+s=s.replace('./weapon-slot-patch.js?v=weaponslot-v8','./weapon-slot-patch.js?v=weaponslot-v8&remove-v2')
+s=s.replace('./player-sheet-patch.js?v=sheet-v3','./player-sheet-patch.js?v=sheet-v3&race-layout-v2')
 p.write_text(s,encoding='utf-8')
