@@ -99,3 +99,10 @@ s=must_sub(
     'player duplicate initial fetch'
 )
 p.write_text(s,encoding='utf-8')
+
+# Yeni düşük-trafik paketinin eski browser cache'ine takılmaması için asset sürümlerini yükselt.
+p=root/'index.html'
+s=p.read_text(encoding='utf-8')
+s=s.replace('./browser-app.js?v=bootwatch-171c9773','./browser-app.js?v=bootwatch-low-egress-v1')
+s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v9')
+p.write_text(s,encoding='utf-8')
