@@ -94,7 +94,42 @@ s = must_sub(
 p.write_text(s, encoding="utf-8")
 
 
-# GM Merkezi: araçları gerçek rota listesine ekle ve doğrudan API ile aç.
+# Yaratık Kütüphanesi: GM Merkezi çubuğundaki mevcut düğmeyi ASLA taşıma.
+# Eski davranış GM Merkezi'nin MutationObserver'ı ile birbirini sürekli tetikleyip
+# bütün düğmeleri yeniden yaratıyordu; bu da tıklanmama/hayaletlenme üretiyordu.
+p = root / "quality-of-life-patch.js"
+s = p.read_text(encoding="utf-8")
+new_creature_button = r'''function qolEnsureCreatureButton(){
+  if(!qolGM())return;
+  const bar=QOL_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
+  let b=bar.querySelector('[data-gm2-route="creatures"]')||bar.querySelector('[data-fup-creatures]');
+  if(b){
+    b.dataset.fupCreatures='1';
+    b.classList.toggle('on',qolCreatureOpen||window.__catlakGmCenterSelectedRoute==='creatures');
+    return;
+  }
+  const manage=bar.querySelector('[data-gm2-route="characters"]');
+  b=document.createElement('button');b.type='button';b.dataset.fupCreatures='1';b.textContent='Yaratık Kütüphanesi';
+  b.classList.toggle('on',qolCreatureOpen);
+  manage?bar.insertBefore(b,manage):bar.appendChild(b)
+}'''
+s = must_sub(
+    s,
+    r"function qolEnsureCreatureButton\(\)\{.*?\n\}\nfunction qolHideLegacyLibrary",
+    new_creature_button + "\nfunction qolHideLegacyLibrary",
+    "qol creature button ownership",
+    re.S,
+)
+s = must_replace(
+    s,
+    "window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};",
+    "window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,closeCreatureLibrary:qolCloseCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};",
+    "qol creature close api",
+)
+p.write_text(s, encoding="utf-8")
+
+
+# GM Merkezi: araçları gerçek rota listesine ekle; her rota önce diğer özel ekranları kapatsın.
 p = root / "gm-hub-v2-patch.js"
 s = p.read_text(encoding="utf-8")
 s = must_replace(
@@ -106,26 +141,34 @@ s = must_replace(
 s = must_replace(
     s,
     "function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';return gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true?'ability':gm2NativeRoute()}",
-    "function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}",
+    "function gm2ActiveRoute(){const forced=String(window.__catlakGmCenterSelectedRoute||'');if(GM2_ROUTES.some(([k])=>k===forced))return forced;if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}",
     "gm-hub active route",
 )
 new_go = r'''function gm2Go(route){
   if(!gm2IsGM())return;
-  if(route==='ability'){gm2OpenAbility();return}
+  if(!GM2_ROUTES.some(([k])=>k===route))return;
+  window.__catlakGmCenterSelectedRoute=route;
+  const closeCreature=()=>window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
+
+  if(route==='ability'){
+    closeCreature();window.__catlakGmTools?.close?.();gm2ReleaseAbility();gm2OpenAbility();gm2QueueChrome();return
+  }
   if(route==='combat'||route==='events'||route==='logs'){
-    gm2ReleaseAbility();window.__catlakCreatureLibraryOpen=false;
+    closeCreature();gm2ReleaseAbility();
     const tools=window.__catlakGmTools;
     if(tools&&typeof tools.open==='function')tools.open(route);else gm2Toast('GM araçları henüz hazır değil.');
-    setTimeout(gm2QueueChrome,0);return
+    gm2QueueChrome();return
   }
   if(route==='creatures'){
-    gm2ReleaseAbility();
+    gm2ReleaseAbility();window.__catlakGmTools?.close?.();
     const open=window.__catlakQualityOfLifeTest?.openCreatureLibrary;
     if(typeof open==='function')open();else gm2Toast('Yaratık Kütüphanesi henüz hazır değil.');
-    setTimeout(gm2QueueChrome,20);return
+    gm2QueueChrome();return
   }
-  gm2ReleaseAbility();window.__catlakGmTools?.close?.();
-  const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}t.click();setTimeout(gm2QueueChrome,0)
+
+  closeCreature();gm2ReleaseAbility();window.__catlakGmTools?.close?.();
+  const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}
+  t.click();gm2QueueChrome()
 }'''
 s = must_sub(
     s,
@@ -137,10 +180,11 @@ s = must_sub(
 p.write_text(s, encoding="utf-8")
 
 
-# Eski ek entegrasyonu yayından çıkar; değişen iki ana script için cache-bust.
+# Eski ek entegrasyonu yayından çıkar; değişen scriptleri cache-bust et.
 p = root / "index.html"
 s = p.read_text(encoding="utf-8")
-s = s.replace("./gm-tools-patch.js?v=gmtools-v1", "./gm-tools-patch.js?v=gmtools-v3")
-s = s.replace("./gm-hub-v2-patch.js?v=gmhub-v2", "./gm-hub-v2-patch.js?v=gmhub-v3")
+s = s.replace("./gm-tools-patch.js?v=gmtools-v1", "./gm-tools-patch.js?v=gmtools-v4")
+s = s.replace("./gm-hub-v2-patch.js?v=gmhub-v2", "./gm-hub-v2-patch.js?v=gmhub-v4")
+s = s.replace("./quality-of-life-patch.js?v=qol-v1", "./quality-of-life-patch.js?v=qol-v2")
 s = re.sub(r'<script src="\./gm-center-tools-integration-patch\.js\?v=[^"]+"></script>', "", s)
 p.write_text(s, encoding="utf-8")
