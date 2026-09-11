@@ -2,5 +2,6 @@
   "source_sha": "b542e41fbd4ccf1247253617cc7a05d1e0ebebff",
   "sha256": "b1ee9ac7b3349211ff513f3984c9c1698cd830126989b74625ac24295ab86269",
   "bytes": 367390,
-  "format": "iife-es2018-browser-verified-single-owner-minified"
+  "format": "iife-es2018-browser-verified-single-owner-minified",
+  "audit_trigger": "full-site-audit-2026-09-12-v1"
 }
