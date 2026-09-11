@@ -7,6 +7,55 @@ const crgIsGM=()=>crgTxt(CRG_APP.querySelector('.role'))==='GM';
 const crgToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(crgToast.t);crgToast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
 let crgScheduled=false;
 
+// GM Merkezi alt sekmeleri yalnız GM Merkezi kendi ekranındayken görünür.
+// Eşya / Stat / Irk / Karakter Oluşturucu / Yönetim Odası gibi yerel sayfalarda
+// üstte ikinci bir küçük GM Merkezi çubuğu bırakılmaz.
+if(!document.querySelector('#crg-gm-center-scope-style')){
+  const s=document.createElement('style');
+  s.id='crg-gm-center-scope-style';
+  s.textContent=`
+    #app [data-gm2-centerbar]{display:none!important}
+    #app:has(main .gmt-shell) [data-gm2-centerbar]{display:flex!important}
+  `;
+  document.head.appendChild(s);
+}
+
+// Savaş Odası'nın eski ana rendererı 2.5 saniyede bir aynı base HTML'i tekrar
+// main.innerHTML'e yazıyordu. Yaratık / büyü / tur kontrolü gibi eklentiler bu sırada
+// silinip birkaç ms sonra geri geldiği için ekran gözle görünür biçimde yanıp sönüyordu.
+// Aynı base savaş HTML'i tekrar geliyorsa yazımı yut; gerçek veri değiştiğinde HTML
+// değişeceği için normal render aynen devam eder.
+if(!window.__catlakBattleInnerHtmlStabilityInstalled){
+  const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+  if(desc?.get&&desc?.set){
+    let lastBattleBase='',lastBattleMain=null,suppressed=0;
+    const looksBattle=v=>typeof v==='string'&&(v.includes('OYUNCU • SAVAŞ ODASI')||v.includes('⚔ SAVAŞ ODASI'));
+    const currentLooksBattle=el=>{try{const v=desc.get.call(el);return typeof v==='string'&&v.includes('SAVAŞ ODASI')}catch{return false}};
+    Object.defineProperty(Element.prototype,'innerHTML',{
+      configurable:desc.configurable,
+      enumerable:desc.enumerable,
+      get:desc.get,
+      set:function(value){
+        const main=CRG_APP.querySelector('main');
+        if(this===main&&window.__catlakBattleRoomOpen===true&&looksBattle(value)){
+          if(lastBattleMain===this&&lastBattleBase===value&&currentLooksBattle(this)){
+            suppressed++;
+            window.__catlakBattleRenderSuppressed=suppressed;
+            return;
+          }
+          lastBattleMain=this;
+          lastBattleBase=value;
+        }else if(this===main&&window.__catlakBattleRoomOpen!==true){
+          lastBattleMain=null;
+          lastBattleBase='';
+        }
+        return desc.set.call(this,value);
+      }
+    });
+    window.__catlakBattleInnerHtmlStabilityInstalled=true;
+  }
+}
+
 // GM özel d20/d100 zarları yalnız Zar Akışı'nda görünür.
 // Canlı Oyun Masası'ndaki eski hızlı zar kutusunu görsel olarak kaldırır;
 // event-rolls-patch içindeki Zar Akışı kontrollerine dokunmaz.
@@ -104,4 +153,4 @@ new MutationObserver(crgSchedule).observe(CRG_APP,{childList:true,subtree:true})
 crgOrderNav();
 setTimeout(crgOrderNav,250);
 setTimeout(crgOrderNav,900);
-window.__catlakRoomGuardTest={orderNav:crgOrderNav,plan:[...CRG_NAV_PLAN],runAction:crgRunAction};
+window.__catlakRoomGuardTest={orderNav:crgOrderNav,plan:[...CRG_NAV_PLAN],runAction:crgRunAction,battleSuppressed:()=>window.__catlakBattleRenderSuppressed||0};
