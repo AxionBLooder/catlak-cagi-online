@@ -23,6 +23,7 @@ on:
       - 'turn-sync-patch.js'
       - 'battle-action-stability-patch.js'
       - 'battle-room-classic-stable-patch.js'
+      - 'quality-of-life-patch.js'
       - 'gm-nav-cleanup-patch.js'
       - 'gm-combat-v3-patch.js'
       - 'battle-creature-patch.js'
@@ -67,6 +68,7 @@ jobs:
           node --check turn-sync-patch.js
           node --check battle-action-stability-patch.js
           node --check battle-room-classic-stable-patch.js
+          node --check quality-of-life-patch.js
           node --check gm-nav-cleanup-patch.js
           node --check gm-combat-v3-patch.js
           node --check battle-creature-patch.js
@@ -100,7 +102,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           if 'browser-app.js' not in html or 'bundle.js' in html:
               raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
-          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','turn-sync-patch.js','battle-action-stability-patch.js','battle-room-classic-stable-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
+          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','turn-sync-patch.js','battle-action-stability-patch.js','battle-room-classic-stable-patch.js','quality-of-life-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','player-sheet-equipment-abilities-patch.js']:
               if runtime not in html:
                   raise SystemExit(runtime+' index.html içinde yüklenmiyor')
           for retired in ['ability-system-patch.js','ability-workshop-state-patch.js','gm-hub-patch.js','gm-hub-route-fix-patch.js','battle-creature-patch.js','ability-player-patch.js']:
@@ -162,6 +164,10 @@ jobs:
           for marker in ['psea-equipment-grid','grid-template-columns:repeat(2,minmax(0,1fr))','gmt-slot:nth-child(5)']:
               if marker not in psea:
                   raise SystemExit('Oyuncu ekipman 2 sütun işareti eksik: '+marker)
+          qol=Path('quality-of-life-patch.js').read_text(encoding='utf-8')
+          for marker in ['catlak_player_long_rest','catlak_gm_combat_add_template_batch','data-qol-long-rest','data-qol-creature-count','data-ws-slot-board','qol-compact','__catlakQualityOfLifeTest']:
+              if marker not in qol:
+                  raise SystemExit('Yaşam kalitesi işareti eksik: '+marker)
           if 'room-guard-patch.js?v=guard-v3' not in html:
               raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
           if 'battle-room-v3-patch.js?v=battleroom-v2' not in html:
@@ -188,5 +194,7 @@ jobs:
               raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v3 olmalı')
           if 'player-sheet-equipment-abilities-patch.js?v=psea-v2' not in html:
               raise SystemExit('player-sheet equipment cache sürümü psea-v2 olmalı')
+          if 'quality-of-life-patch.js?v=qol-v1' not in html:
+              raise SystemExit('quality-of-life cache sürümü qol-v1 olmalı')
           print('Source invariants OK')
           PY
