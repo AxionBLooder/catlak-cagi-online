@@ -170,3 +170,103 @@ BCS_S.channel('cc-battle-classic-stable')
 setInterval(()=>{if(bcsBattleView()){bcsMaintain();bcsSyncOrder()}},1800);
 setTimeout(()=>{bcsMaintain();bcsScheduleRecover(0)},260);
 window.__catlakBattleClassicStableTest={maintain:bcsMaintain,recover:bcsRecoverBase,rolls:bcsRefreshRecent,order:bcsSyncOrder};
+
+// Savaş Odası etkileşimleri lokal kalır. Ana browser-app realtime yenilemeleri
+// savaş açıkken #app'i baştan yazamaz; gerçek sekme çıkışları ayrıca serbest bırakılır.
+let bcsExitRenderUntil=0,bcsLocalTargetId='',bcsInteractionTimer=null;
+const bcsAbilityTargetValues=new Map();
+function bcsInteractionBattleView(){
+  if(bcsIsGM())return false;
+  const main=BCS_APP.querySelector('main');
+  const btn=BCS_APP.querySelector('.nav [data-ccr-battle]');
+  return !!(window.__catlakBattleRoomOpen===true||btn?.classList.contains('on')||main?.dataset.ccrBattle==='1'||main?.querySelector('.ccr-battle-grid,[data-br3-creatures],[data-bcs-classic-rolls]'));
+}
+function bcsAuthHtml(v){return typeof v==='string'&&(v.includes('class="auth"')||v.includes("class='auth'"))}
+function bcsPermitAppRender(ms=1500){bcsExitRenderUntil=Math.max(bcsExitRenderUntil,Date.now()+ms)}
+function bcsExitIntent(target){
+  const nav=target?.closest?.('#app .nav button');
+  if(nav&&!nav.matches('[data-ccr-battle]'))return true;
+  return !!target?.closest?.('#app [data-a="logout"]');
+}
+function bcsInstallAppRenderGuard(){
+  if(window.__catlakBattleAppRenderGuardInstalled)return;
+  const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+  if(!desc?.get||!desc?.set)return;
+  Object.defineProperty(Element.prototype,'innerHTML',{
+    configurable:desc.configurable,enumerable:desc.enumerable,get:desc.get,
+    set:function(value){
+      if(this===BCS_APP&&bcsInteractionBattleView()&&Date.now()>bcsExitRenderUntil&&!bcsAuthHtml(value)){
+        window.__catlakBattleAppRenderBlocked=(Number(window.__catlakBattleAppRenderBlocked)||0)+1;
+        bcsFreeze(650,'battle-app-rerender-blocked');
+        return;
+      }
+      return desc.set.call(this,value);
+    }
+  });
+  window.__catlakBattleAppRenderGuardInstalled=true;
+}
+function bcsFindTargetName(id){
+  if(!id)return'';
+  const btn=[...BCS_APP.querySelectorAll('main [data-br3-target]')].find(x=>String(x.dataset.br3Target||'')===String(id));
+  return bcsTxt(btn?.closest('.br3-card')?.querySelector('h3'))||'';
+}
+function bcsApplyLocalTarget(id){
+  bcsLocalTargetId=String(id||'');
+  const main=BCS_APP.querySelector('main');if(!main)return;
+  let targetName='';
+  main.querySelectorAll('[data-br3-target]').forEach(btn=>{
+    const on=!!bcsLocalTargetId&&String(btn.dataset.br3Target||'')===bcsLocalTargetId;
+    btn.classList.toggle('on',on);
+    const text=on?'✓ Hedef Seçildi':'Hedef Seç';if(btn.textContent!==text)btn.textContent=text;
+    btn.closest('.br3-card')?.classList.toggle('selected',on);
+    if(on)targetName=bcsTxt(btn.closest('.br3-card')?.querySelector('h3'));
+  });
+  if(!targetName)targetName=bcsFindTargetName(bcsLocalTargetId);
+  main.querySelectorAll('.ccr-weapon [data-br3-weapon-actions]').forEach(box=>{
+    const line=box.querySelector('.br3-target-line');
+    if(line&&line.dataset.bcsLocalTarget!==bcsLocalTargetId){
+      const waiting=/Sıra sende değil/i.test(line.textContent||'');
+      line.innerHTML=`Hedef: <b>${bcsEsc(targetName||'Seçilmedi')}</b>${waiting?' • <span class="muted">Sıra sende değil</span>':''}`;
+      line.dataset.bcsLocalTarget=bcsLocalTargetId;
+    }
+    const strike=box.querySelector('[data-br3-strike]');if(strike)strike.disabled=!bcsLocalTargetId;
+  });
+}
+function bcsRestoreAbilityTargets(){
+  BCS_APP.querySelectorAll('main [data-br3-ability-target]').forEach(sel=>{
+    const key=String(sel.dataset.br3AbilityTarget||''),saved=bcsAbilityTargetValues.get(key);if(saved&&[...sel.options].some(o=>o.value===saved)&&sel.value!==saved)sel.value=saved;
+  });
+}
+function bcsInstallLocalTargetBridge(){
+  const api=window.__catlakBattleRoomV3Test;if(!api||api.__bcsLocalTargetBridge)return;
+  api.__bcsOriginalTarget=api.target;
+  api.target=id=>{bcsFreeze(550,'target-select-local');bcsApplyLocalTarget(id);return id};
+  api.localTarget=()=>bcsLocalTargetId;
+  api.__bcsLocalTargetBridge=true;
+}
+function bcsMaintainInteractionState(){
+  if(!bcsInteractionBattleView())return;
+  bcsInstallLocalTargetBridge();
+  const actionTarget=window.__catlakBattleActionStabilityTest?.target?.();
+  if(String(actionTarget||'')!==bcsLocalTargetId)bcsLocalTargetId=String(actionTarget||'');
+  bcsApplyLocalTarget(bcsLocalTargetId);bcsRestoreAbilityTargets();
+}
+function bcsScheduleInteraction(ms=25){clearTimeout(bcsInteractionTimer);bcsInteractionTimer=setTimeout(bcsMaintainInteractionState,ms)}
+window.addEventListener('pointerdown',e=>{if(bcsExitIntent(e.target))bcsPermitAppRender()},true);
+window.addEventListener('click',e=>{if(bcsExitIntent(e.target))bcsPermitAppRender()},true);
+window.addEventListener('change',e=>{
+  if(!bcsInteractionBattleView())return;
+  const sel=e.target?.closest?.('[data-br3-ability-target]');if(!sel)return;
+  bcsAbilityTargetValues.set(String(sel.dataset.br3AbilityTarget||''),String(sel.value||''));
+  bcsFreeze(450,'ability-target-select-local');e.stopImmediatePropagation();
+},true);
+new MutationObserver(()=>bcsScheduleInteraction(30)).observe(BCS_APP,{childList:true,subtree:true});
+setInterval(()=>{if(bcsInteractionBattleView())bcsMaintainInteractionState()},900);
+bcsInstallAppRenderGuard();setTimeout(()=>bcsMaintainInteractionState(),80);
+window.__catlakBattleInteractionStabilityTest={
+  battleView:bcsInteractionBattleView,
+  target:()=>bcsLocalTargetId,
+  blocked:()=>Number(window.__catlakBattleAppRenderBlocked)||0,
+  restore:bcsMaintainInteractionState,
+  permitExit:bcsPermitAppRender
+};
