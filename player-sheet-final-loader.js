@@ -30,17 +30,32 @@
     `;
     document.head.appendChild(s);
   }
+
   let tries=0;
-  function boot(){
+  function loadFinal(){
     if(window.__catlakPlayerSheetFinal){window.__catlakPlayerSheetFinal.layout?.();return}
-    if(!window.__catlakSupabase){if(tries++<240)setTimeout(boot,75);return}
     if(document.querySelector('script[data-psfinal-runtime]'))return;
     const s=document.createElement('script');
     s.dataset.psfinalRuntime='1';
-    s.src='./player-sheet-final-patch.js?v=psfinal-runtime-v2';
+    s.src='./player-sheet-final-patch.js?v=psfinal-runtime-v3';
     s.async=false;
     s.onload=()=>setTimeout(()=>window.__catlakPlayerSheetFinal?.layout?.(),40);
     document.body.appendChild(s);
+  }
+  function loadDual(){
+    if(window.__catlakWeaponDualActionsV1){window.__catlakWeaponDualActionsV1.scan?.();loadFinal();return}
+    const existing=document.querySelector('script[data-weapon-dual-actions]');
+    if(existing){setTimeout(loadDual,40);return}
+    const s=document.createElement('script');
+    s.dataset.weaponDualActions='1';
+    s.src='./player-weapon-dual-actions-patch.js?v=weapondual-v1';
+    s.async=false;
+    s.onload=()=>{window.__catlakWeaponDualActionsV1?.scan?.();loadFinal()};
+    document.body.appendChild(s);
+  }
+  function boot(){
+    if(!window.__catlakSupabase){if(tries++<240)setTimeout(boot,75);return}
+    loadDual();
   }
   boot();
 })();
