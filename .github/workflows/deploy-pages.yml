@@ -16,6 +16,7 @@ on:
       - 'room-system-patch.js'
       - 'battle-creature-patch.js'
       - 'combat-enhancements-patch.js'
+      - 'ability-system-patch.js'
       - 'invite-visibility-patch.js'
       - 'player-sheet-patch.js'
       - 'player-live-actions-patch.js'
@@ -47,7 +48,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-creature-patch.js combat-enhancements-patch.js invite-visibility-patch.js player-sheet-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-system-patch.js invite-visibility-patch.js player-sheet-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -68,6 +69,7 @@ jobs:
           node --check _site/room-system-patch.js
           node --check _site/battle-creature-patch.js
           node --check _site/combat-enhancements-patch.js
+          node --check _site/ability-system-patch.js
           node --check _site/invite-visibility-patch.js
           node --check _site/player-sheet-patch.js
           node --check _site/player-live-actions-patch.js
@@ -85,4 +87,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: combat-quality-2026-09-11
+# trigger: abilities-2026-09-11
