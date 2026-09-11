@@ -45,6 +45,7 @@ jobs:
           s=p.read_text(encoding='utf-8')
           tags=[
             ('<script src="./gm-center-router-core.js?v=gmrouter-v4"></script>','<div id="toast" class="toast hidden"></div>',True),
+            ('<script src="./battle-ready-clean-patch.js?v=battleready-v1"></script>','</body>',False),
             ('<script src="./route-stability-patch.js?v=routes-v2"></script>','</body>',False),
             ('<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>','</body>',False),
           ]
@@ -63,6 +64,8 @@ jobs:
           grep -Fq 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
           grep -Fq 'room-guard-patch.js?v=guard-v4' _site/index.html
           grep -Fq 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
+          grep -Fq 'battle-ready-clean-patch.js?v=battleready-v1' _site/index.html
+          grep -Fq 'brclean-ready-only' _site/battle-ready-clean-patch.js
           grep -Fq "window.addEventListener('pointerdown'" _site/gm-center-router-core.js
           grep -Fq "bar.dataset.gm2Stable='1'" _site/gm-hub-v2-patch.js
           grep -Fq "async function gmtLoad(sub=gmtSub,force=false)" _site/gm-tools-patch.js
@@ -81,4 +84,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-persistent-shell-speed-v3-2026-09-11
+# trigger: battle-ready-clean-v1-2026-09-11
