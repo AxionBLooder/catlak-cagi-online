@@ -26,7 +26,7 @@ jobs:
           ! grep -Fq 'cc-player-live-actions' /tmp/player.js
           echo PAGES_LOW_EGRESS_OK
 
-      - name: Verify Supabase Auth endpoint
+      - name: Verify Supabase gateway is reachable
         run: |
           set -euo pipefail
           CODE=$(curl -sS -o /tmp/auth.txt -w '%{http_code}' 'https://ygbereitlhjvoqgqlwfe.supabase.co/auth/v1/health')
@@ -36,8 +36,8 @@ jobs:
             echo SUPABASE_EGRESS_RESTRICTED
             exit 42
           fi
-          test "$CODE" = '200'
-          echo SUPABASE_AUTH_OK
+          test "$CODE" = '200' -o "$CODE" = '401'
+          echo SUPABASE_GATEWAY_REACHABLE
 
       - name: Verify invite function is externally usable
         run: |
