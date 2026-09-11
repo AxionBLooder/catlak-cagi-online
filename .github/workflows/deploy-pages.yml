@@ -2,47 +2,6 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths:
-      - 'index.html'
-      - 'browser-app.js'
-      - 'browser-build.json'
-      - 'gm-controls-patch.js'
-      - 'presence-patch.js'
-      - 'dice-ux-patch.js'
-      - 'item-system-patch.js'
-      - 'event-rolls-patch.js'
-      - 'gm-tools-patch.js'
-      - 'room-guard-patch.js'
-      - 'room-system-patch.js'
-      - 'battle-room-v3-patch.js'
-      - 'player-enemy-privacy-patch.js'
-      - 'battle-room-compact-patch.js'
-      - 'battle-room-actions-layout-patch.js'
-      - 'site-stability-patch.js'
-      - 'game-flow-stability-patch.js'
-      - 'turn-sync-patch.js'
-      - 'battle-action-stability-patch.js'
-      - 'battle-room-classic-stable-patch.js'
-      - 'quality-of-life-patch.js'
-      - 'gm-nav-cleanup-patch.js'
-      - 'gm-combat-v3-patch.js'
-      - 'battle-creature-patch.js'
-      - 'combat-enhancements-patch.js'
-      - 'ability-player-patch.js'
-      - 'gm-hub-v2-patch.js'
-      - 'gm-center-router-core.js'
-      - 'invite-visibility-patch.js'
-      - 'stat-workshop-route-fix.js'
-      - 'route-stability-patch.js'
-      - 'build-gm-route-fix.py'
-      - 'player-sheet-patch.js'
-      - 'player-sheet-equipment-abilities-patch.js'
-      - 'player-live-actions-patch.js'
-      - 'weapon-slot-patch.js'
-      - 'gm-item-slot-patch.js'
-      - 'stat-roll-patch.js'
-      - 'catalog.b64'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -66,7 +25,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js battle-room-actions-layout-patch.js site-stability-patch.js game-flow-stability-patch.js turn-sync-patch.js battle-action-stability-patch.js battle-room-classic-stable-patch.js quality-of-life-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js gm-center-router-core.js invite-visibility-patch.js stat-workshop-route-fix.js route-stability-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
+          cp index.html browser-build.json catalog.b64 *.js _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -95,41 +54,7 @@ jobs:
               text=text.replace('</body>',stat_tag+'</body>')
           html.write_text(text,encoding='utf-8')
           PY
-          node --check _site/browser-app.js
-          node --check _site/gm-center-router-core.js
-          node --check _site/gm-controls-patch.js
-          node --check _site/presence-patch.js
-          node --check _site/dice-ux-patch.js
-          node --check _site/item-system-patch.js
-          node --check _site/event-rolls-patch.js
-          node --check _site/gm-tools-patch.js
-          node --check _site/room-guard-patch.js
-          node --check _site/room-system-patch.js
-          node --check _site/battle-room-v3-patch.js
-          node --check _site/player-enemy-privacy-patch.js
-          node --check _site/battle-room-compact-patch.js
-          node --check _site/battle-room-actions-layout-patch.js
-          node --check _site/site-stability-patch.js
-          node --check _site/game-flow-stability-patch.js
-          node --check _site/turn-sync-patch.js
-          node --check _site/battle-action-stability-patch.js
-          node --check _site/battle-room-classic-stable-patch.js
-          node --check _site/quality-of-life-patch.js
-          node --check _site/gm-nav-cleanup-patch.js
-          node --check _site/gm-combat-v3-patch.js
-          node --check _site/battle-creature-patch.js
-          node --check _site/combat-enhancements-patch.js
-          node --check _site/ability-player-patch.js
-          node --check _site/gm-hub-v2-patch.js
-          node --check _site/invite-visibility-patch.js
-          node --check _site/stat-workshop-route-fix.js
-          node --check _site/route-stability-patch.js
-          node --check _site/player-sheet-patch.js
-          node --check _site/player-sheet-equipment-abilities-patch.js
-          node --check _site/player-live-actions-patch.js
-          node --check _site/weapon-slot-patch.js
-          node --check _site/gm-item-slot-patch.js
-          node --check _site/stat-roll-patch.js
+          for f in _site/*.js; do node --check "$f"; done
           grep -q 'gm-center-router-core.js?v=gmrouter-v1' _site/index.html
           grep -q 'gm-tools-patch.js?v=gmtools-v3' _site/index.html
           grep -q 'gm-hub-v2-patch.js?v=gmhub-v3' _site/index.html
@@ -149,4 +74,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-center-single-router-v1-2026-09-11
+# trigger: auto-deploy-all-js-v1-2026-09-11
