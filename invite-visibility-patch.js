@@ -8,7 +8,7 @@ const civIsGM=()=>civTxt(CIV_APP.querySelector('.role'))==='GM';
 const civCharTab=()=>CIV_APP.querySelector('.nav [data-tab="characters"].on');
 const civEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const civToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(civToast.t);civToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let civRows=null,civFetch=null,civScheduled=false,civBusy=false;
+let civRows=null,civFetch=null,civScheduled=false,civBusy=false,civLastGmRoute='',civLastGmRouteAt=0;
 
 if(!document.querySelector('#civ-style')){
   const s=document.createElement('style');s.id='civ-style';s.textContent=`
@@ -76,6 +76,12 @@ function civPrepareGmRoute(e){
   const main=CIV_APP.querySelector('main');
   if(main){delete main.dataset.sspStableView;delete main.dataset.gmtTools;delete main.dataset.qolCreatureLibrary}
 }
+function civGuardGmRoute(e){
+  const route=e.target.closest?.('[data-gm2-route]');if(!route||!civIsGM())return false;
+  const key=String(route.dataset.gm2Route||''),now=performance?.now?.()||Date.now();
+  if(key&&key===civLastGmRoute&&now-civLastGmRouteAt<220){e.preventDefault();e.stopImmediatePropagation();return true}
+  civLastGmRoute=key;civLastGmRouteAt=now;return false
+}
 function civOpenStatsRoute(e){
   const route=e.target.closest?.('[data-gm2-route="stats"]');
   if(!route||!civIsGM())return false;
@@ -90,15 +96,15 @@ function civOpenStatsRoute(e){
     const fn=window.__catlakRenderCompactStats;
     if(typeof fn==='function'){
       Promise.resolve(fn(true)).catch(err=>civToast('Stat Atölyesi açılamadı: '+(err?.message||String(err))));
-      setTimeout(()=>{if(stat.classList.contains('on'))Promise.resolve(fn(true)).catch(()=>{})},90);
+      setTimeout(()=>{if(stat.classList.contains('on'))Promise.resolve(fn(true)).catch(()=>{})},55);
       return;
     }
-    if(++tries<24)setTimeout(open,50);else civToast('Stat Atölyesi yükleyicisi hazır değil.')
+    if(++tries<10)setTimeout(open,30);else civToast('Stat Atölyesi yükleyicisi hazır değil.')
   };
   requestAnimationFrame(open);return true
 }
 window.addEventListener('pointerdown',civPrepareGmRoute,true);
-window.addEventListener('click',e=>{if(civOpenStatsRoute(e))return;civPrepareGmRoute(e)},true);
+window.addEventListener('click',e=>{if(civGuardGmRoute(e))return;if(civOpenStatsRoute(e))return;civPrepareGmRoute(e)},true);
 CIV_APP.addEventListener('click',e=>{
   const a=e.target.closest('[data-civ-invite]');if(a){e.preventDefault();e.stopImmediatePropagation();civMake('invite',a.dataset.civInvite,a.dataset.civName||'Karakter');return}
   const r=e.target.closest('[data-civ-reconnect]');if(r){e.preventDefault();e.stopImmediatePropagation();civMake('reconnect',r.dataset.civReconnect,r.dataset.civName||'Karakter');return}
@@ -108,4 +114,4 @@ function civSchedule(){if(civScheduled)return;civScheduled=true;setTimeout(()=>{
 new MutationObserver(civSchedule).observe(CIV_APP,{childList:true,subtree:true});
 CIV_S.channel('cc-invite-visibility-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{civRows=null;civSchedule()}).subscribe();
 civSchedule();
-window.__catlakInviteVisibilityTest={card:civCard,prepareGmRoute:civPrepareGmRoute,openStatsRoute:civOpenStatsRoute};
+window.__catlakInviteVisibilityTest={card:civCard,prepareGmRoute:civPrepareGmRoute,guardGmRoute:civGuardGmRoute,openStatsRoute:civOpenStatsRoute};
