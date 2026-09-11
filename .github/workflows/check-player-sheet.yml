@@ -92,3 +92,4 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node player-sheet-smoke.cjs
+# audit trigger: full-site-player-sheet-2026-09-12-v1
