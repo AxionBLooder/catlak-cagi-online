@@ -132,10 +132,52 @@ s=must_replace(
 )
 p.write_text(s,encoding='utf-8')
 
-# Cache bust; mevcut workflow'un sabit metin doğrulamalarını da koru.
+# Silah kartında Kuşan ve Çıkar artık toggle değil, kalıcı iki ayrı aksiyon olsun.
+# Böylece render gecikmesi veya eski handler çakışması yüzünden buton kaybolamaz.
+p=root/'player-live-actions-patch.js'
+s=p.read_text(encoding='utf-8')
+s=must_replace(
+    s,
+    '''    const equipAction=r.equipped?`<button type="button" data-ws-remove="${r.id}">Çıkar</button>`:`<button type="button" data-a="equip" data-pla-equip-kind="weapon" data-id="${r.id}" data-v="1">Kuşan</button>`;''',
+    '''    const equipAction=`<button type="button" data-a="equip" data-pla-equip-kind="weapon" data-id="${r.id}" data-v="1">Kuşan</button><button type="button" data-ws-remove="${r.id}">Çıkar</button>`;''',
+    'persistent dual weapon actions'
+)
+p.write_text(s,encoding='utf-8')
+
+p=root/'weapon-slot-patch.js'
+s=p.read_text(encoding='utf-8')
+old_sync='''function wsSyncEquipAction(card,equipped){
+  const actions=card?.querySelector('.actions');if(!actions)return;
+  const id=card.dataset.plaInvRow||'';
+  let b=actions.querySelector('[data-ws-remove],button[data-a="equip"][data-pla-equip-kind="weapon"]');
+  if(!b){b=document.createElement('button');b.type='button';const controls=actions.querySelector('[data-ws-controls]');controls?controls.insertAdjacentElement('afterend',b):actions.prepend(b)}
+  if(equipped){
+    b.removeAttribute('data-a');b.removeAttribute('data-id');b.removeAttribute('data-v');b.removeAttribute('data-pla-equip-kind');
+    b.dataset.wsRemove=id;b.textContent='Çıkar';
+  }else{
+    b.removeAttribute('data-ws-remove');b.dataset.a='equip';b.dataset.plaEquipKind='weapon';b.dataset.id=id;b.dataset.v='1';b.textContent='Kuşan';
+  }
+  card.classList.toggle('on',equipped);
+}'''
+new_sync='''function wsSyncEquipAction(card,equipped){
+  const actions=card?.querySelector('.actions');if(!actions)return;
+  const id=card.dataset.plaInvRow||'';
+  const controls=actions.querySelector('[data-ws-controls]');
+  let equip=actions.querySelector('button[data-a="equip"][data-pla-equip-kind="weapon"]');
+  let remove=actions.querySelector('[data-ws-remove]');
+  if(!equip){equip=document.createElement('button');equip.type='button';equip.dataset.a='equip';equip.dataset.plaEquipKind='weapon';equip.dataset.id=id;equip.dataset.v='1';equip.textContent='Kuşan';controls?controls.insertAdjacentElement('afterend',equip):actions.prepend(equip)}
+  else{equip.dataset.id=id;equip.dataset.v='1';equip.textContent='Kuşan'}
+  if(!remove){remove=document.createElement('button');remove.type='button';remove.dataset.wsRemove=id;remove.textContent='Çıkar';equip.insertAdjacentElement('afterend',remove)}
+  else{remove.dataset.wsRemove=id;remove.textContent='Çıkar';if(remove.previousElementSibling!==equip)equip.insertAdjacentElement('afterend',remove)}
+  card.classList.toggle('on',equipped);
+}'''
+s=must_replace(s,old_sync,new_sync,'keep kuşan and çıkar side by side')
+p.write_text(s,encoding='utf-8')
+
+# Cache bust; mevcut workflow'un sabit metin doğrulamalarını koru.
 p=root/'index.html'
 s=p.read_text(encoding='utf-8')
-s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v8&toggle-v3')
-s=s.replace('./weapon-slot-patch.js?v=weaponslot-v8','./weapon-slot-patch.js?v=weaponslot-v8&toggle-v3')
+s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v8&dual-actions-v4')
+s=s.replace('./weapon-slot-patch.js?v=weaponslot-v8','./weapon-slot-patch.js?v=weaponslot-v8&dual-actions-v4')
 s=s.replace('./player-sheet-patch.js?v=sheet-v3','./player-sheet-patch.js?v=sheet-v3&race-layout-v3')
 p.write_text(s,encoding='utf-8')
