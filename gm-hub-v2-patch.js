@@ -9,7 +9,7 @@ const gm2Esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const gm2Num=x=>Number(x||0);
 const gm2IsGM=()=>gm2Txt(GM2_APP.querySelector('.role'))==='GM';
 const gm2Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gm2Toast.t);gm2Toast.t=setTimeout(()=>t.classList.add('hidden'),4400)};
-const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['characters','Yönetim Odası']];
+const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['creatures','Yaratık Kütüphanesi'],['characters','Yönetim Odası']];
 let gm2AbilityOpen=false,gm2RenderBusy=false,gm2RenderQueued=false,gm2ActionBusy=false,gm2ChromeQueued=false,gm2Gen=0,gm2Sig='',gm2Cache={abilities:[],chars:[],assignments:[]};
 const gm2State={editId:'',name:'',type:'spell',effect:'damage',target:'enemy',formula:'',attackBonus:'0',requiresAttack:'0',description:'',char:'',ability:'',uses:'0'};
 
@@ -40,9 +40,9 @@ function gm2NativeRoute(){
   const stat=GM2_APP.querySelector('.nav [data-cc-stats-tab].on');if(stat)return'stats';
   return GM2_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 }
-function gm2ActiveRoute(){return gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true?'ability':gm2NativeRoute()}
+function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';return gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true?'ability':gm2NativeRoute()}
 function gm2Target(route){const nav=GM2_APP.querySelector('.nav');if(!nav)return null;return route==='stats'?nav.querySelector('[data-cc-stats-tab]'):nav.querySelector(`[data-tab="${route}"]`)}
-function gm2HubContext(){const r=gm2ActiveRoute();return gm2AbilityOpen||window.__catlakGmToolsOpen===true||GM2_ROUTES.some(([k])=>k===r)}
+function gm2HubContext(){const r=gm2ActiveRoute();return gm2AbilityOpen||window.__catlakGmToolsOpen===true||window.__catlakCreatureLibraryOpen===true||GM2_ROUTES.some(([k])=>k===r)}
 function gm2EnsureChrome(){
   if(!gm2IsGM()){GM2_APP.classList.remove('gm2-gm');GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();return}
   GM2_APP.classList.add('gm2-gm');gm2PatchLegacyRender();
@@ -52,7 +52,7 @@ function gm2EnsureChrome(){
   let bar=GM2_APP.querySelector('[data-gm2-centerbar]');
   if(!bar){bar=document.createElement('div');bar.className='gm2-centerbar';bar.dataset.gm2Centerbar='1';nav.insertAdjacentElement('afterend',bar)}
   const active=gm2ActiveRoute();
-  const html=`<span class="gm2-label">GM MERKEZİ</span>${GM2_ROUTES.map(([k,n])=>`<button type="button" class="${active===k?'on':''}" data-gm2-route="${k}">${n}</button>`).join('')}`;
+  const html=`<span class="gm2-label">GM MERKEZİ</span>${GM2_ROUTES.map(([k,n])=>`<button type="button" class="${active===k?'on':''}" data-gm2-route="${k}"${k==='creatures'?' data-fup-creatures="1"':''}>${n}</button>`).join('')}`;
   if(bar.innerHTML!==html)bar.innerHTML=html;
 }
 function gm2QueueChrome(){if(gm2ChromeQueued)return;gm2ChromeQueued=true;requestAnimationFrame(()=>{gm2ChromeQueued=false;gm2EnsureChrome();if(gm2AbilityOpen&&window.__catlakGmToolsOpen===true&&!GM2_APP.querySelector('[data-gm2-ability-page]'))gm2RenderAbility(false)})}
@@ -69,7 +69,14 @@ function gm2OpenAbility(){
   setTimeout(wait,20)
 }
 function gm2Go(route){
-  if(!gm2IsGM())return;if(route==='ability'){gm2OpenAbility();return}
+  if(!gm2IsGM())return;
+  if(route==='ability'){gm2OpenAbility();return}
+  if(route==='creatures'){
+    gm2ReleaseAbility();
+    const open=window.__catlakQualityOfLifeTest?.openCreatureLibrary;
+    if(typeof open==='function')open();else gm2Toast('Yaratık Kütüphanesi henüz hazır değil.');
+    setTimeout(gm2QueueChrome,40);return
+  }
   gm2ReleaseAbility();const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}t.click();setTimeout(gm2QueueChrome,40)
 }
 
