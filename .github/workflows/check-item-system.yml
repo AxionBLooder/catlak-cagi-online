@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 4 --retry-delay 2 "$LIVE_URL?item-smoke=$(date +%s)" -o /tmp/index.html
-          grep -q 'item-system-patch.js?v=item-v1' /tmp/index.html
+          grep -q 'item-system-patch.js?v=item-v2' /tmp/index.html
           curl -fsSL --retry 4 --retry-delay 2 "${LIVE_URL}item-system-patch.js?item-smoke=$(date +%s)" -o /tmp/item.js
           node --check /tmp/item.js
           grep -q 'Silah Ayarları' /tmp/item.js
@@ -73,3 +73,4 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node .item-smoke.cjs
+# audit trigger: full-site-item-system-2026-09-12-v1
