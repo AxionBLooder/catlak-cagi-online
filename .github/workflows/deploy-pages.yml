@@ -16,6 +16,8 @@ on:
       - 'room-system-patch.js'
       - 'battle-room-v3-patch.js'
       - 'player-enemy-privacy-patch.js'
+      - 'battle-room-compact-patch.js'
+      - 'gm-nav-cleanup-patch.js'
       - 'gm-combat-v3-patch.js'
       - 'battle-creature-patch.js'
       - 'combat-enhancements-patch.js'
@@ -53,7 +55,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js invite-visibility-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
+          cp index.html browser-app.js gm-controls-patch.js presence-patch.js dice-ux-patch.js item-system-patch.js event-rolls-patch.js gm-tools-patch.js room-guard-patch.js room-system-patch.js battle-room-v3-patch.js player-enemy-privacy-patch.js battle-room-compact-patch.js gm-nav-cleanup-patch.js gm-combat-v3-patch.js battle-creature-patch.js combat-enhancements-patch.js ability-player-patch.js gm-hub-v2-patch.js invite-visibility-patch.js player-sheet-patch.js player-sheet-equipment-abilities-patch.js player-live-actions-patch.js weapon-slot-patch.js gm-item-slot-patch.js stat-roll-patch.js catalog.b64 _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           from pathlib import Path
@@ -74,6 +76,8 @@ jobs:
           node --check _site/room-system-patch.js
           node --check _site/battle-room-v3-patch.js
           node --check _site/player-enemy-privacy-patch.js
+          node --check _site/battle-room-compact-patch.js
+          node --check _site/gm-nav-cleanup-patch.js
           node --check _site/gm-combat-v3-patch.js
           node --check _site/battle-creature-patch.js
           node --check _site/combat-enhancements-patch.js
@@ -97,4 +101,4 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: enemy-privacy-2026-09-11
+# trigger: compact-battle-gm-nav-2026-09-11
