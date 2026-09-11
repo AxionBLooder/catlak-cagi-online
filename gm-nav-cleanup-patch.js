@@ -159,11 +159,20 @@ window.addEventListener('click',e=>{
 },true);
 
 let gncStatsOpening=false;
+function gncCloseGmToolsForStats(nav){
+  const main=GNC_APP.querySelector('main');
+  const wasOpen=window.__catlakGmToolsOpen===true||main?.dataset.gmtTools==='1'||!!main?.querySelector('.gmt-shell');
+  if(!wasOpen)return;
+  const native=nav?.querySelector('[data-tab="gm"]')||nav?.querySelector('[data-tab="items"]')||nav?.querySelector('[data-tab="characters"]');
+  if(native)native.click();
+  window.__catlakGmToolsOpen=false;
+}
 function gncOpenStatsWorkshop(){
   if(!gncIsGM()||gncStatsOpening)return false;
   const nav=GNC_APP.querySelector('.nav'),stat=nav?.querySelector('[data-cc-stats-tab]'),render=window.__catlakRenderCompactStats;
   if(!stat||typeof render!=='function')return false;
   gncStatsOpening=true;
+  gncCloseGmToolsForStats(nav);
   window.__catlakGmHubOwnsMain=false;
   window.__catlakCreatureLibraryOpen=false;
   window.__catlakGmToolsOpen=false;
@@ -173,7 +182,20 @@ function gncOpenStatsWorkshop(){
   stat.classList.add('on');
   window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
   window.__catlakRouteLoading?.('Stat Atölyesi');
-  requestAnimationFrame(()=>Promise.resolve(render(true)).catch(e=>gncToast('Stat Atölyesi açılamadı: '+(e?.message||String(e)))).finally(()=>{gncStatsOpening=false}));
+  const draw=()=>Promise.resolve(render(true)).catch(e=>gncToast('Stat Atölyesi açılamadı: '+(e?.message||String(e))));
+  requestAnimationFrame(()=>{
+    draw().finally(()=>{
+      setTimeout(()=>{
+        const nowMain=GNC_APP.querySelector('main');
+        if(stat.classList.contains('on')&&!nowMain?.querySelector('.cux-workshop'))draw();
+      },120);
+      setTimeout(()=>{
+        const nowMain=GNC_APP.querySelector('main');
+        if(stat.classList.contains('on')&&!nowMain?.querySelector('.cux-workshop'))draw();
+        gncStatsOpening=false;
+      },360);
+    })
+  });
   return true;
 }
 window.addEventListener('click',e=>{
@@ -189,4 +211,4 @@ window.addEventListener('click',e=>{
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
 setInterval(gncClean,1200);
 setTimeout(gncClean,80);
-window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear,openStatsWorkshop:gncOpenStatsWorkshop};
+window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear,openStatsWorkshop:gncOpenStatsWorkshop,closeGmToolsForStats:gncCloseGmToolsForStats};
