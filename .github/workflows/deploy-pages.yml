@@ -33,6 +33,7 @@ on:
       - 'invite-visibility-patch.js'
       - 'stat-workshop-route-fix.js'
       - 'route-stability-patch.js'
+      - 'build-gm-route-fix.py'
       - 'player-sheet-patch.js'
       - 'player-sheet-equipment-abilities-patch.js'
       - 'player-live-actions-patch.js'
@@ -69,124 +70,16 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
-          def replace_once(text, old, new, label):
-              if old not in text:
-                  raise SystemExit(f'{label}: beklenen kaynak parçası bulunamadı')
-              return text.replace(old, new, 1)
-
-          # CDN katalog bağımlılığını yerel Pages dosyasına çevir.
           p=Path('_site/browser-app.js')
           s=p.read_text(encoding='utf-8')
           s=re.sub(r'https://cdn\.jsdelivr\.net/gh/AxionBLooder/catlak-cagi-online@[0-9a-f]+/catalog\.b64','./catalog.b64',s)
           p.write_text(s,encoding='utf-8')
-
-          # GM araçlarını güvenli, kuyruklu ve doğrudan açılabilir hale getir.
-          p=Path('_site/gm-tools-patch.js')
-          s=p.read_text(encoding='utf-8')
-          s=replace_once(s,
-              "let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false;",
-              "let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtRenderQueued=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false;",
-              'gm-tools state')
-          s=replace_once(s,
-              "function gmtClose(){if(!gmtOpen)return;gmtOpen=false;gmtGen++;window.__catlakGmToolsOpen=false}",
-              "function gmtClose(){gmtOpen=false;gmtGen++;gmtRenderQueued=false;window.__catlakGmToolsOpen=false;const m=GMT_APP.querySelector('main');if(m){delete m.dataset.gmtTools;delete m.dataset.gmtSub}}",
-              'gm-tools close')
-          old_render="""async function gmtRender(force=false){
-  if(!gmtOpen||!gmtIsGM()||gmtBusy)return;
-  const main=GMT_APP.querySelector('main');if(!main)return;if(!force&&main.dataset.gmtTools==='1')return;
-  const gen=++gmtGen;gmtBusy=true;
-  try{const d=await gmtLoad();if(!gmtOpen||gen!==gmtGen||GMT_APP.querySelector('main')!==main)return;gmtSetNavOn();main.innerHTML=`<div class=\"gmt-shell\"><section class=\"card\"><div class=\"eyebrow\">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class=\"gmt-tabs\"><button type=\"button\" class=\"${gmtSub==='combat'?'on':''}\" data-gmt-sub=\"combat\">Savaş & Durumlar</button><button type=\"button\" class=\"${gmtSub==='events'?'on':''}\" data-gmt-sub=\"events\">Olay Atölyesi</button><button type=\"button\" class=\"${gmtSub==='logs'?'on':''}\" data-gmt-sub=\"logs\">Oturum Günlüğü</button></div></section>${gmtSub==='combat'?gmtCombatHtml(d):gmtSub==='events'?gmtEventsHtml(d):gmtLogsHtml(d)}</div>`;main.dataset.gmtTools='1'}catch(e){gmtToast('GM Araçları yüklenemedi: '+(e?.message||String(e)))}finally{gmtBusy=false}
-}"""
-          new_render="""function gmtValidSub(x){return x==='combat'||x==='events'||x==='logs'}
-function gmtOpenSub(sub='combat'){
-  if(!gmtIsGM()||!gmtValidSub(sub))return false;
-  gmtOpen=true;gmtSub=sub;gmtGen++;window.__catlakGmToolsOpen=true;window.__catlakGmHubOwnsMain=false;gmtSetNavOn();
-  const m=GMT_APP.querySelector('main');if(m){m.dataset.gmtTools='';m.dataset.gmtSub=sub}
-  if(gmtBusy)gmtRenderQueued=true;else gmtRender(true);
-  return true;
-}
-async function gmtRender(force=false){
-  if(!gmtOpen||!gmtIsGM()||window.__catlakGmHubOwnsMain===true)return;
-  if(gmtBusy){gmtRenderQueued=true;return}
-  const main=GMT_APP.querySelector('main');if(!main)return;
-  const sub=gmtSub;if(!force&&main.dataset.gmtTools==='1'&&main.dataset.gmtSub===sub)return;
-  const gen=++gmtGen;gmtBusy=true;
-  try{
-    const d=await gmtLoad();
-    if(!gmtOpen||gen!==gmtGen||gmtSub!==sub||window.__catlakGmHubOwnsMain===true||GMT_APP.querySelector('main')!==main)return;
-    gmtSetNavOn();
-    main.innerHTML=`<div class=\"gmt-shell\"><section class=\"card\" data-gmt-legacy-header hidden><div class=\"eyebrow\">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class=\"gmt-tabs\"><button type=\"button\" class=\"${sub==='combat'?'on':''}\" data-gmt-sub=\"combat\">Savaş & Durumlar</button><button type=\"button\" class=\"${sub==='events'?'on':''}\" data-gmt-sub=\"events\">Olay Atölyesi</button><button type=\"button\" class=\"${sub==='logs'?'on':''}\" data-gmt-sub=\"logs\">Oturum Günlüğü</button></div></section>${sub==='combat'?gmtCombatHtml(d):sub==='events'?gmtEventsHtml(d):gmtLogsHtml(d)}</div>`;
-    main.dataset.gmtTools='1';main.dataset.gmtSub=sub;
-  }catch(e){gmtToast('GM Araçları yüklenemedi: '+(e?.message||String(e)))}finally{
-    gmtBusy=false;
-    if(gmtRenderQueued){gmtRenderQueued=false;if(gmtOpen&&window.__catlakGmHubOwnsMain!==true)setTimeout(()=>gmtRender(true),0)}
-  }
-}"""
-          s=replace_once(s,old_render,new_render,'gm-tools render')
-          s=replace_once(s,
-              "const open=e.target.closest('[data-gmt-open]');if(open){e.preventDefault();e.stopImmediatePropagation();if(!gmtIsGM())return;gmtOpen=true;window.__catlakGmToolsOpen=true;gmtSetNavOn();gmtRender(true);return}\n  const base=e.target.closest('.nav button[data-tab]');if(base){gmtClose();return}\n  if(!gmtOpen)return;\n  const sub=e.target.closest('[data-gmt-sub]');if(sub){e.preventDefault();e.stopImmediatePropagation();gmtSub=sub.dataset.gmtSub;const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';gmtRender(true);return}",
-              "const open=e.target.closest('[data-gmt-open]');if(open){e.preventDefault();e.stopImmediatePropagation();gmtOpenSub(gmtValidSub(gmtSub)?gmtSub:'combat');return}\n  const base=e.target.closest('.nav button[data-tab]');if(base){gmtClose();return}\n  if(!gmtOpen)return;\n  const sub=e.target.closest('[data-gmt-sub]');if(sub){e.preventDefault();e.stopImmediatePropagation();gmtOpenSub(String(sub.dataset.gmtSub||''));return}",
-              'gm-tools click router')
-          s=replace_once(s,
-              "GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{if(gmtOpen){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}else gmtInvalidatePlayer()}).subscribe();\nGMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{if(gmtOpen&&gmtSub==='combat'){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{if(gmtOpen&&gmtSub==='combat'){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}}).subscribe();",
-              "GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}else if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();\nGMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).subscribe();",
-              'gm-tools realtime')
-          s=replace_once(s,
-              "const gmtObserver=new MutationObserver(()=>{\n  gmtInjectNav();\n  if(gmtOpen){const m=GMT_APP.querySelector('main');if(m&&!m.dataset.gmtTools)setTimeout(()=>gmtRender(true),30)}\n});\ngmtObserver.observe(GMT_APP,{childList:true,subtree:true});\nsetInterval(()=>{gmtInjectNav();if(gmtOpen)gmtRender();else{gmtRenderPlayerPanels();gmtSyncEventRules()}},900);\nsetTimeout(()=>{gmtInjectNav();gmtRenderPlayerPanels();gmtSyncEventRules()},150);\nwindow.__catlakGmToolsTest={ruleText:gmtRuleText,range:gmtRange,slotName:gmtSlotName};",
-              "const gmtObserver=new MutationObserver(()=>{\n  gmtInjectNav();\n  if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m&&(m.dataset.gmtTools!=='1'||m.dataset.gmtSub!==gmtSub))setTimeout(()=>gmtRender(true),0)}\n});\ngmtObserver.observe(GMT_APP,{childList:true,subtree:true});\nsetInterval(()=>{gmtInjectNav();if(gmtOpen&&window.__catlakGmHubOwnsMain!==true)gmtRender();else if(!gmtOpen){gmtRenderPlayerPanels();gmtSyncEventRules()}},900);\nsetTimeout(()=>{gmtInjectNav();gmtRenderPlayerPanels();gmtSyncEventRules()},150);\nwindow.gmtRender=gmtRender;\nwindow.__catlakGmTools={open:gmtOpenSub,close:gmtClose,render:gmtRender,active:()=>gmtOpen?gmtSub:'',isOpen:()=>gmtOpen};\nwindow.__catlakGmToolsTest={ruleText:gmtRuleText,range:gmtRange,slotName:gmtSlotName};",
-              'gm-tools observer/api')
-          p.write_text(s,encoding='utf-8')
-
-          # Üç GM aracını GM Merkezi'nin gerçek rota listesine ekle; ek bir DOM yönlendirici kullanma.
-          p=Path('_site/gm-hub-v2-patch.js')
-          s=p.read_text(encoding='utf-8')
-          s=replace_once(s,
-              "const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['creatures','Yaratık Kütüphanesi'],['characters','Yönetim Odası']];",
-              "const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['combat','Savaş & Durumlar'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['characters','Yönetim Odası']];",
-              'gm-hub routes')
-          s=replace_once(s,
-              "function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';return gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true?'ability':gm2NativeRoute()}",
-              "function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}",
-              'gm-hub active route')
-          old_go="""function gm2Go(route){
-  if(!gm2IsGM())return;
-  if(route==='ability'){gm2OpenAbility();return}
-  if(route==='creatures'){
-    gm2ReleaseAbility();
-    const open=window.__catlakQualityOfLifeTest?.openCreatureLibrary;
-    if(typeof open==='function')open();else gm2Toast('Yaratık Kütüphanesi henüz hazır değil.');
-    setTimeout(gm2QueueChrome,40);return
-  }
-  gm2ReleaseAbility();const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}t.click();setTimeout(gm2QueueChrome,40)
-}"""
-          new_go="""function gm2Go(route){
-  if(!gm2IsGM())return;
-  if(route==='ability'){gm2OpenAbility();return}
-  if(route==='combat'||route==='events'||route==='logs'){
-    gm2ReleaseAbility();window.__catlakCreatureLibraryOpen=false;
-    const tools=window.__catlakGmTools;
-    if(tools&&typeof tools.open==='function')tools.open(route);else gm2Toast('GM araçları henüz hazır değil.');
-    setTimeout(gm2QueueChrome,0);return
-  }
-  if(route==='creatures'){
-    gm2ReleaseAbility();
-    const open=window.__catlakQualityOfLifeTest?.openCreatureLibrary;
-    if(typeof open==='function')open();else gm2Toast('Yaratık Kütüphanesi henüz hazır değil.');
-    setTimeout(gm2QueueChrome,20);return
-  }
-  gm2ReleaseAbility();window.__catlakGmTools?.close?.();
-  const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}t.click();setTimeout(gm2QueueChrome,0)
-}"""
-          s=replace_once(s,old_go,new_go,'gm-hub router')
-          p.write_text(s,encoding='utf-8')
-
-          # Yayındaki HTML: bozuk ek entegrasyon dosyasını tamamen çıkar ve sürümleri yenile.
+          PY
+          python3 build-gm-route-fix.py _site
+          python3 - <<'PY'
+          from pathlib import Path
           html=Path('_site/index.html')
           text=html.read_text(encoding='utf-8')
-          text=text.replace('./gm-tools-patch.js?v=gmtools-v1','./gm-tools-patch.js?v=gmtools-v3')
-          text=text.replace('./gm-hub-v2-patch.js?v=gmhub-v2','./gm-hub-v2-patch.js?v=gmhub-v3')
-          text=re.sub(r'<script src="\./gm-center-tools-integration-patch\.js\?v=[^"]+"></script>','',text)
           route_tag='<script src="./route-stability-patch.js?v=routes-v2"></script>'
           stat_tag='<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>'
           if route_tag not in text:
@@ -233,7 +126,7 @@ async function gmtRender(force=false){
           grep -q 'gm-hub-v2-patch.js?v=gmhub-v3' _site/index.html
           grep -q 'route-stability-patch.js?v=routes-v2' _site/index.html
           grep -q 'stat-workshop-route-fix.js?v=statsroute-v3' _site/index.html
-          ! grep -q 'gm-center-tools-integration-patch.js' _site/index.html
+          if grep -q 'gm-center-tools-integration-patch.js' _site/index.html; then exit 1; fi
           grep -q "\['combat','Savaş & Durumlar'\]" _site/gm-hub-v2-patch.js
           grep -q 'window.__catlakGmTools={open:gmtOpenSub' _site/gm-tools-patch.js
       - name: Setup Pages
@@ -247,4 +140,4 @@ async function gmtRender(force=false){
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: gm-hub-native-tools-v3-2026-09-11
+# trigger: gm-hub-native-tools-v4-2026-09-11
