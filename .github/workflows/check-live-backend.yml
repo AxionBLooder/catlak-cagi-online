@@ -54,3 +54,4 @@ jobs:
           fi
           test "$CODE" = '409'
           echo SUPABASE_INVITE_FUNCTION_OK
+# trigger: post-transfer-health-2026-09-12
