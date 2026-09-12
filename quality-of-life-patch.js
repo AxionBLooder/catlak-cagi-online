@@ -32,7 +32,8 @@ function qolRestUI(){
     const id=qolCharId(st),lead=st.querySelector('section.hero>:first-child');if(!id||!lead)return;
     let b=st.querySelector('[data-qol-rest]');
     if(!b){b=document.createElement('div');b.className='qol-rest';b.dataset.qolRest='1';lead.appendChild(b)}
-    b.innerHTML=`<button type="button" data-qol-long-rest="${qolEsc(id)}">☾ Uzun Dinlenme</button><span>HP • KP • büyü / yetenek / özel güç kullanımları yenilenir.</span>`
+    const sig=String(id),next=`<button type="button" data-qol-long-rest="${qolEsc(id)}">☾ Uzun Dinlenme</button><span>HP • KP • büyü / yetenek / özel güç kullanımları yenilenir.</span>`;
+    if(b.dataset.qolRestSig!==sig){b.innerHTML=next;b.dataset.qolRestSig=sig}
   })
 }
 function qolPatchHp(id,d){const hp=QOL_APP.querySelector(`section.hero [data-a="hp"][data-id="${CSS.escape(String(id))}"]`),v=hp?.closest('.vital')||hp,b=v?.querySelector?.('b,strong');if(b&&d?.hp_current!=null&&d?.hp_max!=null)b.textContent=`${Number(d.hp_current)}/${Number(d.hp_max)}`}
@@ -174,11 +175,12 @@ function qolGuardEmptyTargets(){
 function qolClearVisibleRolls(){
   QOL_APP.querySelectorAll('[data-roll-id],[data-cc-roll-id],.cc-simple-roll,.cc-roll-line').forEach(x=>x.remove());
   QOL_APP.querySelectorAll('.ps-roll-card').forEach(card=>{
-    card.querySelectorAll('.roll,.rolls>[class*="roll"]').forEach(x=>x.remove());
-    if(!card.querySelector('[data-qol-roll-empty]')){const e=document.createElement('div');e.dataset.qolRollEmpty='1';e.className='muted';e.textContent='Henüz zar yok.';card.appendChild(e)}
+    card.querySelectorAll('.rolls,.empty,[data-qol-roll-empty]').forEach(x=>x.remove());delete card.dataset.plaRollSig;
+    const e=document.createElement('div');e.dataset.qolRollEmpty='1';e.className='empty';e.textContent='Henüz zar yok.';card.appendChild(e)
   })
 }
-async function qolSyncRollEmpty(){
+async function qolSyncRollsAfterDelete(){
+  if(qolSheet()&&typeof window.__catlakPlayerLiveTest?.refresh==='function'){await window.__catlakPlayerLiveTest.refresh(true);return}
   const r=await QOL_S.from('catlak_rolls').select('id',{count:'exact',head:true});if(r.error)return;
   if(Number(r.count||0)===0)qolClearVisibleRolls()
 }
@@ -239,7 +241,7 @@ document.addEventListener('change',e=>{
 new MutationObserver(()=>qolSoon(45)).observe(QOL_APP,{childList:true,subtree:true});
 window.addEventListener('resize',()=>qolSoon(25));
 QOL_S.channel('qol-roll-cleanup').on('postgres_changes',{event:'DELETE',schema:'public',table:'catlak_rolls'},()=>{
-  clearTimeout(qolRollTimer);qolRollTimer=setTimeout(()=>qolSyncRollEmpty().catch(()=>{}),120)
+  clearTimeout(qolRollTimer);qolRollTimer=setTimeout(()=>qolSyncRollsAfterDelete().catch(()=>{}),80)
 }).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},()=>{if(qolCreatureOpen)qolRenderCreatureLibrary(true)}).subscribe();
 setInterval(qolMaintain,1600);setTimeout(qolMaintain,180);
 window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,closeCreatureLibrary:qolCloseCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};

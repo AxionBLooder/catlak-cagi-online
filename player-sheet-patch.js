@@ -11,7 +11,10 @@ let psScheduled=false,psApplying=false,psCombatBusy=false,psCombatCache=null,psC
 const PS_CSS=`
 main.ps-player-sheet{max-width:1540px;padding-top:18px}
 main.ps-player-sheet>.cc-desk-intro{display:none!important}
+.ps-player-sheet .cc-character-stack:not([data-ps-sheet="1"]){visibility:hidden}
 .ps-player-sheet .cc-character-stack{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0 0 24px!important}
+.ps-player-sheet .cc-character-stack,.ps-player-sheet .card,.ps-player-sheet .roll{animation:none!important;transition:none!important}
+.ps-player-sheet .card,.ps-player-sheet .roll,.ps-player-sheet .roll>div:last-child,.ps-player-sheet .gmt-slot{min-width:0;overflow-wrap:anywhere}
 .ps-player-sheet .cc-character-label{display:none!important}
 .ps-sheet-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.72fr);gap:16px;align-items:start}
 .ps-main-column,.ps-side-column,.ps-detail-column{min-width:0}
@@ -54,7 +57,7 @@ main.ps-player-sheet>.cc-desk-intro{display:none!important}
 .ps-combat-card button{white-space:nowrap}
 .ps-player-sheet .ps-roll-card{padding:14px!important}
 .ps-player-sheet .ps-roll-card .rolls{gap:7px!important}
-.ps-player-sheet .ps-roll-card .roll{padding:9px!important;border-radius:11px!important;background:#07121c!important}
+.ps-player-sheet .ps-roll-card .roll{padding:9px!important;border-radius:11px!important;background:#07121c!important;grid-template-columns:40px minmax(0,1fr)!important}
 .ps-player-sheet .ps-roll-card .die{width:40px;height:40px;font-size:1rem}
 .ps-player-sheet .ps-inventory-card{padding:15px!important}
 .ps-player-sheet .ps-inventory-card .iw-player-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:9px!important}

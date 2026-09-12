@@ -10,7 +10,7 @@ const plaIsGM=()=>plaTxt(PLA_APP.querySelector('.role'))==='GM';
 const plaTab=()=>PLA_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 const plaIsSheet=()=>!plaIsGM()&&plaTab()==='sheet';
 const plaToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(plaToast.t);plaToast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
-let plaRefreshTimer=null,plaRefreshing=false,plaLastRefresh=0;
+let plaRefreshTimer=null,plaRefreshDue=0,plaPendingForce=false,plaRefreshing=false,plaLastRefresh=0;
 const plaBusy=new Set();
 const plaActed=new Map();
 
@@ -100,9 +100,17 @@ function plaSyncEquipmentPanel(stack,rows){
     value.textContent=hit?.i?.name||'Boş';value.classList.toggle('muted',!hit);
   });
 }
+function plaSyncRollSection(sec,rows){
+  if(!sec)return;
+  const sig=plaSignature(rows,['id','label','roll_kind','formula','modifier','total','dice','created_at']);if(sec.dataset.plaRollSig===sig)return;
+  const holder=document.createElement('div');
+  holder.innerHTML=`<div class="eyebrow">SON ZARLAR</div>${rows.length?`<div class="rolls">${rows.map(plaRollRow).join('')}</div>`:'<div class="empty">Henüz zar yok.</div>'}`;
+  sec.replaceChildren(...holder.childNodes);sec.dataset.plaRollSig=sig;
+}
 
 async function plaRefreshNow(force=false){
-  if(!plaIsSheet()||plaRefreshing)return;
+  if(!plaIsSheet())return;
+  if(plaRefreshing){plaRefreshSoon(force,45);return}
   if(!force&&Date.now()-plaLastRefresh<180)return;
   plaClaimInventory();plaStaticStats();plaRefreshing=true;plaLastRefresh=Date.now();
   try{
@@ -129,13 +137,18 @@ async function plaRefreshNow(force=false){
         }
         sec.dataset.plaInventorySig=stateSig;
       }
-      const rs=plaRollSection(stack),own=rolls.filter(x=>x.character_id===cid).slice(0,10);
-      if(rs){const sig=plaSignature(own,['id','label','roll_kind','formula','modifier','total','dice','created_at']);if(rs.dataset.plaRollSig!==sig){rs.innerHTML=`<div class="eyebrow">SON ZARLAR</div>${own.length?`<div class="rolls">${own.map(plaRollRow).join('')}</div>`:'<div class="empty">Henüz zar yok.</div>'}`;rs.dataset.plaRollSig=sig}}
+      const rs=plaRollSection(stack),own=rolls.filter(x=>x.character_id===cid).slice(0,10);plaSyncRollSection(rs,own);
     }
     plaClaimInventory();plaStaticStats();
   }catch(e){console.warn('CATLAK_PLAYER_LIVE_REFRESH',e)}finally{plaRefreshing=false}
 }
-function plaRefreshSoon(force=false,delay=60){clearTimeout(plaRefreshTimer);plaRefreshTimer=setTimeout(()=>plaRefreshNow(force),delay)}
+function plaRefreshSoon(force=false,delay=60){
+  plaPendingForce=plaPendingForce||!!force;
+  const due=Date.now()+Math.max(0,Number(delay)||0);
+  if(plaRefreshTimer&&plaRefreshDue<=due)return;
+  clearTimeout(plaRefreshTimer);plaRefreshDue=due;
+  plaRefreshTimer=setTimeout(()=>{plaRefreshTimer=null;plaRefreshDue=0;const runForce=plaPendingForce;plaPendingForce=false;plaRefreshNow(runForce)},Math.max(0,due-Date.now()));
+}
 function plaActionButton(target){const b=target?.closest?.('[data-a="weapon"][data-id]');if(!b||!plaIsSheet()||!b.closest('main'))return null;return b}
 function plaRollToast(d){
   const dice=Array.isArray(d?.dice)&&d.dice.length?d.dice.map(plaNum).join(' + '):'',mod=plaNum(d?.modifier),calc=dice?`${dice}${mod?` ${mod>0?'+':'-'} ${Math.abs(mod)}`:''} = `:'';
@@ -161,4 +174,4 @@ PLA_S.channel('cc-player-live-actions')
 plaClaimInventory();
 setInterval(()=>{if(plaIsSheet()){plaClaimInventory();plaStaticStats();plaRefreshSoon(false,0)}},4000);
 setTimeout(()=>{plaClaimInventory();plaStaticStats();plaRefreshSoon(true,0)},120);
-window.__catlakPlayerLiveTest={refresh:plaRefreshNow,item:plaPlayerItem,roll:plaRollRow,staticStats:plaStaticStats,claimInventory:plaClaimInventory,rollToast:plaRollToast};
+window.__catlakPlayerLiveTest={refresh:plaRefreshNow,schedule:plaRefreshSoon,item:plaPlayerItem,roll:plaRollRow,syncRolls:plaSyncRollSection,staticStats:plaStaticStats,claimInventory:plaClaimInventory,rollToast:plaRollToast};
