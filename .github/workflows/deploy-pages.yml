@@ -1,15 +1,19 @@
 name: Deploy GitHub Pages
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: catlak-github-pages
   cancel-in-progress: true
+
 jobs:
   deploy:
     environment:
@@ -20,120 +24,53 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Prepare static site
+
+      - name: Prepare clean static site
         run: |
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-build.json catalog.b64 *.js _site/
-          touch _site/.nojekyll
+          cp index.html browser-build.json catalog.b64 _site/
+
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('_site/browser-app.js')
-          s=p.read_text(encoding='utf-8')
-          s=re.sub(r'https://cdn\.jsdelivr\.net/gh/AxionBLooder/catlak-cagi-online@[0-9a-f]+/catalog\.b64','./catalog.b64',s)
-          p.write_text(s,encoding='utf-8')
+
+          html = Path('index.html').read_text(encoding='utf-8')
+          files = {'browser-app.js'}
+          files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
+          files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
+
+          missing = sorted(name for name in files if not Path(name).is_file())
+          if missing:
+              raise SystemExit('Eksik çalışma dosyaları: ' + ', '.join(missing))
+
+          for name in sorted(files):
+              Path('_site', name).write_bytes(Path(name).read_bytes())
+
+          print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
           PY
-          python3 build-gm-route-fix.py _site
-          python3 build-gm-click-fix.py _site
-          python3 build-gm-shell-speed.py _site
-          python3 build-gm-shell-speed-guard.py _site
-          python3 build-player-sheet-fix.py _site
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('_site/index.html')
-          s=p.read_text(encoding='utf-8')
-          tags=[
-            ('<script src="./gm-center-router-core.js?v=gmrouter-v4"></script>','<div id="toast" class="toast hidden"></div>',True),
-            ('<script src="./battle-ready-clean-patch.js?v=battleready-v2"></script>','</body>',False),
-            ('<script src="./route-stability-patch.js?v=routes-v2"></script>','</body>',False),
-            ('<script src="./stat-workshop-route-fix.js?v=statsroute-v3"></script>','</body>',False),
-            ('<script src="./player-sheet-final-loader.js?v=psfinal-loader-dual-v1"></script>','</body>',False),
-          ]
-          for tag,anchor,after in tags:
-              if tag in s:
-                  continue
-              if anchor not in s:
-                  raise SystemExit('script ekleme noktası bulunamadı')
-              s=s.replace(anchor,anchor+tag if after else tag+anchor,1)
-          p.write_text(s,encoding='utf-8')
-          PY
-          python3 build-weapon-slot-stability.py _site
-          python3 build-low-egress.py _site
-          for f in _site/*.js; do node --check "$f"; done
-          grep -Fq 'gm-center-router-core.js?v=gmrouter-v4' _site/index.html
-          grep -Fq 'gm-tools-patch.js?v=gmtools-v7' _site/index.html
-          grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v6' _site/index.html
-          grep -Fq 'battle-room-actions-layout-patch.js?v=battleactions-v2' _site/index.html
-          grep -Fq 'room-guard-patch.js?v=guard-v4' _site/index.html
-          grep -Fq 'invite-visibility-patch.js?v=inviteui-v4' _site/index.html
-          grep -Fq 'battle-ready-clean-patch.js?v=battleready-v3' _site/index.html
-          grep -Fq 'player-sheet-final-loader.js?v=psfinal-loader-dual-v1' _site/index.html
-          grep -Fq 'player-sheet-live-runtime.js' _site/player-sheet-final-loader.js
-          grep -Fq 'gm-center-live-runtime.js' _site/player-sheet-final-loader.js
-          ! grep -Fq 'ps-weapon-live-toggle-style' _site/player-sheet-final-loader.js
-          grep -Fq 'cc-player-weapon-live-v3' _site/player-sheet-live-runtime.js
-          grep -Fq 'gm-live-switching' _site/gm-center-live-runtime.js
-          grep -Fq 'player-sheet-final-patch.js?v=psfinal-runtime-v2' _site/player-sheet-final-loader.js
-          grep -Fq 'presence-patch.js?v=presence-v4' _site/index.html
-          grep -Fq 'player-live-actions-patch.js?v=playerlive-v9' _site/index.html
-          grep -Fq 'weapon-slot-patch.js?v=weaponslot-v8' _site/index.html
-          grep -Fq 'browser-app.js?v=bootwatch-low-egress-v1' _site/index.html
-          grep -Fq 'window.__catlakLowEgressCore=true' _site/browser-app.js
-          grep -Fq 'window.__catlakLowEgressV1=true' _site/player-live-actions-patch.js
-          grep -Fq 'window.__catlakPlayerPollingDisabled=true' _site/player-live-actions-patch.js
-          grep -Fq 'window.__catlakPlayerLiveRealtimeOwnedByCore=true' _site/player-live-actions-patch.js
-          ! grep -Fq "cc-player-live-actions" _site/player-live-actions-patch.js
-          grep -Fq 'data-psf-equip' _site/player-sheet-final-patch.js
-          grep -Fq 'data-psf-remove' _site/player-sheet-final-patch.js
-          grep -Fq "catlak_set_equipped_slot" _site/player-sheet-final-patch.js
-          grep -Fq -- '--gold:#59adff' _site/player-sheet-final-patch.js
-          grep -Fq 'data-ws-controls="1"' _site/player-live-actions-patch.js
-          grep -Fq 'data-pla-equip-kind="weapon"' _site/player-live-actions-patch.js
-          grep -Fq "catlak_set_equipped_slot',{p_inventory_id:id,p_slot:null}" _site/player-live-actions-patch.js
-          grep -Fq 'Silah yuvadan çıkarıldı.' _site/player-live-actions-patch.js
-          grep -Fq '1. Yuvaya Ata' _site/player-live-actions-patch.js
-          grep -Fq '2. Yuvaya Ata' _site/player-live-actions-patch.js
-          grep -Fq '1. Yuvaya' _site/weapon-slot-patch.js
-          grep -Fq '2. Yuvaya' _site/weapon-slot-patch.js
-          grep -Fq '[data-gmt-slot="main_weapon"]' _site/weapon-slot-patch.js
-          grep -Fq '[data-gmt-slot="off_weapon"]' _site/weapon-slot-patch.js
-          grep -Fq '#ffad55' _site/weapon-slot-patch.js
-          grep -Fq "querySelectorAll('[data-ws-slot-board]').forEach(x=>x.remove())" _site/weapon-slot-patch.js
-          ! grep -Fq "querySelectorAll('.ws-slot-badge').forEach(x=>x.remove())" _site/weapon-slot-patch.js
-          ! grep -Fq 'new MutationObserver' _site/slot-sync-hotfix.js
-          grep -Fq 'slot-sync-hotfix.js?v=slotfix-v3' _site/battle-ready-clean-patch.js
-          ! grep -Fq '1. SİLAH YUVASI' _site/weapon-slot-patch.js
-          ! grep -Fq 'pos.hero.after(board)' _site/weapon-slot-patch.js
-          grep -Fq 'button[data-a="equip"]' _site/weapon-slot-patch.js
-          ! grep -Fq "querySelectorAll('button[data-a=\"equip\"]')" _site/weapon-slot-patch.js
-          grep -Fq 'section.hero .vitals' _site/battle-ready-clean-patch.js
-          grep -Fq "window.addEventListener('pointerdown'" _site/gm-center-router-core.js
-          grep -Fq "bar.dataset.gm2Stable='1'" _site/gm-hub-v2-patch.js
-          grep -Fq "async function gmtLoad(sub=gmtSub,force=false)" _site/gm-tools-patch.js
-          grep -Fq "main_weapon:'1. Silah',off_weapon:'2. Silah'" _site/gm-tools-patch.js
-          grep -Fq "function gmtInvalidatePlayer(){setTimeout(()=>gmtRenderPlayerPanels(),30)}" _site/gm-tools-patch.js
-          grep -Fq "dataset.gmtStableEquipment='1'" _site/gm-tools-patch.js
-          ! grep -Fq "function gmtInvalidatePlayer(){GMT_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove())" _site/gm-tools-patch.js
-          grep -Fq "catlak_set_equipped_slot" _site/gm-item-slot-patch.js
-          grep -Fq "main.dataset.gm2Route='ability'" _site/gm-hub-v2-patch.js
-          grep -Fq "window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]')" _site/gm-hub-v2-patch.js
-          grep -Fq "setTimeout(()=>gmtRender(false),0)" _site/gm-tools-patch.js
-          grep -Fq 'window.__catlakGmCenterRouterCore?.active' _site/invite-visibility-patch.js
-          grep -Fq "main.querySelectorAll('[data-cc-player-live-card]').forEach(x=>x.remove())" _site/presence-patch.js
-          grep -Fq 'function plaSyncEquipmentPanel' _site/player-live-actions-patch.js
-          grep -Fq "'1. Silah':'main_weapon','2. Silah':'off_weapon'" _site/player-live-actions-patch.js
-          ! grep -Fq "if(equipmentDirty)PLA_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove())" _site/player-live-actions-patch.js
+
+          touch _site/.nojekyll
+          for file in _site/*.js; do node --check "$file"; done
+
+          grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
+          grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v4' _site/index.html
+          grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
+          ! grep -Fq 'slot-sync-hotfix.js' _site/battle-ready-clean-patch.js
+          ! grep -Fq 'player-sheet-final-patch.js' _site/player-sheet-final-loader.js
+          ! grep -Fq 'data-a="equip"' _site/player-live-actions-patch.js
+          ! grep -Fq 'data-a="equip"' _site/item-system-patch.js
+          grep -Fq 'catlak_set_equipped_slot' _site/gm-item-slot-patch.js
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
+
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# trigger: low-egress-stable-play-v1-2026-09-12
