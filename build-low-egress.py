@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 root=Path(sys.argv[1] if len(sys.argv)>1 else '_site')
@@ -107,3 +108,6 @@ s=s.replace('./browser-app.js?v=bootwatch-171c9773','./browser-app.js?v=bootwatc
 s=s.replace('./player-live-actions-patch.js?v=playerlive-v8','./player-live-actions-patch.js?v=playerlive-v9')
 s=s.replace('./site-stability-patch.js?v=stability-v2','./site-stability-patch.js?v=stability-v3')
 p.write_text(s,encoding='utf-8')
+
+# Son oyuncu ekipman davranışı: ayrı ikinci Çıkar düğmesini kaldır, tek toggle bırak.
+subprocess.run([sys.executable,'build-single-equip-toggle.py',str(root)],check=True)
