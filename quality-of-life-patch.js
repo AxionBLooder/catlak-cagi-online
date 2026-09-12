@@ -52,12 +52,16 @@ async function qolLongRest(id){
 function qolEnsureCreatureButton(){
   if(!qolGM())return;
   const bar=QOL_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
-  const builder=bar.querySelector('[data-gm2-route="builder"]'),manage=bar.querySelector('[data-gm2-route="characters"]');if(!builder||!manage)return;
-  let b=bar.querySelector('[data-fup-creatures]');
-  if(!b){b=document.createElement('button');b.type='button';b.dataset.fupCreatures='1';b.textContent='Yaratık Kütüphanesi'}
+  let b=bar.querySelector('[data-gm2-route="creatures"]')||bar.querySelector('[data-fup-creatures]');
+  if(b){
+    b.dataset.fupCreatures='1';
+    b.classList.toggle('on',qolCreatureOpen||window.__catlakGmCenterSelectedRoute==='creatures');
+    return;
+  }
+  const manage=bar.querySelector('[data-gm2-route="characters"]');
+  b=document.createElement('button');b.type='button';b.dataset.fupCreatures='1';b.textContent='Yaratık Kütüphanesi';
   b.classList.toggle('on',qolCreatureOpen);
-  if(builder.nextElementSibling!==b)builder.insertAdjacentElement('afterend',b);
-  if(manage!==bar.lastElementChild)bar.appendChild(manage)
+  manage?bar.insertBefore(b,manage):bar.appendChild(b)
 }
 function qolHideLegacyLibrary(){
   if(!qolGM())return;
@@ -153,11 +157,9 @@ async function qolBatch(btn){
 
 function qolSlots(){
   if(!qolSheet())return;
-  const c=QOL_APP.querySelector('main .ps-inventory-card')||[...QOL_APP.querySelectorAll('main section.card')].find(x=>qolTxt(x.querySelector('.eyebrow'))==='CANLI ENVANTER');if(!c)return;
-  let b=c.querySelector('[data-ws-slot-board]'),made=false;
-  if(!b){b=document.createElement('div');b.className='ws-slot-board';b.dataset.wsSlotBoard='1';b.innerHTML='<div class="ws-slot-box ws-empty"><span>1. SİLAH</span><strong>BOŞ</strong></div><div class="ws-slot-box ws-empty"><span>2. SİLAH</span><strong>BOŞ</strong></div>';const g=c.querySelector('.iw-player-grid');g?c.insertBefore(b,g):c.appendChild(b);made=true}
+  QOL_APP.querySelectorAll('[data-ws-slot-board]').forEach(x=>x.remove());
   const ids=[...QOL_APP.querySelectorAll('main .iw-player-item[data-pla-inv-row]')].map(x=>x.dataset.plaInvRow).filter(Boolean).sort().join('|');
-  if(made||ids!==qolWeaponSig){qolWeaponSig=ids;setTimeout(()=>window.__catlakWeaponSlotTest?.paint?.(true),0)}
+  if(ids!==qolWeaponSig){qolWeaponSig=ids;setTimeout(()=>window.__catlakWeaponSlotTest?.paint?.(true),0)}
 }
 function qolCompact(){const m=QOL_APP.querySelector('main');if(!m)return;m.classList.toggle('qol-compact',qolBattle()&&m.classList.contains('brc-compact-battle')&&m.classList.contains('bra-action-layout'))}
 
@@ -240,4 +242,4 @@ QOL_S.channel('qol-roll-cleanup').on('postgres_changes',{event:'DELETE',schema:'
   clearTimeout(qolRollTimer);qolRollTimer=setTimeout(()=>qolSyncRollEmpty().catch(()=>{}),120)
 }).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},()=>{if(qolCreatureOpen)qolRenderCreatureLibrary(true)}).subscribe();
 setInterval(qolMaintain,1600);setTimeout(qolMaintain,180);
-window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};
+window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,closeCreatureLibrary:qolCloseCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};

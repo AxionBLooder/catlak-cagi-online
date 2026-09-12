@@ -46,12 +46,4 @@ window.addEventListener('pointerup',e=>{if(e.target?.closest?.('[data-ccr-battle
 setTimeout(brcleanApply,0);
 setInterval(brcleanApply,1500);
 
-if(!document.querySelector('script[data-slot-sync-hotfix]')){
-  const h=document.createElement('script');
-  h.dataset.slotSyncHotfix='1';
-  h.src='./slot-sync-hotfix.js?v=slotfix-v2&blue-live-v4';
-  h.async=false;
-  document.body.appendChild(h);
-}
-
 window.__catlakBattleReadyCleanTest={apply:brcleanApply};

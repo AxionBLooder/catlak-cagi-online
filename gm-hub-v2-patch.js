@@ -9,8 +9,8 @@ const gm2Esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const gm2Num=x=>Number(x||0);
 const gm2IsGM=()=>gm2Txt(GM2_APP.querySelector('.role'))==='GM';
 const gm2Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gm2Toast.t);gm2Toast.t=setTimeout(()=>t.classList.add('hidden'),4400)};
-const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['creatures','Yaratık Kütüphanesi'],['characters','Yönetim Odası']];
-let gm2AbilityOpen=false,gm2RenderBusy=false,gm2RenderQueued=false,gm2ActionBusy=false,gm2ChromeQueued=false,gm2Gen=0,gm2Sig='',gm2Cache={abilities:[],chars:[],assignments:[]};
+const GM2_ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['combat','Savaş & Durumlar'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['characters','Yönetim Odası']];
+let gm2AbilityOpen=false,gm2RenderBusy=false,gm2RenderQueued=false,gm2ActionBusy=false,gm2ChromeQueued=false,gm2Gen=0,gm2Sig='',gm2Cache={abilities:[],chars:[],assignments:[]},gm2DataCache=null,gm2DataAt=0;
 const gm2State={editId:'',name:'',type:'spell',effect:'damage',target:'enemy',formula:'',attackBonus:'0',requiresAttack:'0',description:'',char:'',ability:'',uses:'0'};
 
 if(!document.querySelector('#gm2-style')){
@@ -40,7 +40,7 @@ function gm2NativeRoute(){
   const stat=GM2_APP.querySelector('.nav [data-cc-stats-tab].on');if(stat)return'stats';
   return GM2_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 }
-function gm2ActiveRoute(){if(window.__catlakCreatureLibraryOpen===true)return'creatures';return gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true?'ability':gm2NativeRoute()}
+function gm2ActiveRoute(){const forced=String(window.__catlakGmCenterSelectedRoute||'');if(GM2_ROUTES.some(([k])=>k===forced))return forced;if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}
 function gm2Target(route){const nav=GM2_APP.querySelector('.nav');if(!nav)return null;return route==='stats'?nav.querySelector('[data-cc-stats-tab]'):nav.querySelector(`[data-tab="${route}"]`)}
 function gm2HubContext(){const r=gm2ActiveRoute();return gm2AbilityOpen||window.__catlakGmToolsOpen===true||window.__catlakCreatureLibraryOpen===true||GM2_ROUTES.some(([k])=>k===r)}
 function gm2EnsureChrome(){
@@ -51,33 +51,53 @@ function gm2EnsureChrome(){
   GM2_APP.querySelectorAll('.gmt-tabs [data-abs-gm-open]').forEach(x=>x.remove());
   let bar=GM2_APP.querySelector('[data-gm2-centerbar]');
   if(!bar){bar=document.createElement('div');bar.className='gm2-centerbar';bar.dataset.gm2Centerbar='1';nav.insertAdjacentElement('afterend',bar)}
+  if(bar.dataset.gm2Stable!=='1'){
+    bar.replaceChildren();
+    const label=document.createElement('span');label.className='gm2-label';label.textContent='GM MERKEZİ';bar.appendChild(label);
+    for(const[k,n]of GM2_ROUTES){const b=document.createElement('button');b.type='button';b.dataset.gm2Route=k;b.textContent=n;if(k==='creatures')b.dataset.fupCreatures='1';bar.appendChild(b)}
+    bar.dataset.gm2Stable='1';
+  }
   const active=gm2ActiveRoute();
-  const html=`<span class="gm2-label">GM MERKEZİ</span>${GM2_ROUTES.map(([k,n])=>`<button type="button" class="${active===k?'on':''}" data-gm2-route="${k}"${k==='creatures'?' data-fup-creatures="1"':''}>${n}</button>`).join('')}`;
-  if(bar.innerHTML!==html)bar.innerHTML=html;
+  bar.querySelectorAll('[data-gm2-route]').forEach(b=>{const on=b.dataset.gm2Route===active;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});
 }
-function gm2QueueChrome(){if(gm2ChromeQueued)return;gm2ChromeQueued=true;requestAnimationFrame(()=>{gm2ChromeQueued=false;gm2EnsureChrome();if(gm2AbilityOpen&&window.__catlakGmToolsOpen===true&&!GM2_APP.querySelector('[data-gm2-ability-page]'))gm2RenderAbility(false)})}
+function gm2QueueChrome(){if(gm2ChromeQueued)return;gm2ChromeQueued=true;requestAnimationFrame(()=>{gm2ChromeQueued=false;gm2EnsureChrome();if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]'))gm2RenderAbility(false)})}
 function gm2ReleaseAbility(){gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';gm2QueueChrome()}
 function gm2OpenAbility(){
-  if(!gm2IsGM())return;gm2AbilityOpen=true;gm2Gen++;
-  const shell=GM2_APP.querySelector('main .gmt-shell');
-  if(shell&&window.__catlakGmToolsOpen===true){window.__catlakGmHubOwnsMain=true;gm2RenderAbility(true);gm2QueueChrome();return}
-  window.__catlakGmHubOwnsMain=false;
-  const open=GM2_APP.querySelector('.nav [data-gmt-open]');if(!open){gm2Toast('GM Merkezi düğmesi bulunamadı.');return}
-  open.click();
-  const token=gm2Gen;let tries=0;
-  const wait=()=>{if(token!==gm2Gen||!gm2AbilityOpen)return;const sh=GM2_APP.querySelector('main .gmt-shell');if(sh&&window.__catlakGmToolsOpen===true){window.__catlakGmHubOwnsMain=true;gm2RenderAbility(true);gm2QueueChrome();return}if(++tries<30)setTimeout(wait,50);else gm2Toast('GM Merkezi açılırken beklenmeyen bir gecikme oluştu.')};
-  setTimeout(wait,20)
+  if(!gm2IsGM())return;
+  window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
+  window.__catlakGmTools?.close?.();
+  gm2AbilityOpen=true;gm2Gen++;window.__catlakGmHubOwnsMain=true;
+  const main=GM2_APP.querySelector('main');if(!main)return;
+  main.dataset.gm2Route='ability';
+  main.innerHTML='<div class="gmt-shell"><section class="card" data-gm2-host hidden><div class="eyebrow">GM • MERKEZ</div><h1>GM Merkezi</h1></section><div class="gm2-loading">Yetenek Atölyesi hazırlanıyor…</div></div>';
+  gm2RenderAbility(false);gm2QueueChrome();
 }
 function gm2Go(route){
   if(!gm2IsGM())return;
-  if(route==='ability'){gm2OpenAbility();return}
+  if(!GM2_ROUTES.some(([k])=>k===route))return;
+  window.__catlakGmCenterSelectedRoute=route;
+  const closeCreature=()=>window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
+
+  if(route==='ability'){
+    closeCreature();window.__catlakGmTools?.close?.();gm2ReleaseAbility();gm2OpenAbility();gm2QueueChrome();return
+  }
+  if(route==='combat'||route==='events'||route==='logs'){
+    closeCreature();gm2ReleaseAbility();
+    const tools=window.__catlakGmTools;
+    if(tools&&typeof tools.open==='function')tools.open(route);else gm2Toast('GM araçları henüz hazır değil.');
+    gm2QueueChrome();return
+  }
   if(route==='creatures'){
-    gm2ReleaseAbility();
+    gm2ReleaseAbility();window.__catlakGmTools?.close?.();
     const open=window.__catlakQualityOfLifeTest?.openCreatureLibrary;
     if(typeof open==='function')open();else gm2Toast('Yaratık Kütüphanesi henüz hazır değil.');
-    setTimeout(gm2QueueChrome,40);return
+    gm2QueueChrome();return
   }
-  gm2ReleaseAbility();const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}t.click();setTimeout(gm2QueueChrome,40)
+
+  closeCreature();gm2ReleaseAbility();window.__catlakGmTools?.close?.();
+  const t=gm2Target(route);if(!t){gm2Toast('Bu GM bölümü bulunamadı.');return}
+  const main=GM2_APP.querySelector('main');if(main)main.dataset.gm2Route=route;
+  t.click();gm2QueueChrome()
 }
 
 const gm2Type=x=>x==='spell'?'BÜYÜ':x==='special'?'ÖZEL':'YETENEK';
@@ -85,7 +105,16 @@ const gm2Effect=x=>x==='heal'?'İYİLEŞTİRME':x==='utility'?'DESTEK':'HASAR';
 const gm2TargetLabel=x=>x==='self'?'KENDİ':x==='ally'?'MÜTTEFİK':'DÜŞMAN';
 function gm2Remember(){const map={name:'#gm2-name',type:'#gm2-type',effect:'#gm2-effect',target:'#gm2-target',formula:'#gm2-formula',attackBonus:'#gm2-attack-bonus',requiresAttack:'#gm2-requires',description:'#gm2-description',char:'#gm2-char',ability:'#gm2-ability',uses:'#gm2-uses'};for(const[k,q]of Object.entries(map)){const e=GM2_APP.querySelector(q);if(e)gm2State[k]=e.value}}
 function gm2Normalize(d){if(!d.chars.some(x=>String(x.id)===String(gm2State.char)))gm2State.char=d.chars[0]?.id||'';if(!d.abilities.some(x=>String(x.id)===String(gm2State.ability)))gm2State.ability=d.abilities[0]?.id||'';if(gm2State.editId&&!d.abilities.some(x=>String(x.id)===String(gm2State.editId)))gm2State.editId=''}
-async function gm2Load(){const[ar,cr,xr]=await Promise.all([GM2_S.from('catlak_abilities').select('*').order('name',{ascending:true}),GM2_S.from('catlak_characters').select('id,name,play_status,created_at').in('play_status',['prepared','active']).order('created_at',{ascending:true}),GM2_S.from('catlak_character_abilities').select('id,character_id,ability_id,uses_per_combat,uses_remaining,created_at').order('created_at',{ascending:true})]);for(const r of[ar,cr,xr])if(r.error)throw r.error;return{abilities:ar.data||[],chars:cr.data||[],assignments:xr.data||[]}}
+async function gm2Load(force=false){
+  if(!force&&gm2DataCache&&Date.now()-gm2DataAt<10000)return gm2DataCache;
+  const[ar,cr,xr]=await Promise.all([
+    GM2_S.from('catlak_abilities').select('*').order('name',{ascending:true}),
+    GM2_S.from('catlak_characters').select('id,name,play_status,created_at').in('play_status',['prepared','active']).order('created_at',{ascending:true}),
+    GM2_S.from('catlak_character_abilities').select('id,character_id,ability_id,uses_per_combat,uses_remaining,created_at').order('created_at',{ascending:true})
+  ]);
+  for(const r of[ar,cr,xr])if(r.error)throw r.error;
+  gm2DataCache={abilities:ar.data||[],chars:cr.data||[],assignments:xr.data||[]};gm2DataAt=Date.now();return gm2DataCache;
+}
 function gm2Options(rows,value,label){return rows.map(x=>`<option value="${gm2Esc(x.id)}" ${String(x.id)===String(value)?'selected':''}>${gm2Esc(label(x))}</option>`).join('')}
 function gm2Card(a){const pills=[gm2Effect(a.effect_type),'Hedef: '+gm2TargetLabel(a.target_type)];if(a.formula)pills.push(a.formula);if(a.requires_attack)pills.push('Saldırı '+(a.attack_bonus>=0?'+':'')+gm2Num(a.attack_bonus));return `<article class="gm2-card ${String(a.id)===String(gm2State.editId)?'editing':''}"><div class="eyebrow gm2-type-${gm2Esc(a.ability_type)}">${gm2Type(a.ability_type)}</div><h3>${gm2Esc(a.name)}</h3><div class="gm2-pills">${pills.map(x=>`<span class="gm2-pill">${gm2Esc(x)}</span>`).join('')}</div>${a.description?`<div class="mini muted">${gm2Esc(a.description)}</div>`:''}<div class="actions" style="margin-top:9px"><button type="button" data-gm2-edit="${a.id}">Düzenle</button><button type="button" class="danger" data-gm2-delete="${a.id}">Sil</button></div></article>`}
 function gm2Assignments(d){const rows=d.assignments.map(x=>{const c=d.chars.find(y=>y.id===x.character_id),a=d.abilities.find(y=>y.id===x.ability_id);if(!c||!a)return'';return `<div class="gm2-assignment"><div><b>${gm2Esc(c.name)} • ${gm2Esc(a.name)}</b><div class="mini muted">${x.uses_per_combat==null?'Sınırsız kullanım':x.uses_per_combat+' / savaş'}</div></div><button type="button" class="danger small" data-gm2-unassign="${x.id}">Kaldır</button></div>`}).filter(Boolean).join('');return rows||'<div class="muted">Henüz oyuncuya atanmış yetenek yok.</div>'}
@@ -94,9 +123,9 @@ function gm2Page(d){
   return `<div class="gm2-ability-grid" data-gm2-ability-page><div class="gm2-stack"><section class="card"><div class="eyebrow">GM • YETENEK ATÖLYESİ</div><h1>Yetenekler & Büyüler</h1><p class="muted">Bu ekran artık GM Merkezi tarafından tek başına yönetilir; arka planda eski atölye yeniden çizilmez.</p></section><section class="card"><div class="eyebrow">${editing?'DÜZENLENİYOR':'YENİ YETENEK'}</div><h2>${editing?'Yeteneği Düzenle':'Yetenek Oluştur'}</h2><div class="gm2-form"><label>Ad<input id="gm2-name" value="${gm2Esc(gm2State.name)}" placeholder="Örn. Ateş Topu"></label><label>Tür<select id="gm2-type"><option value="spell" ${gm2State.type==='spell'?'selected':''}>Büyü</option><option value="skill" ${gm2State.type==='skill'?'selected':''}>Yetenek</option><option value="special" ${gm2State.type==='special'?'selected':''}>Özel Yetenek</option></select></label><label>Etki<select id="gm2-effect"><option value="damage" ${gm2State.effect==='damage'?'selected':''}>Hasar</option><option value="heal" ${gm2State.effect==='heal'?'selected':''}>İyileştirme</option><option value="utility" ${gm2State.effect==='utility'?'selected':''}>Destek / Diğer</option></select></label><label>Hedef<select id="gm2-target"><option value="enemy" ${gm2State.target==='enemy'?'selected':''}>Düşman</option><option value="ally" ${gm2State.target==='ally'?'selected':''}>Müttefik</option><option value="self" ${gm2State.target==='self'?'selected':''}>Kendi</option></select></label><label>Zar / Formül<input id="gm2-formula" value="${gm2Esc(gm2State.formula)}" placeholder="Örn. 2d6"></label><label>Saldırı Bonusu<input id="gm2-attack-bonus" type="number" value="${gm2Esc(gm2State.attackBonus)}"></label><label>Saldırı zarı gerekir<select id="gm2-requires"><option value="0" ${gm2State.requiresAttack==='0'?'selected':''}>Hayır</option><option value="1" ${gm2State.requiresAttack==='1'?'selected':''}>Evet</option></select></label><label class="wide">Açıklama<textarea id="gm2-description">${gm2Esc(gm2State.description)}</textarea></label><div class="gm2-form-actions"><button type="button" class="primary" data-gm2-save>${editing?'Değişiklikleri Kaydet':'Kaydet'}</button>${editing?'<button type="button" data-gm2-cancel>Düzenlemeyi İptal Et</button>':''}</div></div></section><section class="card"><div class="eyebrow">KATALOG</div><h2>${d.abilities.length} Yetenek</h2><div class="gm2-catalog">${d.abilities.length?d.abilities.map(gm2Card).join(''):'<div class="muted">Henüz yetenek yok.</div>'}</div></section></div><aside class="gm2-stack"><section class="card"><div class="eyebrow">OYUNCUYA VER</div><h2>Karaktere Yetenek Ata</h2><div class="form"><label>Karakter<select id="gm2-char">${gm2Options(d.chars,gm2State.char,c=>c.name+(c.play_status==='prepared'?' • HAZIR':' • CANLI'))}</select></label><label>Yetenek<select id="gm2-ability">${gm2Options(d.abilities,gm2State.ability,a=>a.name+' • '+gm2Type(a.ability_type))}</select></label><label>Savaş başına kullanım<input id="gm2-uses" type="number" min="0" value="${gm2Esc(gm2State.uses)}"></label></div><button type="button" class="primary widebtn" data-gm2-assign ${canAssign?'':'disabled'}>Oyuncuya Ver</button><p class="mini muted">0 = sınırsız. Karakter ve yetenek seçimi sen değiştirene kadar sabit kalır.</p></section><section class="card"><div class="eyebrow">ATANAN YETENEKLER</div><h2>Oyuncu Yetenekleri</h2>${gm2Assignments(d)}</section></aside></div>`
 }
 async function gm2RenderAbility(force=false){
-  if(!gm2AbilityOpen||!gm2IsGM()||window.__catlakGmToolsOpen!==true)return;if(gm2RenderBusy){gm2RenderQueued=true;return}
+  if(!gm2AbilityOpen||!gm2IsGM()||window.__catlakGmHubOwnsMain!==true)return;if(gm2RenderBusy){gm2RenderQueued=true;return}
   const shell=GM2_APP.querySelector('main .gmt-shell');if(!shell)return;const token=gm2Gen;gm2RenderBusy=true;
-  try{gm2Remember();const d=await gm2Load();if(token!==gm2Gen||!gm2AbilityOpen||!window.__catlakGmHubOwnsMain||GM2_APP.querySelector('main .gmt-shell')!==shell)return;gm2Normalize(d);gm2Cache=d;const sig=JSON.stringify([d.abilities.map(a=>[a.id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.description,a.updated_at]),d.chars.map(c=>[c.id,c.name,c.play_status]),d.assignments.map(x=>[x.id,x.character_id,x.ability_id,x.uses_per_combat,x.uses_remaining]),gm2State.editId]);if(!force&&sig===gm2Sig&&shell.querySelector('[data-gm2-ability-page]'))return;gm2Sig=sig;const header=shell.firstElementChild;const h=header?.querySelector('h1');if(h)h.textContent='GM Merkezi';const eb=header?.querySelector('.eyebrow');if(eb)eb.textContent='GM • MERKEZ';[...shell.children].slice(1).forEach(x=>x.remove());const holder=document.createElement('div');holder.innerHTML=gm2Page(d);while(holder.firstChild)shell.appendChild(holder.firstChild);gm2QueueChrome()}catch(e){gm2Toast('Yetenek Atölyesi yüklenemedi: '+(e?.message||String(e)))}finally{gm2RenderBusy=false;if(gm2RenderQueued){gm2RenderQueued=false;setTimeout(()=>gm2RenderAbility(true),0)}}
+  try{gm2Remember();const d=await gm2Load(force);if(token!==gm2Gen||!gm2AbilityOpen||!window.__catlakGmHubOwnsMain||GM2_APP.querySelector('main .gmt-shell')!==shell)return;gm2Normalize(d);gm2Cache=d;const sig=JSON.stringify([d.abilities.map(a=>[a.id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.description,a.updated_at]),d.chars.map(c=>[c.id,c.name,c.play_status]),d.assignments.map(x=>[x.id,x.character_id,x.ability_id,x.uses_per_combat,x.uses_remaining]),gm2State.editId]);if(!force&&sig===gm2Sig&&shell.querySelector('[data-gm2-ability-page]'))return;gm2Sig=sig;const header=shell.firstElementChild;const h=header?.querySelector('h1');if(h)h.textContent='GM Merkezi';const eb=header?.querySelector('.eyebrow');if(eb)eb.textContent='GM • MERKEZ';[...shell.children].slice(1).forEach(x=>x.remove());const holder=document.createElement('div');holder.innerHTML=gm2Page(d);while(holder.firstChild)shell.appendChild(holder.firstChild);gm2QueueChrome()}catch(e){gm2Toast('Yetenek Atölyesi yüklenemedi: '+(e?.message||String(e)))}finally{gm2RenderBusy=false;if(gm2RenderQueued){gm2RenderQueued=false;setTimeout(()=>gm2RenderAbility(true),0)}}
 }
 function gm2Validate(){gm2Remember();if(!gm2State.name.trim())throw new Error('Yetenek adı gerekli.');if(gm2State.effect==='damage'&&gm2State.target!=='enemy')throw new Error('Hasar yeteneği düşman hedeflemeli.');if(gm2State.effect==='heal'&&gm2State.target==='enemy')throw new Error('İyileştirme düşman hedefleyemez.')}
 function gm2ClearEditor(){gm2State.editId='';gm2State.name='';gm2State.type='spell';gm2State.effect='damage';gm2State.target='enemy';gm2State.formula='';gm2State.attackBonus='0';gm2State.requiresAttack='0';gm2State.description=''}
@@ -122,9 +151,10 @@ document.addEventListener('click',e=>{
 
 new MutationObserver(gm2QueueChrome).observe(GM2_APP,{childList:true,subtree:true});
 GM2_S.channel('cc-gm-hub-v2-live')
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true)})
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true)})
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true);gm2QueueChrome()})
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{gm2DataCache=null;gm2DataAt=0;gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{gm2DataCache=null;gm2DataAt=0;gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gm2DataCache=null;gm2DataAt=0;gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true);gm2QueueChrome()})
  .subscribe();
 setTimeout(()=>{gm2PatchLegacyRender();gm2EnsureChrome()},220);
 window.__catlakGmHubV2Test={chrome:gm2EnsureChrome,openAbility:gm2OpenAbility,renderAbility:gm2RenderAbility,route:gm2Go,release:gm2ReleaseAbility};
+setTimeout(()=>{if(gm2IsGM())gm2Load(false).catch(()=>{})},520);

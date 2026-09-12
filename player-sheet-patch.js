@@ -61,6 +61,9 @@ main.ps-player-sheet>.cc-desk-intro{display:none!important}
 .ps-player-sheet .ps-inventory-card .iw-player-item{padding:12px!important;background:#07131e!important}
 .ps-player-sheet .ps-inventory-card .iw-player-item h3{font-size:1rem}
 .ps-player-sheet .ps-lore-card{padding:15px!important;background:#08131e!important;border-color:#293e50!important}
+.ps-player-sheet .ps-race-powers-card{padding:15px!important;border-color:#344b61!important;background:linear-gradient(180deg,#0c1825,#09131e)!important}
+.ps-player-sheet .ps-race-powers-card>.grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:9px!important}
+.ps-player-sheet .ps-race-powers-card .power{margin:0!important;min-width:0}
 .ps-player-sheet .ps-lore-card>h2,.ps-player-sheet .ps-lore-card>.section-title h2{font-size:1.15rem}
 .ps-player-sheet section.vampire.ps-lore-card{border-color:#5a303b!important;background:linear-gradient(135deg,#1b0d14,#09131e)!important}
 .ps-sheet-empty{padding:24px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center}
@@ -88,7 +91,8 @@ function psClassify(sec){
   if(e==='D20 TESTLERİ')return'main-stats';
   if(e==='CANLI ENVANTER')return'main-inventory';
   if(e==='SON ZARLAR')return'side-rolls';
-  if(e==='ÖZEL YOL'||e==='IRK GÜÇLERİ')return'detail';
+  if(e==='IRK GÜÇLERİ')return'main-powers';
+  if(e==='ÖZEL YOL')return'detail';
   return'other';
 }
 function psPlace(target,items){
@@ -110,13 +114,13 @@ function psArrangeStack(stack){
   if(!stack||!stack.isConnected)return;
   const grid=psEnsureGrid(stack),main=grid.querySelector('.ps-main-column'),side=grid.querySelector('.ps-side-column'),detail=grid.querySelector('.ps-detail-column');
   const cards=[...stack.querySelectorAll(':scope > section.card, :scope > .ps-sheet-grid > .ps-main-column > section.card, :scope > .ps-sheet-grid > .ps-side-column > section.card, :scope > .ps-sheet-grid > .ps-detail-column > section.card')];
-  const ordered={hero:[],stats:[],visual:[],inventory:[],note:[],status:[],combat:[],rolls:[],detail:[],other:[]};
+  const ordered={hero:[],stats:[],powers:[],visual:[],inventory:[],note:[],status:[],combat:[],rolls:[],detail:[],other:[]};
   for(const sec of cards){
     if(sec.hasAttribute('data-ps-combat-card')){ordered.combat.push(sec);continue}
     const k=psClassify(sec);
-    if(k==='main-hero')ordered.hero.push(sec);else if(k==='main-stats'){sec.classList.add('ps-stat-card');ordered.stats.push(sec)}else if(k==='main-visual')ordered.visual.push(sec);else if(k==='main-inventory'){sec.classList.add('ps-inventory-card');ordered.inventory.push(sec)}else if(k==='side-note')ordered.note.push(sec);else if(k==='side-status')ordered.status.push(sec);else if(k==='side-rolls'){sec.classList.add('ps-roll-card');ordered.rolls.push(sec)}else if(k==='detail'){sec.classList.add('ps-lore-card');ordered.detail.push(sec)}else ordered.other.push(sec)
+    if(k==='main-hero')ordered.hero.push(sec);else if(k==='main-stats'){sec.classList.add('ps-stat-card');ordered.stats.push(sec)}else if(k==='main-visual')ordered.visual.push(sec);else if(k==='main-powers'){sec.classList.add('ps-race-powers-card');ordered.powers.push(sec)}else if(k==='main-inventory'){sec.classList.add('ps-inventory-card');ordered.inventory.push(sec)}else if(k==='side-note')ordered.note.push(sec);else if(k==='side-status')ordered.status.push(sec);else if(k==='side-rolls'){sec.classList.add('ps-roll-card');ordered.rolls.push(sec)}else if(k==='detail'){sec.classList.add('ps-lore-card');ordered.detail.push(sec)}else ordered.other.push(sec)
   }
-  psPlace(main,[...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory]);
+  psPlace(main,[...ordered.hero,...ordered.stats,...ordered.visual,...ordered.inventory,...ordered.powers]);
   psPlace(side,[...ordered.note,...ordered.status,...ordered.combat,...ordered.rolls]);
   psPlace(detail,[...ordered.detail,...ordered.other]);
   psAddKpTile(stack);

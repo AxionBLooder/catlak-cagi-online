@@ -17,7 +17,7 @@ function gmcrMakeButtonsClickable(){
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
   bar.style.display='flex';
   bar.style.pointerEvents='auto';
-  bar.style.position='relative';
+  bar.style.position='sticky';bar.style.top='6px';
   bar.style.zIndex='2147483000';
   bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
     b.disabled=false;
@@ -122,7 +122,7 @@ const gmcrObserver=new MutationObserver(()=>{
   if(GMCR_ROUTES.has(selected))gmcrSelect(selected);
 });
 gmcrObserver.observe(GMCR_APP,{childList:true,subtree:true});
-setInterval(gmcrMakeButtonsClickable,600);
+setInterval(gmcrMakeButtonsClickable,1200);
 setTimeout(gmcrMakeButtonsClickable,0);
 
 window.__catlakGmCenterRouterCore={

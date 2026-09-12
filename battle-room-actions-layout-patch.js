@@ -116,14 +116,9 @@ if(!document.querySelector('#bra-layout-style')){
 }
 
 function braPlaceCreatureLibrary(){
-  const bar=BRA_APP.querySelector('[data-gm2-centerbar]');
-  if(!bar)return;
-  const builder=bar.querySelector('[data-gm2-route="builder"]');
-  const manage=bar.querySelector('[data-gm2-route="characters"]');
-  let lib=bar.querySelector('[data-fup-creatures]');
-  if(!lib){lib=document.createElement('button');lib.type='button';lib.dataset.fupCreatures='1';lib.textContent='Yaratık Kütüphanesi'}
-  if(builder&&builder.nextElementSibling!==lib)builder.insertAdjacentElement('afterend',lib);
-  if(manage&&manage!==bar.lastElementChild)bar.appendChild(manage);
+  const bar=BRA_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
+  const lib=bar.querySelector('[data-gm2-route="creatures"]');
+  if(lib)lib.dataset.fupCreatures='1';
 }
 
 async function braRefreshLiveLog(){

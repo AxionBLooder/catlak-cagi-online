@@ -91,17 +91,38 @@ async function swrfDraw(token,force=true){
   }
 }
 
+function swrfPrepareRoute(){
+  const nav=SWRF_APP.querySelector('.nav'),stat=swrfNativeStat();
+  if(!nav||!stat)return null;
+  window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
+  window.__catlakGmTools?.close?.();
+  window.__catlakGmHubOwnsMain=false;
+  window.__catlakCreatureLibraryOpen=false;
+  window.__catlakGmToolsOpen=false;
+  const main=SWRF_APP.querySelector('main');
+  if(main){
+    delete main.dataset.sspStableView;
+    delete main.dataset.gmtTools;
+    delete main.dataset.qolCreatureLibrary;
+    main.dataset.gm2Route='stats';
+  }
+  nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));
+  stat.classList.add('on');
+  window.__catlakGmCenterSelectedRoute='stats';
+  window.__catlakGmCenterRouterCore?.select?.('stats');
+  return stat;
+}
+
 function swrfEnsureOpen(token){
   if(!swrfActive||token!==swrfToken||!swrfIsGM()){swrfOpening=false;return}
-  const stat=swrfNativeStat();
+  const stat=swrfPrepareRoute();
   if(!stat){swrfOpening=false;swrfToast('Stat Atölyesi düğmesi bulunamadı.');return}
 
-  if(!swrfNativeActive()){
-    try{stat.click()}catch(e){swrfOpening=false;swrfToast('Stat Atölyesi açılamadı: '+(e?.message||String(e)));return}
-  }
+  window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
+  window.__catlakRouteLoading?.('Stat Atölyesi');
 
-  let tries=0;
-  const finish=()=>{
+  let tries=0,lastError=null;
+  const finish=async()=>{
     if(!swrfActive||token!==swrfToken){swrfOpening=false;return}
     const main=SWRF_APP.querySelector('main');
     if(main?.dataset.cuxPage==='stats'&&main.querySelector('.cux-workshop')){
@@ -109,14 +130,18 @@ function swrfEnsureOpen(token){
       swrfCaptureCache();
       return;
     }
-    if(swrfNativeActive()&&typeof window.__catlakRenderCompactStats==='function'){
-      // Ana rota zaten render başlattıysa wrapper aynı Promise'i döndürür; ikinci DB sorgusu açılmaz.
-      swrfOpening=false;
-      swrfDraw(token,true);
-      return;
+    swrfPrepareRoute();
+    const render=window.__catlakRenderCompactStats;
+    if(typeof render==='function'){
+      try{await Promise.resolve(render(true))}catch(e){lastError=e}
     }
-    if(++tries<20)setTimeout(finish,25);
-    else{swrfOpening=false;swrfToast('Stat Atölyesi yükleyicisi hazır değil.')}
+    const nowMain=SWRF_APP.querySelector('main');
+    if(nowMain?.dataset.cuxPage==='stats'&&nowMain.querySelector('.cux-workshop')){
+      swrfOpening=false;swrfCaptureCache();return;
+    }
+    if(++tries<36){setTimeout(finish,tries<8?55:110);return}
+    swrfOpening=false;
+    swrfToast(lastError?'Stat Atölyesi açılamadı: '+(lastError?.message||String(lastError)):'Stat Atölyesi yükleyicisi hazır değil.');
   };
   setTimeout(finish,0);
 }
@@ -130,6 +155,27 @@ function swrfOpenStats(){
   swrfEnsureOpen(token);
   return true;
 }
+
+function swrfPatchHubRoute(){
+  const hub=window.__catlakGmHubV2Test;
+  if(!hub||typeof hub.route!=='function')return false;
+  if(hub.route.__catlakStatWorkshopRoute)return true;
+  const original=hub.route;
+  const route=function(key,...args){
+    if(String(key)==='stats')return swrfOpenStats();
+    swrfActive=false;swrfOpening=false;swrfToken++;
+    return original.call(this,key,...args);
+  };
+  route.__catlakStatWorkshopRoute=true;
+  route.__catlakOriginalRoute=original;
+  hub.route=route;
+  return true;
+}
+
+(function swrfWaitForHub(){
+  if(swrfPatchHubRoute())return;
+  if((swrfWaitForHub.n=(swrfWaitForHub.n||0)+1)<240)setTimeout(swrfWaitForHub,25);
+})();
 
 window.addEventListener('click',e=>{
   const statsRoute=e.target.closest?.('#app [data-gm2-route="stats"]');
@@ -148,7 +194,9 @@ window.addEventListener('click',e=>{
   if(nativeStat&&swrfIsGM()){
     swrfInstallFastRender();
     swrfActive=true;
-    setTimeout(()=>{if(swrfNativeActive())swrfRestoreCache()},0);
+    const token=++swrfToken;
+    swrfOpening=true;
+    setTimeout(()=>swrfEnsureOpen(token),0);
     return;
   }
 

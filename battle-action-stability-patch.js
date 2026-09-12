@@ -44,7 +44,7 @@ function basSelectedTarget(){return basTargetId||BAS_APP.querySelector('[data-br
 function basRefresh(){clearTimeout(basHealTimer);basHealTimer=setTimeout(()=>{if(!basBattleView())return;window.__catlakBattleRoomV3Test?.render?.(true);window.__catlakBattleCompactTest?.arrange?.();window.__catlakBattleActionsLayoutTest?.apply?.()},25)}
 
 async function basStrike(btn){
-  if(basBusy)return;const inv=btn.dataset.br3Strike,target=basSelectedTarget();if(!inv)throw new Error('Kuşanılmış silah bulunamadı.');if(!target)throw new Error('Önce bir yaratık hedefle.');
+  if(basBusy)return;const inv=btn.dataset.br3Strike,target=basSelectedTarget();if(!inv)throw new Error('GM tarafından atanmış silah bulunamadı.');if(!target)throw new Error('Önce bir yaratık hedefle.');
   basBusy=true;basFreeze(1100,'weapon-strike');
   try{await basRequireTurn();const r=await BAS_S.rpc('catlak_player_weapon_strike',{p_inventory_id:inv,p_target_id:target});if(r.error)throw r.error;const d=r.data||{};basToast(d.hit?`${d.target_name||'Hedef'}: ${d.critical?'KRİTİK İSABET':'İSABET'} • ${Number(d.damage_total)||0} hasar`:`${d.target_name||'Hedef'}: ISKA${d.attack_total!=null?' ('+d.attack_total+')':''}`);if(d.defeated||Number(d.target_hp)<=0)basTargetId='';basRefresh()}finally{basBusy=false}
 }

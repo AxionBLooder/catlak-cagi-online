@@ -88,15 +88,10 @@ async function ccPrLoadPlayer(force=false){
 }
 
 function ccPrRenderPlayer(){
-  if(!ccPrUid||ccPrIsGM()||ccPrTab()!=='sheet')return;
+  if(ccPrIsGM()||ccPrTab()!=='sheet')return;
   const main=CC_PRES_APP.querySelector('main');if(!main)return;
-  const c=(ccPrMyChars||[])[0];if(!c)return;
-  let card=main.querySelector('[data-cc-player-live-card]');
-  if(!card){card=document.createElement('section');card.className='card cc-player-live-card';card.dataset.ccPlayerLiveCard='1';const hero=main.querySelector('section.hero');hero?hero.insertAdjacentElement('afterend',card):main.prepend(card);ccPrLastPlayerSig=''}
-  const sig=ccPrSig([c.id,c.name,c.species_name,c.level,c.data?.vampire_kp]);
-  if(sig===ccPrLastPlayerSig)return;
-  card.innerHTML=`<div class="cc-player-live-row"><div><div class="eyebrow">CANLI DURUM</div><h2>${ccPrEsc(c.name)}</h2></div><span class="cc-online">● ÇEVRİMİÇİ</span></div><small class="muted">GM seni şu anda çevrimiçi görüyor.</small>${ccPrIsVampire(c)?`<div class="cc-player-live-kp">VAMPİR • KP ${ccPrKpNow(c)} / ${ccPrKpMax(c)}</div>`:''}`;
-  ccPrLastPlayerSig=sig;
+  main.querySelectorAll('[data-cc-player-live-card]').forEach(x=>x.remove());
+  ccPrLastPlayerSig='';
 }
 
 async function ccPrStopPresence(){

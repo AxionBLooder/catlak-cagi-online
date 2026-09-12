@@ -8,7 +8,10 @@ const gmtTxt=e=>String(e?.textContent||'').trim();
 const gmtIsGM=()=>gmtTxt(GMT_APP.querySelector('.role'))==='GM';
 const gmtBaseTab=()=>GMT_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 const gmtToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gmtToast.t);gmtToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false;
+let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtRenderQueued=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false;
+const gmtDataCache={combat:null,events:null,logs:null};
+const gmtDataAt={combat:0,events:0,logs:0};
+const GMT_CACHE_MS=8000;
 
 const gmtCss=`
 .gmt-nav{white-space:nowrap}.gmt-shell{display:flex;flex-direction:column;gap:14px}.gmt-tabs{display:flex;flex-wrap:wrap;gap:8px}.gmt-tabs button.on{border-color:var(--gold);color:var(--gold)}.gmt-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:14px;align-items:start}.gmt-stack{display:flex;flex-direction:column;gap:12px}.gmt-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.gmt-toolbar label{min-width:130px;flex:1}.gmt-combatant{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0a1622}.gmt-combatant.current{border-color:var(--gold);box-shadow:inset 0 0 0 1px #d6ad5b55}.gmt-combatant-head{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:10px;align-items:center}.gmt-init{font-size:1.55rem;font-weight:900;text-align:center;color:var(--gold)}.gmt-hp{font-weight:800}.gmt-mini{font-size:.79rem;color:var(--muted)}.gmt-condition{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.gmt-condition:last-child{border-bottom:0}.gmt-rule{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.gmt-rule:last-child{border-bottom:0}.gmt-log{padding:10px 0;border-bottom:1px solid var(--line)}.gmt-log:last-child{border-bottom:0}.gmt-log time{font-size:.75rem;color:var(--muted)}.gmt-player-panel{margin-top:12px}.gmt-player-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gmt-status-pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:4px 8px;margin:3px 4px 3px 0;font-size:.78rem}.gmt-slot{display:grid;grid-template-columns:115px minmax(0,1fr);gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}.gmt-slot:last-child{border-bottom:0}.gmt-slot b{color:var(--gold)}
@@ -22,23 +25,32 @@ function gmtInjectNav(){
   const b=document.createElement('button');b.type='button';b.className='gmt-nav';b.dataset.gmtOpen='1';b.textContent='GM Araçları';nav.appendChild(b);
 }
 function gmtSetNavOn(){const nav=GMT_APP.querySelector('.nav');if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));nav.querySelector('[data-gmt-open]')?.classList.add('on')}
-function gmtClose(){if(!gmtOpen)return;gmtOpen=false;gmtGen++;window.__catlakGmToolsOpen=false}
+function gmtClose(){gmtOpen=false;gmtGen++;gmtRenderQueued=false;window.__catlakGmToolsOpen=false;const m=GMT_APP.querySelector('main');if(m){delete m.dataset.gmtTools;delete m.dataset.gmtSub}}
 function gmtTime(x){try{return new Date(x).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return''}}
 function gmtRange(r){return r.min_roll===r.max_roll?String(r.min_roll):`${r.min_roll}–${r.max_roll}`}
 function gmtRuleText(rows,key){return rows.filter(r=>r.table_key===key).sort((a,b)=>a.sort_order-b.sort_order||a.min_roll-b.min_roll).map(r=>`${gmtRange(r)} ${r.outcome}`).join(' · ')}
 
-async function gmtLoad(){
-  const [sr,br,cr,kr,er,lr]=await Promise.all([
-    GMT_S.from('catlak_combat_state').select('*').eq('id',1).maybeSingle(),
-    GMT_S.from('catlak_combatants').select('*').order('initiative',{ascending:false}).order('created_at',{ascending:true}),
-    GMT_S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_stats,play_status').eq('play_status','active').order('created_at',{ascending:true}),
-    GMT_S.from('catlak_character_conditions').select('*').eq('active',true).order('created_at',{ascending:true}),
-    GMT_S.from('catlak_event_rules').select('*').order('table_key',{ascending:true}).order('sort_order',{ascending:true}),
-    GMT_S.from('catlak_session_log').select('*').order('created_at',{ascending:false}).limit(120)
-  ]);
-  for(const r of [sr,br,cr,kr,er,lr])if(r.error)throw r.error;
-  gmtRuleCache=er.data||[];gmtRuleAt=Date.now();
-  return {state:sr.data||{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:br.data||[],chars:cr.data||[],conditions:kr.data||[],rules:er.data||[],logs:lr.data||[]};
+async function gmtLoad(sub=gmtSub,force=false){
+  const key=(sub==='events'||sub==='logs')?sub:'combat';
+  if(!force&&gmtDataCache[key]&&Date.now()-gmtDataAt[key]<GMT_CACHE_MS)return gmtDataCache[key];
+  const base={state:{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:[],chars:[],conditions:[],rules:[],logs:[]};
+  if(key==='events'){
+    const er=await GMT_S.from('catlak_event_rules').select('*').order('table_key',{ascending:true}).order('sort_order',{ascending:true});
+    if(er.error)throw er.error;base.rules=er.data||[];gmtRuleCache=base.rules;gmtRuleAt=Date.now();
+  }else if(key==='logs'){
+    const lr=await GMT_S.from('catlak_session_log').select('*').order('created_at',{ascending:false}).limit(120);
+    if(lr.error)throw lr.error;base.logs=lr.data||[];
+  }else{
+    const [sr,br,cr,kr]=await Promise.all([
+      GMT_S.from('catlak_combat_state').select('*').eq('id',1).maybeSingle(),
+      GMT_S.from('catlak_combatants').select('*').order('initiative',{ascending:false}).order('created_at',{ascending:true}),
+      GMT_S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_stats,play_status').eq('play_status','active').order('created_at',{ascending:true}),
+      GMT_S.from('catlak_character_conditions').select('*').eq('active',true).order('created_at',{ascending:true})
+    ]);
+    for(const r of [sr,br,cr,kr])if(r.error)throw r.error;
+    base.state=sr.data||base.state;base.combatants=br.data||[];base.chars=cr.data||[];base.conditions=kr.data||[];
+  }
+  gmtDataCache[key]=base;gmtDataAt[key]=Date.now();return base;
 }
 
 function gmtCombatHtml(d){
@@ -55,11 +67,30 @@ function gmtEventsHtml(d){
 }
 function gmtLogsHtml(d){return `<div class="gmt-grid"><section class="card"><div class="eyebrow">OTURUM GÜNLÜĞÜ</div><h2>GM Kayıt Defteri</h2><p class="muted">Savaş, tur, durum etkileri ve olay zarları otomatik kaydolur. İstersen kendi notunu da ekleyebilirsin.</p><label>Oturum Notu<textarea id="gmt-log-note" placeholder="Örn. Parti eski kulede büyücünün mührünü kırdı."></textarea></label><div class="actions"><button type="button" class="primary" data-gmt-log-add>Not Ekle</button><button type="button" class="danger" data-gmt-log-clear>Günlüğü Temizle</button></div></section><section class="card"><div class="eyebrow">SON KAYITLAR</div>${d.logs.length?d.logs.map(x=>`<div class="gmt-log"><b>${gmtH(x.kind.toUpperCase())}</b><div>${gmtH(x.message)}</div><time>${gmtTime(x.created_at)}</time></div>`).join(''):'<div class="muted">Henüz kayıt yok.</div>'}</section></div>`}
 
+function gmtValidSub(x){return x==='combat'||x==='events'||x==='logs'}
+function gmtOpenSub(sub='combat'){
+  if(!gmtIsGM()||!gmtValidSub(sub))return false;
+  gmtOpen=true;gmtSub=sub;gmtGen++;window.__catlakGmToolsOpen=true;window.__catlakGmHubOwnsMain=false;gmtSetNavOn();
+  const m=GMT_APP.querySelector('main');if(m){m.dataset.gmtTools='';m.dataset.gmtSub=sub}
+  if(gmtBusy)gmtRenderQueued=true;else gmtRender(false);
+  return true;
+}
 async function gmtRender(force=false){
-  if(!gmtOpen||!gmtIsGM()||gmtBusy)return;
-  const main=GMT_APP.querySelector('main');if(!main)return;if(!force&&main.dataset.gmtTools==='1')return;
+  if(!gmtOpen||!gmtIsGM()||window.__catlakGmHubOwnsMain===true)return;
+  if(gmtBusy){gmtRenderQueued=true;return}
+  const main=GMT_APP.querySelector('main');if(!main)return;
+  const sub=gmtSub;if(!force&&main.dataset.gmtTools==='1'&&main.dataset.gmtSub===sub)return;
   const gen=++gmtGen;gmtBusy=true;
-  try{const d=await gmtLoad();if(!gmtOpen||gen!==gmtGen||GMT_APP.querySelector('main')!==main)return;gmtSetNavOn();main.innerHTML=`<div class="gmt-shell"><section class="card"><div class="eyebrow">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class="gmt-tabs"><button type="button" class="${gmtSub==='combat'?'on':''}" data-gmt-sub="combat">Savaş & Durumlar</button><button type="button" class="${gmtSub==='events'?'on':''}" data-gmt-sub="events">Olay Atölyesi</button><button type="button" class="${gmtSub==='logs'?'on':''}" data-gmt-sub="logs">Oturum Günlüğü</button></div></section>${gmtSub==='combat'?gmtCombatHtml(d):gmtSub==='events'?gmtEventsHtml(d):gmtLogsHtml(d)}</div>`;main.dataset.gmtTools='1'}catch(e){gmtToast('GM Araçları yüklenemedi: '+(e?.message||String(e)))}finally{gmtBusy=false}
+  try{
+    const d=await gmtLoad(sub,force);
+    if(!gmtOpen||gen!==gmtGen||gmtSub!==sub||window.__catlakGmHubOwnsMain===true||GMT_APP.querySelector('main')!==main)return;
+    gmtSetNavOn();
+    main.innerHTML=`<div class="gmt-shell"><section class="card" data-gmt-legacy-header hidden><div class="eyebrow">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class="gmt-tabs"><button type="button" class="${sub==='combat'?'on':''}" data-gmt-sub="combat">Savaş & Durumlar</button><button type="button" class="${sub==='events'?'on':''}" data-gmt-sub="events">Olay Atölyesi</button><button type="button" class="${sub==='logs'?'on':''}" data-gmt-sub="logs">Oturum Günlüğü</button></div></section>${sub==='combat'?gmtCombatHtml(d):sub==='events'?gmtEventsHtml(d):gmtLogsHtml(d)}</div>`;
+    main.dataset.gmtTools='1';main.dataset.gmtSub=sub;
+  }catch(e){gmtToast('GM Araçları yüklenemedi: '+(e?.message||String(e)))}finally{
+    gmtBusy=false;
+    if(gmtRenderQueued){gmtRenderQueued=false;if(gmtOpen&&window.__catlakGmHubOwnsMain!==true)setTimeout(()=>gmtRender(false),0)}
+  }
 }
 async function gmtRpc(fn,args={},msg='Tamamlandı'){if(gmtBusy)return;gmtBusy=true;try{const r=await GMT_S.rpc(fn,args);if(r.error)throw r.error;gmtToast(typeof msg==='function'?msg(r.data):msg);gmtBusy=false;await gmtRender(true)}catch(e){gmtBusy=false;gmtToast('İşlem başarısız: '+(e?.message||String(e)))}}
 
@@ -69,41 +100,78 @@ async function gmtSyncEventRules(){
   for(const k of ['d6','d20','d100','d200']){const b=GMT_APP.querySelector(`[data-er-event="${k}"]`);const rules=b?.closest('.er-event')?.querySelector('.er-rules');if(rules)rules.textContent=gmtRuleText(gmtRuleCache,k)}
 }
 
-function gmtSlotName(k){return ({main_weapon:'Ana Silah',off_weapon:'İkinci Silah',armor:'Zırh',accessory_1:'Aksesuar 1',accessory_2:'Aksesuar 2'})[k]||k}
+function gmtSlotName(k){return ({main_weapon:'1. Silah',off_weapon:'2. Silah',armor:'Zırh',accessory_1:'Aksesuar 1',accessory_2:'Aksesuar 2'})[k]||k}
 async function gmtRenderPlayerPanels(){
   if(gmtIsGM()||gmtBaseTab()!=='sheet'||gmtPlayerBusy)return;
-  const main=GMT_APP.querySelector('main');if(!main||main.querySelector('[data-gmt-player-panel]'))return;
+  const main=GMT_APP.querySelector('main');if(!main)return;
   gmtPlayerBusy=true;
   try{
     const [cr,kr,vr,ir]=await Promise.all([
       GMT_S.from('catlak_characters').select('id,name').order('created_at',{ascending:true}),
       GMT_S.from('catlak_character_conditions').select('*').eq('active',true).order('created_at',{ascending:true}),
       GMT_S.from('catlak_inventory').select('id,character_id,item_id,equipped,equipped_slot,quantity').order('granted_at',{ascending:true}),
-      GMT_S.from('catlak_items').select('id,name,item_type,effects')
+      GMT_S.from('catlak_items').select('id,name,is_active')
     ]);
-    if(cr.error||kr.error||vr.error||ir.error)return;
-    if(gmtIsGM()||gmtBaseTab()!=='sheet'||GMT_APP.querySelector('main')!==main)return;
+    for(const r of [cr,kr,vr,ir])if(r.error)throw r.error;
     const chars=cr.data||[],conds=kr.data||[],inv=vr.data||[],items=ir.data||[];
-    const heroes=[...main.querySelectorAll('.hero')];
-    for(const hero of heroes){
-      const name=gmtTxt(hero.querySelector('h1')),c=chars.find(x=>x.name===name);if(!c||hero.nextElementSibling?.hasAttribute('data-gmt-player-panel'))continue;
-      const cc=conds.filter(x=>x.character_id===c.id),ci=inv.filter(x=>x.character_id===c.id&&x.equipped);
-      const slots=['main_weapon','off_weapon','armor','accessory_1','accessory_2'];
-      const sec=document.createElement('section');sec.className='card gmt-player-panel';sec.dataset.gmtPlayerPanel=c.id;
-      sec.innerHTML=`<div class="gmt-player-two"><div><div class="eyebrow">AKTİF DURUMLAR</div><h2>Durum Etkileri</h2>${cc.length?cc.map(x=>`<span class="gmt-status-pill"><b>${gmtH(x.name)}</b>${x.remaining_rounds==null?'':' • '+x.remaining_rounds+' round'}${x.note?' • '+gmtH(x.note):''}</span>`).join(''):'<p class="muted">Aktif durum etkisi yok.</p>'}</div><div><div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Slotlar</h2>${slots.map(k=>{const r=ci.find(x=>x.equipped_slot===k),i=r&&items.find(y=>y.id===r.item_id);return `<div class="gmt-slot"><b>${gmtSlotName(k)}</b><span>${i?gmtH(i.name):'<span class="muted">Boş</span>'}</span></div>`}).join('')}<p class="gmt-mini">Silah, zırh ve aksesuarı Envanter bölümündeki Kuşan/Tak düğmeleriyle yerleştirebilirsin.</p></div></div>`;
-      hero.insertAdjacentElement('afterend',sec);
+    const itemMap=new Map(items.map(i=>[String(i.id),i]));
+    const labelKey={'Ana Silah':'main_weapon','İkinci Silah':'off_weapon','1. Silah':'main_weapon','2. Silah':'off_weapon','Zırh':'armor','Aksesuar 1':'accessory_1','Aksesuar 2':'accessory_2'};
+    const slots=['main_weapon','off_weapon','armor','accessory_1','accessory_2'];
+    for(const hero of [...main.querySelectorAll('.hero')]){
+      const name=gmtTxt(hero.querySelector('h1')),c=chars.find(x=>x.name===name);if(!c)continue;
+      let sec=main.querySelector(`[data-gmt-player-panel="${c.id}"]`);
+      if(!sec){
+        sec=document.createElement('section');sec.className='card gmt-player-panel';sec.dataset.gmtPlayerPanel=c.id;sec.dataset.gmtStableEquipment='1';
+        sec.innerHTML='<div class="gmt-player-two"><div data-gmt-status-pane><div class="eyebrow">AKTİF DURUMLAR</div><h2>Durum Etkileri</h2><div data-gmt-status-list></div></div><div data-gmt-equip-pane><div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Slotlar</h2><p class="gmt-mini">Silah, zırh ve aksesuar yuvalarını GM belirler; oyuncu kağıdı yalnız mevcut atamayı gösterir.</p></div></div>';
+        hero.insertAdjacentElement('afterend',sec);
+      }else sec.dataset.gmtStableEquipment='1';
+
+      const two=sec.querySelector('.gmt-player-two');if(!two)continue;
+      const panes=[...two.children];
+      let status=sec.querySelector('[data-gmt-status-pane]')||panes.find(x=>gmtTxt(x.querySelector(':scope > .eyebrow'))==='AKTİF DURUMLAR')||panes[0];
+      let equip=sec.querySelector('[data-gmt-equip-pane]')||panes.find(x=>gmtTxt(x.querySelector(':scope > .eyebrow'))==='TAKILI TEÇHİZAT')||panes[1];
+      if(!status||!equip)continue;status.dataset.gmtStatusPane='1';equip.dataset.gmtEquipPane='1';
+
+      let statusList=status.querySelector('[data-gmt-status-list]');
+      if(!statusList){
+        statusList=document.createElement('div');statusList.dataset.gmtStatusList='1';
+        status.querySelectorAll(':scope > .gmt-status-pill,:scope > p.muted').forEach(x=>x.remove());status.appendChild(statusList);
+      }
+      const cc=conds.filter(x=>String(x.character_id)===String(c.id));
+      const statusSig=JSON.stringify(cc.map(x=>[x.id,x.name,x.remaining_rounds,x.note]));
+      if(statusList.dataset.gmtSig!==statusSig){
+        statusList.dataset.gmtSig=statusSig;
+        statusList.innerHTML=cc.length?cc.map(x=>`<span class="gmt-status-pill"><b>${gmtH(x.name)}</b>${x.remaining_rounds==null?'':' • '+x.remaining_rounds+' round'}${x.note?' • '+gmtH(x.note):''}</span>`).join(''):'<p class="muted">Aktif durum etkisi yok.</p>';
+      }
+
+      const ci=inv.filter(x=>String(x.character_id)===String(c.id)&&x.equipped);
+      const existing=[...equip.querySelectorAll('.gmt-slot')];
+      existing.forEach(slot=>{const key=slot.dataset.gmtSlot||labelKey[gmtTxt(slot.querySelector('b'))];if(key)slot.dataset.gmtSlot=key});
+      const grid=equip.querySelector('[data-psea-equipment-grid]');
+      const mini=equip.querySelector(':scope > .gmt-mini');
+      for(const key of slots){
+        let slot=equip.querySelector(`[data-gmt-slot="${key}"]`);
+        if(!slot){
+          slot=document.createElement('div');slot.className='gmt-slot';slot.dataset.gmtSlot=key;slot.innerHTML='<b></b><span></span>';
+          if(grid)grid.appendChild(slot);else if(mini)equip.insertBefore(slot,mini);else equip.appendChild(slot);
+        }
+        let label=slot.querySelector('b');if(!label){label=document.createElement('b');slot.prepend(label)}label.textContent=gmtSlotName(key);
+        let value=slot.querySelector(':scope > span');if(!value){value=document.createElement('span');slot.appendChild(value)}
+        const row=ci.find(x=>x.equipped_slot===key),item=row&&itemMap.get(String(row.item_id));
+        value.textContent=item&&item.is_active!==false?item.name:'Boş';value.classList.toggle('muted',!(item&&item.is_active!==false));
+      }
     }
-  }finally{gmtPlayerBusy=false}
+  }catch(e){console.warn('GMT_PLAYER_PANEL_SYNC',e)}finally{gmtPlayerBusy=false}
 }
-function gmtInvalidatePlayer(){GMT_APP.querySelectorAll('[data-gmt-player-panel]').forEach(x=>x.remove());setTimeout(gmtRenderPlayerPanels,120)}
+function gmtInvalidatePlayer(){setTimeout(()=>gmtRenderPlayerPanels(),30)}
 
 async function gmtRuleSave(id){const v=document.querySelector('#gmt-rule-'+id)?.value.trim();if(!v)return gmtToast('Olay metni boş olamaz.');await gmtRpc('catlak_gm_update_event_rule',{p_rule_id:Number(id),p_outcome:v},()=>{gmtRuleCache=null;return'Olay kuralı kaydedildi.'})}
 
 document.addEventListener('click',e=>{
-  const open=e.target.closest('[data-gmt-open]');if(open){e.preventDefault();e.stopImmediatePropagation();if(!gmtIsGM())return;gmtOpen=true;window.__catlakGmToolsOpen=true;gmtSetNavOn();gmtRender(true);return}
+  const open=e.target.closest('[data-gmt-open]');if(open){e.preventDefault();e.stopImmediatePropagation();gmtOpenSub(gmtValidSub(gmtSub)?gmtSub:'combat');return}
   const base=e.target.closest('.nav button[data-tab]');if(base){gmtClose();return}
   if(!gmtOpen)return;
-  const sub=e.target.closest('[data-gmt-sub]');if(sub){e.preventDefault();e.stopImmediatePropagation();gmtSub=sub.dataset.gmtSub;const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';gmtRender(true);return}
+  const sub=e.target.closest('[data-gmt-sub]');if(sub){e.preventDefault();e.stopImmediatePropagation();gmtOpenSub(String(sub.dataset.gmtSub||''));return}
   const start=e.target.closest('[data-gmt-combat-start]');if(start){e.preventDefault();e.stopImmediatePropagation();gmtRpc('catlak_gm_combat_start',{p_name:document.querySelector('#gmt-combat-name')?.value||'Savaş'},'Savaş başlatıldı.');return}
   const end=e.target.closest('[data-gmt-combat-end]');if(end){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş sona erdirilsin mi?'))gmtRpc('catlak_gm_combat_end',{},'Savaş sona erdi.');return}
   const next=e.target.closest('[data-gmt-next]');if(next){e.preventDefault();e.stopImmediatePropagation();gmtRpc('catlak_gm_combat_next_turn',{},d=>`Sıra: ${d?.name||'?'} • Round ${d?.round||1}`);return}
@@ -119,16 +187,18 @@ document.addEventListener('click',e=>{
   const lc=e.target.closest('[data-gmt-log-clear]');if(lc){e.preventDefault();e.stopImmediatePropagation();if(confirm('Oturum günlüğü topluca temizlensin mi?'))gmtRpc('catlak_gm_clear_session_log',{},d=>`${d||0} günlük kaydı temizlendi.`);return}
 },true);
 
-document.addEventListener('click',e=>{if(!gmtIsGM()&&e.target.closest('[data-a="equip"]'))setTimeout(gmtInvalidatePlayer,420)},false);
 
-GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{if(gmtOpen){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}else gmtInvalidatePlayer()}).subscribe();
-GMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{if(gmtOpen&&gmtSub==='combat'){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{if(gmtOpen&&gmtSub==='combat'){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),80)}}).subscribe();
+GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}else if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
+GMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).subscribe();
 
 const gmtObserver=new MutationObserver(()=>{
   gmtInjectNav();
-  if(gmtOpen){const m=GMT_APP.querySelector('main');if(m&&!m.dataset.gmtTools)setTimeout(()=>gmtRender(true),30)}
+  if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m&&(m.dataset.gmtTools!=='1'||m.dataset.gmtSub!==gmtSub))setTimeout(()=>gmtRender(true),0)}
 });
 gmtObserver.observe(GMT_APP,{childList:true,subtree:true});
-setInterval(()=>{gmtInjectNav();if(gmtOpen)gmtRender();else{gmtRenderPlayerPanels();gmtSyncEventRules()}},900);
+setInterval(()=>{gmtInjectNav();if(gmtOpen&&window.__catlakGmHubOwnsMain!==true)gmtRender();else if(!gmtOpen){gmtRenderPlayerPanels();gmtSyncEventRules()}},900);
 setTimeout(()=>{gmtInjectNav();gmtRenderPlayerPanels();gmtSyncEventRules()},150);
+window.gmtRender=gmtRender;
+window.__catlakGmTools={open:gmtOpenSub,close:gmtClose,render:gmtRender,active:()=>gmtOpen?gmtSub:'',isOpen:()=>gmtOpen};
 window.__catlakGmToolsTest={ruleText:gmtRuleText,range:gmtRange,slotName:gmtSlotName};
+setTimeout(()=>{if(gmtIsGM())['combat','events','logs'].forEach((sub,i)=>setTimeout(()=>gmtLoad(sub,false).catch(()=>{}),i*90))},420);

@@ -4,7 +4,6 @@ if(!GNC_APP)throw new Error('GM navigasyon temizliği başlatılamadı.');
 
 const gncTxt=e=>String(e?.textContent||'').trim();
 const gncIsGM=()=>gncTxt(GNC_APP.querySelector('.role'))==='GM';
-const gncSheet=()=>!gncIsGM()&&GNC_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab==='sheet';
 const gncToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gncToast.t);gncToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
 let gncQueued=false,gncLogClearBusy=false;
 
@@ -81,19 +80,6 @@ if(!document.querySelector('#gnc-player-rest-style')){
   `;document.head.appendChild(s)
 }
 
-function gncEnsureRest(){
-  if(!gncSheet())return;
-  GNC_APP.querySelectorAll('main .cc-character-stack').forEach(st=>{
-    const hero=st.querySelector('section.hero'),hp=hero?.querySelector('[data-a="hp"][data-id]'),lead=hero?.querySelector(':scope > div:first-child');
-    if(!hero||!hp||!lead)return;
-    let box=st.querySelector('[data-qol-rest]');
-    if(!box){box=document.createElement('div');box.className='qol-rest';box.dataset.qolRest='1';lead.appendChild(box)}
-    else if(box.parentElement!==lead)lead.appendChild(box);
-    const note=box.querySelector('span');
-    if(note)note.textContent='HP • KP • büyü / yetenek / özel güç kullanımları yenilenir.';
-  })
-}
-
 function gncAlignBattleTop(){
   if(gncIsGM()||window.__catlakBattleRoomOpen!==true)return;
   const main=GNC_APP.querySelector('main.brc-compact-battle'),left=main?.querySelector('.ccr-battle-grid>div:first-child');
@@ -126,89 +112,20 @@ async function gncClearBattleLog(btn){
   finally{gncLogClearBusy=false;if(btn.isConnected)btn.disabled=false}
 }
 
-async function gncRefillKpAfterRest(btn,id){
-  if(!GNC_S||!btn?.isConnected)return;
-  await new Promise(r=>setTimeout(r,0));
-  if(!btn.disabled)return;
-  for(let i=0;i<30&&btn.isConnected&&btn.disabled;i++)await new Promise(r=>setTimeout(r,80));
-  if(!btn.isConnected||btn.disabled)return;
-  const snap=await GNC_S.rpc('catlak_player_combat_snapshot');
-  if(snap.error||snap.data?.in_combat)return;
-  const stack=btn.closest('.cc-character-stack');
-  if(!stack?.querySelector('[data-ps-kp],section.vampire'))return;
-  const kp=await GNC_S.rpc('catlak_update_vampire_kp',{p_character_id:id,p_delta:999});
-  if(kp.error)return;
-  setTimeout(gncEnsureRest,60);
-}
-
 function gncClean(){
   gncQueued=false;
   if(gncIsGM()){
     GNC_APP.querySelectorAll('.nav [data-ccr-hub]').forEach(x=>x.remove());
     gncEnsureRollLogClear();
-  }else{
-    gncEnsureRest();gncAlignBattleTop();
-  }
+  }else gncAlignBattleTop();
 }
 function gncSchedule(){if(gncQueued)return;gncQueued=true;requestAnimationFrame(gncClean)}
 window.addEventListener('click',e=>{
   const c=e.target.closest?.('[data-gnc-clear-battle-log]');
   if(c){e.preventDefault();e.stopImmediatePropagation();gncClearBattleLog(c);return}
-  const b=e.target.closest?.('[data-qol-long-rest]');
-  if(b&&gncSheet())gncRefillKpAfterRest(b,b.dataset.qolLongRest).catch(()=>{})
-},true);
-
-let gncStatsOpening=false;
-function gncCloseGmToolsForStats(nav){
-  const main=GNC_APP.querySelector('main');
-  const wasOpen=window.__catlakGmToolsOpen===true||main?.dataset.gmtTools==='1'||!!main?.querySelector('.gmt-shell');
-  if(!wasOpen)return;
-  const native=nav?.querySelector('[data-tab="gm"]')||nav?.querySelector('[data-tab="items"]')||nav?.querySelector('[data-tab="characters"]');
-  if(native)native.click();
-  window.__catlakGmToolsOpen=false;
-}
-function gncOpenStatsWorkshop(){
-  if(!gncIsGM()||gncStatsOpening)return false;
-  const nav=GNC_APP.querySelector('.nav'),stat=nav?.querySelector('[data-cc-stats-tab]'),render=window.__catlakRenderCompactStats;
-  if(!stat||typeof render!=='function')return false;
-  gncStatsOpening=true;
-  gncCloseGmToolsForStats(nav);
-  window.__catlakGmHubOwnsMain=false;
-  window.__catlakCreatureLibraryOpen=false;
-  window.__catlakGmToolsOpen=false;
-  const main=GNC_APP.querySelector('main');
-  if(main){delete main.dataset.sspStableView;delete main.dataset.gmtTools;delete main.dataset.qolCreatureLibrary}
-  nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));
-  stat.classList.add('on');
-  window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;
-  window.__catlakRouteLoading?.('Stat Atölyesi');
-  const draw=()=>Promise.resolve(render(true)).catch(e=>gncToast('Stat Atölyesi açılamadı: '+(e?.message||String(e))));
-  requestAnimationFrame(()=>{
-    draw().finally(()=>{
-      setTimeout(()=>{
-        const nowMain=GNC_APP.querySelector('main');
-        if(stat.classList.contains('on')&&!nowMain?.querySelector('.cux-workshop'))draw();
-      },120);
-      setTimeout(()=>{
-        const nowMain=GNC_APP.querySelector('main');
-        if(stat.classList.contains('on')&&!nowMain?.querySelector('.cux-workshop'))draw();
-        gncStatsOpening=false;
-      },360);
-    })
-  });
-  return true;
-}
-window.addEventListener('click',e=>{
-  const b=e.target.closest?.('#app [data-gm2-route="stats"]');
-  if(!b||!gncIsGM())return;
-  e.preventDefault();e.stopImmediatePropagation();
-  if(gncOpenStatsWorkshop())return;
-  let tries=0;
-  const retry=()=>{if(gncOpenStatsWorkshop())return;if(++tries<20)setTimeout(retry,25);else gncToast('Stat Atölyesi yükleyicisi hazır değil.')};
-  setTimeout(retry,0);
 },true);
 
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
 setInterval(gncClean,1200);
 setTimeout(gncClean,80);
-window.__catlakGmNavCleanupTest={clean:gncClean,ensureRest:gncEnsureRest,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear,openStatsWorkshop:gncOpenStatsWorkshop,closeGmToolsForStats:gncCloseGmToolsForStats};
+window.__catlakGmNavCleanupTest={clean:gncClean,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear};

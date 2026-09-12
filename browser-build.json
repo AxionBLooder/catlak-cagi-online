@@ -1,7 +1,7 @@
 {
-  "source_sha": "b542e41fbd4ccf1247253617cc7a05d1e0ebebff",
-  "sha256": "b1ee9ac7b3349211ff513f3984c9c1698cd830126989b74625ac24295ab86269",
-  "bytes": 367390,
-  "format": "iife-es2018-browser-verified-single-owner-minified",
-  "audit_trigger": "full-site-audit-2026-09-12-v1"
+  "source_sha": "e295197a4d2a9ddabf6d8e37e3f8e08c1b2ad0c5",
+  "sha256": "32e45e3b04f82704f5f235a99b2aeea918db6f55323f50d9f3c3aebca86afec4",
+  "bytes": 366432,
+  "format": "iife-es2018-browser-verified-single-client-minified",
+  "sanity_trigger": "equipment-toggle-no-reset-v1"
 }

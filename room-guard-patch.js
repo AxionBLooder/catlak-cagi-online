@@ -14,8 +14,7 @@ if(!document.querySelector('#crg-gm-center-scope-style')){
   const s=document.createElement('style');
   s.id='crg-gm-center-scope-style';
   s.textContent=`
-    #app [data-gm2-centerbar]{display:none!important}
-    #app:has(main .gmt-shell) [data-gm2-centerbar]{display:flex!important}
+    #app.gm2-gm [data-gm2-centerbar]{display:flex!important;pointer-events:auto!important}
   `;
   document.head.appendChild(s);
 }
