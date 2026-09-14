@@ -55,11 +55,13 @@ jobs:
           for file in _site/*.js; do node --check "$file"; done
 
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
-          grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v5&no-reset-v1' _site/index.html
+          grep -Fq 'stat-editor-hardfix.js?v=statfix-v1' _site/index.html
+          grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v6&stat-interaction-v1' _site/index.html
           grep -Fq 'stat-roll-patch.js?v=statroll-v3&no-reset-v1' _site/index.html
           grep -Fq 'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1' _site/index.html
-          grep -Fq 'browser-app.js?v=bootwatch-234-no-reset-v1' _site/index.html
+          grep -Fq 'browser-app.js?v=bootwatch-235-stat-interaction-v1' _site/index.html
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
+          grep -Fq '__catlakStatEditorHardfix' _site/stat-editor-hardfix.js
           ! grep -Fq 'slot-sync-hotfix.js' _site/battle-ready-clean-patch.js
           ! grep -Fq 'player-sheet-final-patch.js' _site/player-sheet-final-loader.js
           ! grep -Fq 'data-a="equip"' _site/player-live-actions-patch.js
