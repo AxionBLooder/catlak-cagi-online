@@ -37,7 +37,7 @@ jobs:
           import re
 
           html = Path('index.html').read_text(encoding='utf-8')
-          files = {'browser-app.js'}
+          files = {'browser-app.js', 'gm-campaign-state-patch.js'}
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
 
@@ -48,12 +48,16 @@ jobs:
           for name in sorted(files):
               Path('_site', name).write_bytes(Path(name).read_bytes())
 
+          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v1"></script></body>')
+          Path('_site/index.html').write_text(live_html, encoding='utf-8')
+
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
           PY
 
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
+          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v1' _site/index.html
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
           grep -Fq 'stat-editor-hardfix.js?v=statfix-v1' _site/index.html
           grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v6&stat-interaction-v1' _site/index.html
@@ -61,6 +65,7 @@ jobs:
           grep -Fq 'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1' _site/index.html
           grep -Fq 'browser-app.js?v=bootwatch-235-stat-interaction-v1' _site/index.html
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
+          grep -Fq '__catlakCampaignStateTest' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakStatEditorHardfix' _site/stat-editor-hardfix.js
           ! grep -Fq 'slot-sync-hotfix.js' _site/battle-ready-clean-patch.js
           ! grep -Fq 'player-sheet-final-patch.js' _site/player-sheet-final-loader.js
