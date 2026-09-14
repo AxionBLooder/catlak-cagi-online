@@ -1,7 +1,6 @@
 {
-  "source_sha": "e295197a4d2a9ddabf6d8e37e3f8e08c1b2ad0c5",
-  "sha256": "32e45e3b04f82704f5f235a99b2aeea918db6f55323f50d9f3c3aebca86afec4",
-  "bytes": 366432,
-  "format": "iife-es2018-browser-verified-single-client-minified",
-  "sanity_trigger": "equipment-toggle-no-reset-v1"
+  "source_sha": "e5d17367549dcdd322dfbb87bf97d94c12d195ad",
+  "sha256": "c181b3a35ceda223397a64057f022f9affecc323835bffeea855289a4a14708b",
+  "bytes": 368641,
+  "format": "iife-es2018-browser-verified-single-owner-minified"
 }
