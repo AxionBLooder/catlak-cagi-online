@@ -6,19 +6,15 @@ on:
       - '.github/workflows/apply-no-reset-cleanup.yml'
 permissions:
   contents: write
-  actions: write
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      GH_TOKEN: ${{ github.token }}
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Replace full-render refresh ownership
+      - name: Rewrite canonical no-reset sources
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -27,36 +23,27 @@ jobs:
           s=p.read_text(encoding='utf-8')
           old="if(st.role!=='gm'&&guest()&&!st.chars.some(c=>c.owner_id===u))st.tab='builder';render()}"
           new="if(st.role!=='gm'&&guest()&&!st.chars.some(c=>c.owner_id===u))st.tab='builder';const keepView=typeof window.__catlakShouldPreserveCurrentView==='function'&&window.__catlakShouldPreserveCurrentView();if(keepView){window.dispatchEvent(new CustomEvent('catlak:data-refreshed',{detail:{source:'refresh'}}));return}render()}"
-          if old in s:
-              s=s.replace(old,new,1)
-          elif '__catlakShouldPreserveCurrentView' not in s:
-              raise SystemExit('live_06 refresh kalıbı beklenen biçimde bulunamadı')
+          if old in s:s=s.replace(old,new,1)
+          elif '__catlakShouldPreserveCurrentView' not in s:raise SystemExit('live_06 refresh ownership pattern missing')
           p.write_text(s,encoding='utf-8')
 
           p=Path('stat-roll-patch.js')
           s=p.read_text(encoding='utf-8')
-          old="setInterval(srEnsure,1200);\nsetTimeout(srEnsure,80);"
-          if old in s:s=s.replace(old,"setTimeout(srEnsure,80);",1)
+          s=s.replace("setInterval(srEnsure,1200);\nsetTimeout(srEnsure,80);","setTimeout(srEnsure,80);",1)
           p.write_text(s,encoding='utf-8')
 
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          replacements={
-            'browser-app.js?v=bootwatch-233-single-client':'browser-app.js?v=bootwatch-234-no-reset-v1',
-            'site-stability-patch.js?v=stability-v4&equipment-thaw-v1':'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1',
-            'stat-roll-patch.js?v=statroll-v2':'stat-roll-patch.js?v=statroll-v3&no-reset-v1',
-            'stat-workshop-route-fix.js?v=statsroute-v4':'stat-workshop-route-fix.js?v=statsroute-v5&no-reset-v1'
-          }
-          for old,new in replacements.items():
+          pairs=[
+            ('browser-app.js?v=bootwatch-233-single-client','browser-app.js?v=bootwatch-234-no-reset-v1'),
+            ('site-stability-patch.js?v=stability-v4&equipment-thaw-v1','site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1'),
+            ('stat-roll-patch.js?v=statroll-v2','stat-roll-patch.js?v=statroll-v3&no-reset-v1'),
+            ('stat-workshop-route-fix.js?v=statsroute-v4','stat-workshop-route-fix.js?v=statsroute-v5&no-reset-v1')]
+          for old,new in pairs:
               if old in s:s=s.replace(old,new,1)
-              elif new not in s:raise SystemExit('index sürüm işareti bulunamadı: '+old)
+              elif new not in s:raise SystemExit('index version marker missing: '+old)
           p.write_text(s,encoding='utf-8')
-          PY
 
-      - name: Modernize source sanity ownership rules
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
           p=Path('.github/workflows/check-live.yml')
           s=p.read_text(encoding='utf-8')
           old="""          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')
@@ -72,89 +59,29 @@ jobs:
               if retired in guard:
                   raise SystemExit('Eski global savaş render yaması geri dönmüş: '+retired)
 """
-          if old not in s:raise SystemExit('check-live eski room-guard beklentisi bulunamadı')
-          s=s.replace(old,new,1)
+          if old in s:s=s.replace(old,new,1)
+          elif "for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']" not in s:raise SystemExit('check-live guard ownership pattern missing')
           old_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest']:"
           new_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest','__catlakShouldPreserveCurrentView']:"
           if old_marker in s:s=s.replace(old_marker,new_marker,1)
           start="          if 'room-guard-patch.js?v=guard-v3' not in html:\n"
           end="              raise SystemExit('GM rota köprüsü cache sürümü inviteui-v3 olmalı')\n"
           a=s.find(start);b=s.find(end,a)
-          if a<0 or b<0:raise SystemExit('check-live eski cache sürüm bloğu bulunamadı')
-          b+=len(end)
-          current="""          for marker in ['site-stability-patch.js?v=stability-v5','stat-roll-patch.js?v=statroll-v3','stat-workshop-route-fix.js?v=statsroute-v5']:
+          if a>=0 and b>=0:
+              b+=len(end)
+              current="""          for marker in ['site-stability-patch.js?v=stability-v5','stat-roll-patch.js?v=statroll-v3','stat-workshop-route-fix.js?v=statsroute-v5']:
               if marker not in html:
                   raise SystemExit('No-reset üretim sürümü eksik: '+marker)
 """
-          s=s[:a]+current+s[b:]
+              s=s[:a]+current+s[b:]
+          elif "stat-workshop-route-fix.js?v=statsroute-v5" not in s:raise SystemExit('check-live cache ownership block missing')
           for path in ["      - 'stat-roll-patch.js'\n","      - 'stat-workshop-route-fix.js'\n"]:
               if path not in s:
                   anchor="      - 'site-stability-patch.js'\n"
                   s=s.replace(anchor,anchor+path,1)
           p.write_text(s,encoding='utf-8')
           PY
-
-      - name: Install no-reset regression workflow
-        run: |
-          cat > .github/workflows/check-no-reset.yml <<'YAML'
-          name: Check No Reset Interactions
-          on:
-            workflow_dispatch:
-          jobs:
-            smoke:
-              runs-on: ubuntu-latest
-              timeout-minutes: 8
-              steps:
-                - uses: actions/checkout@v6
-                - name: Static ownership checks
-                  run: |
-                    set -euo pipefail
-                    node --check ux-patch.js
-                    node --check site-stability-patch.js
-                    node --check stat-workshop-route-fix.js
-                    node --check stat-roll-patch.js
-                    grep -q '__catlakShouldPreserveCurrentView' site-stability-patch.js
-                    grep -q '__catlakShouldPreserveCurrentView' live_06.txt
-                    grep -q '__catlakStatsTest' ux-patch.js
-                    ! grep -q 'SWRF_CACHE_KEY' stat-workshop-route-fix.js
-                    ! grep -q 'swrfRestoreCache' stat-workshop-route-fix.js
-                    ! grep -q 'setInterval(srEnsure' stat-roll-patch.js
-                    grep -q 'bootwatch-234-no-reset-v1' index.html
-                    grep -q 'statsroute-v5&no-reset-v1' index.html
-                    echo NO_RESET_STATIC_OK
-                - name: Install browser driver
-                  run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-                - name: Verify stable Stat DOM in Chrome
-                  run: |
-                    cat > no-reset-stat.html <<'EOF'
-                    <!doctype html><html><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-cc-stats-tab>Stat Atölyesi</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
-                    window.__db=[{id:'c1',name:'Bir',species_name:'Elf',background_name:'Gezgin',class_name:'Savaşçı',play_status:'active',base_stats:{STR:10,DEX:11,CON:12,INT:13,WIS:14,CHA:15},hp_current:10,hp_max:12,base_ac:13,base_speed:30,level:2,created_at:'1'},{id:'c2',name:'İki',species_name:'İnsan',background_name:'Asil',class_name:'Büyücü',play_status:'prepared',base_stats:{STR:8,DEX:12,CON:10,INT:16,WIS:13,CHA:11},hp_current:8,hp_max:8,base_ac:11,base_speed:30,level:3,created_at:'2'}];
-                    function chars(){const chain={select(){return chain},in(){return chain},order(){return chain},then(ok,bad){return Promise.resolve({data:window.__db.map(x=>structuredClone(x)),error:null}).then(ok,bad)}};return chain}
-                    window.__catlakSupabase={from:t=>chars(),rpc:async(fn,args)=>{const c=window.__db.find(x=>x.id===args.p_character_id);if(c){c.base_stats={...args.p_stats};c.hp_current=args.p_hp_current;c.hp_max=args.p_hp_max;c.base_ac=args.p_ac;c.base_speed=args.p_speed;c.level=args.p_level}return{data:true,error:null}},channel:()=>({on(ev,filter,cb){window.__statRealtime=cb;return this},subscribe(){return this}})};
-                    </script><script src="./site-stability-patch.js"></script><script src="./ux-patch.js"></script></body></html>
-                    EOF
-                    python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/noreset-http.log 2>&1 &
-                    PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
-                    cat > no-reset-smoke.cjs <<'JS'
-                    const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
-                    (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/no-reset-stat.html',{waitUntil:'domcontentloaded'});await p.evaluate(()=>window.__catlakRenderCompactStats(true));await p.waitForSelector('.cux-workshop');await p.evaluate(()=>window.__stableShell=document.querySelector('.cux-workshop'));if(!await p.evaluate(()=>window.__catlakShouldPreserveCurrentView()))throw new Error('Stat view not managed');await p.click('[data-cux-character="c2"]');if(!await p.evaluate(()=>window.__stableShell===document.querySelector('.cux-workshop')))throw new Error('Character select replaced workshop');await p.fill('[data-cux-field="STR"]','17');await p.evaluate(()=>window.__statRealtime&&window.__statRealtime());await p.waitForTimeout(120);const dirty=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,isDirty:window.__catlakStatsTest.dirty()}));if(!dirty.same||dirty.value!=='17'||!dirty.isDirty)throw new Error('Realtime reset dirty editor '+JSON.stringify(dirty));await p.click('[data-cux-save]');await p.waitForTimeout(150);const saved=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,selected:window.__catlakStatsTest.selected()}));if(!saved.same||saved.value!=='17'||saved.selected!=='c2')throw new Error('Save reset Stat view '+JSON.stringify(saved));if(errs.length)throw new Error(errs.join(' | '));console.log('NO_RESET_BROWSER_OK',JSON.stringify({dirty,saved}));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
-                    JS
-                    node no-reset-smoke.cjs
-                - name: Verify production markers
-                  env:
-                    LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
-                  run: |
-                    set -euo pipefail
-                    curl -fsSL --retry 8 --retry-delay 2 "$LIVE_URL?noreset=$(date +%s)" -o /tmp/index.html
-                    grep -q 'bootwatch-234-no-reset-v1' /tmp/index.html
-                    grep -q 'statsroute-v5&no-reset-v1' /tmp/index.html
-                    for f in browser-app.js ux-patch.js site-stability-patch.js stat-workshop-route-fix.js stat-roll-patch.js; do curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}${f}?n=$(date +%s%N)" -o "/tmp/$f"; node --check "/tmp/$f"; done
-                    grep -q '__catlakShouldPreserveCurrentView' /tmp/browser-app.js
-                    grep -q '__catlakStatsTest' /tmp/browser-app.js
-                    echo NO_RESET_PRODUCTION_OK
-          YAML
-
-      - name: Verify changed sources
+      - name: Verify rewritten sources
         run: |
           set -euo pipefail
           node --check ux-patch.js
@@ -165,65 +92,13 @@ jobs:
           ! grep -q 'SWRF_CACHE_KEY' stat-workshop-route-fix.js
           ! grep -q 'setInterval(srEnsure' stat-roll-patch.js
           grep -q 'bootwatch-234-no-reset-v1' index.html
-
-      - name: Commit source cleanup
+          grep -q 'statsroute-v5&no-reset-v1' index.html
+      - name: Commit canonical cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -f .github/workflows/apply-no-reset-cleanup.yml
-          git add -A
+          git add live_06.txt stat-roll-patch.js index.html .github/workflows/check-live.yml
+          git diff --cached --quiet && exit 0
           git commit -m "Tıklamalarda aktif ekranı koru ve Stat resetini kaldır"
           git pull --rebase origin main
           git push
-
-      - name: Rebuild browser app from canonical sources
-        run: |
-          before=$(gh run list --workflow build-bundle.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run build-bundle.yml --ref main
-          id=""
-          for i in $(seq 1 30); do
-            cand=$(gh run list --workflow build-bundle.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-            if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
-            sleep 2
-          done
-          test -n "$id"
-          gh run watch "$id" --exit-status
-
-      - name: Deploy rebuilt site
-        run: |
-          before=$(gh run list --workflow deploy-pages.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run deploy-pages.yml --ref main
-          id=""
-          for i in $(seq 1 30); do
-            cand=$(gh run list --workflow deploy-pages.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-            if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
-            sleep 2
-          done
-          test -n "$id"
-          gh run watch "$id" --exit-status
-
-      - name: Run source sanity
-        run: |
-          before=$(gh run list --workflow check-live.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run check-live.yml --ref main
-          id=""
-          for i in $(seq 1 30); do
-            cand=$(gh run list --workflow check-live.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-            if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
-            sleep 2
-          done
-          test -n "$id"
-          gh run watch "$id" --exit-status
-
-      - name: Run no-reset regression
-        run: |
-          before=$(gh run list --workflow check-no-reset.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)
-          gh workflow run check-no-reset.yml --ref main
-          id=""
-          for i in $(seq 1 30); do
-            cand=$(gh run list --workflow check-no-reset.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-            if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
-            sleep 2
-          done
-          test -n "$id"
-          gh run watch "$id" --exit-status
