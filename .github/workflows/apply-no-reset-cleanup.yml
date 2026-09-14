@@ -47,54 +47,6 @@ jobs:
               elif new not in s:
                   raise SystemExit('index version marker missing: '+old)
           p.write_text(s,encoding='utf-8')
-
-          p=Path('.github/workflows/check-live.yml')
-          s=p.read_text(encoding='utf-8')
-          old='\n'.join([
-              "          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')",
-              "          for marker in ['__catlakBattleInnerHtmlStabilityInstalled','crg-gm-center-scope-style','__catlakBattleRenderSuppressed']:",
-              "              if marker not in guard:",
-              "                  raise SystemExit('Savaş/GM Merkezi stabilite işareti eksik: '+marker)",
-              '' ])
-          new='\n'.join([
-              "          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')",
-              "          for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']:",
-              "              if marker not in guard:",
-              "                  raise SystemExit('Oda koruma işareti eksik: '+marker)",
-              "          for retired in ['__catlakBattleInnerHtmlStabilityInstalled','__catlakBattleRenderSuppressed']:",
-              "              if retired in guard:",
-              "                  raise SystemExit('Eski global savaş render yaması geri dönmüş: '+retired)",
-              '' ])
-          if old in s:
-              s=s.replace(old,new,1)
-          elif "for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']" not in s:
-              raise SystemExit('check-live guard ownership pattern missing')
-
-          old_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest']:"
-          new_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest','__catlakShouldPreserveCurrentView']:"
-          if old_marker in s:
-              s=s.replace(old_marker,new_marker,1)
-
-          start="          if 'room-guard-patch.js?v=guard-v3' not in html:\n"
-          end="              raise SystemExit('GM rota köprüsü cache sürümü inviteui-v3 olmalı')\n"
-          a=s.find(start)
-          b=s.find(end,a)
-          if a>=0 and b>=0:
-              b+=len(end)
-              current='\n'.join([
-                  "          for marker in ['site-stability-patch.js?v=stability-v5','stat-roll-patch.js?v=statroll-v3','stat-workshop-route-fix.js?v=statsroute-v5']:",
-                  "              if marker not in html:",
-                  "                  raise SystemExit('No-reset üretim sürümü eksik: '+marker)",
-                  '' ])
-              s=s[:a]+current+s[b:]
-          elif "stat-workshop-route-fix.js?v=statsroute-v5" not in s:
-              raise SystemExit('check-live cache ownership block missing')
-
-          for path in ["      - 'stat-roll-patch.js'\n","      - 'stat-workshop-route-fix.js'\n"]:
-              if path not in s:
-                  anchor="      - 'site-stability-patch.js'\n"
-                  s=s.replace(anchor,anchor+path,1)
-          p.write_text(s,encoding='utf-8')
           PY
       - name: Verify rewritten sources
         run: |
@@ -112,7 +64,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add live_06.txt stat-roll-patch.js index.html .github/workflows/check-live.yml
+          git add live_06.txt stat-roll-patch.js index.html
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Tıklamalarda aktif ekranı koru ve Stat resetini kaldır"
           git pull --rebase origin main
