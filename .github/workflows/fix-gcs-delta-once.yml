@@ -1,5 +1,6 @@
 name: Fix Campaign Delta Once
 
+# trigger: pointer-v2
 on:
   push:
     branches: [main]
