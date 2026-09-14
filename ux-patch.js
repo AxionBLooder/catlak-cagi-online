@@ -3,7 +3,7 @@ const CUX_APP=document.querySelector('#app');
 if(!CUX_S||!CUX_APP)throw new Error('Çatlak Çağı UX katmanı başlatılamadı.');
 
 const CUX_STATS=['STR','DEX','CON','INT','WIS','CHA'];
-const cuxH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cuxH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const cuxTxt=e=>String(e?.textContent||'').trim();
 const cuxIsGM=()=>cuxTxt(CUX_APP.querySelector('.role'))==='GM';
 const cuxStatsActive=()=>!!CUX_APP.querySelector('[data-cc-stats-tab].on');
@@ -13,7 +13,7 @@ let cuxChars=[],cuxSelected='',cuxBusy=false,cuxSeq=0,cuxDirty=false;
 const cuxCss=`
 .cux-route-loading{min-height:280px;display:flex;align-items:center;justify-content:center;text-align:center}.cux-route-loading .cux-pulse{width:11px;height:11px;border-radius:50%;background:var(--cyan);display:inline-block;margin-right:8px;box-shadow:0 0 0 0 #69d7ff66;animation:cuxPulse 1.15s infinite}@keyframes cuxPulse{70%{box-shadow:0 0 0 12px #69d7ff00}}
 .cux-workshop{display:grid;grid-template-columns:minmax(220px,.56fr) minmax(0,1.44fr);gap:16px;align-items:start}.cux-character-list{display:grid;gap:8px;max-height:68vh;overflow:auto;padding-right:4px}.cux-character-btn{width:100%;text-align:left;padding:11px 12px!important;border:1px solid var(--line)!important;border-radius:12px!important;background:#07111d!important}.cux-character-btn.on{border-color:var(--cyan)!important;background:#102437!important;box-shadow:0 0 0 2px #69d7ff14}.cux-character-btn b{display:block;font-size:.95rem}.cux-character-btn small{display:block;color:var(--muted);margin-top:3px}.cux-character-btn .cux-state{float:right;font-size:.62rem;letter-spacing:.07em;color:var(--gold)}
-.cux-editor{position:sticky;top:12px;border-color:#34516d!important}.cux-editor-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.cux-editor-head h2{margin:.15em 0}.cux-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 16px}.cux-vital-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.cux-field{display:block;font-size:.68rem;color:var(--muted);letter-spacing:.04em}.cux-field input{margin-top:4px;text-align:center;font-weight:900;padding:9px 7px}.cux-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.cux-mini-note{font-size:.8rem;color:var(--muted);margin:5px 0 0}.cux-compact-hero{padding-top:16px!important;padding-bottom:16px!important}.cux-compact-hero h1{margin:.1em 0 .2em}
+.cux-editor{position:sticky;top:12px;border-color:#34516d!important;z-index:1}.cux-editor-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.cux-editor-head h2{margin:.15em 0}.cux-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 16px}.cux-vital-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.cux-field{display:block;font-size:.68rem;color:var(--muted);letter-spacing:.04em}.cux-field-name{display:block;margin-bottom:4px}.cux-number-control{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;gap:4px;align-items:center;position:relative;z-index:4}.cux-number-control input{margin:0!important;text-align:center;font-weight:900;padding:9px 5px!important;min-width:0!important;pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text!important;position:relative!important;z-index:5!important;touch-action:manipulation}.cux-number-control button{width:30px!important;min-width:30px!important;height:38px!important;min-height:38px!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:1.05rem!important;font-weight:900!important;line-height:1!important;pointer-events:auto!important;position:relative!important;z-index:6!important}.cux-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.cux-mini-note{font-size:.8rem;color:var(--muted);margin:5px 0 0}.cux-compact-hero{padding-top:16px!important;padding-bottom:16px!important}.cux-compact-hero h1{margin:.1em 0 .2em}
 @media(max-width:900px){.cux-workshop{grid-template-columns:1fr}.cux-character-list{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr))}.cux-editor{position:static}.cux-stat-grid{grid-template-columns:repeat(3,1fr)}.cux-vital-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.cux-character-list{grid-template-columns:1fr}.cux-stat-grid,.cux-vital-grid{grid-template-columns:repeat(2,1fr)}}
 `;
@@ -26,7 +26,7 @@ function cuxRouteLoading(label='Sayfa'){
 }
 window.__catlakRouteLoading=cuxRouteLoading;
 
-function cuxField(key,value,min,max,label=key){return`<label class="cux-field">${cuxH(label)}<input type="number" min="${min}" max="${max}" data-cux-field="${key}" value="${Number(value??0)}"></label>`}
+function cuxField(key,value,min,max,label=key){return`<label class="cux-field"><span class="cux-field-name">${cuxH(label)}</span><span class="cux-number-control"><button type="button" aria-label="${cuxH(label)} azalt" data-cux-step="${key}" data-cux-delta="-1">−</button><input type="number" min="${min}" max="${max}" data-cux-field="${key}" value="${Number(value??0)}"><button type="button" aria-label="${cuxH(label)} artır" data-cux-step="${key}" data-cux-delta="1">+</button></span></label>`}
 function cuxStatus(c){return c.play_status==='active'?'CANLI':'HAZIR'}
 function cuxCharButton(c){const on=c.id===cuxSelected?' on':'';return`<button type="button" class="cux-character-btn${on}" data-cux-character="${c.id}"><span class="cux-state">${cuxStatus(c)}</span><b>${cuxH(c.name)}</b><small>${cuxH(c.species_name||'')} • ${cuxH(c.class_name||'')} ${Number(c.level||1)}</small></button>`}
 function cuxEditor(c){
@@ -41,7 +41,7 @@ function cuxPaint({rebuildList=true,refreshEditor=!cuxDirty}={}){
   const selected=cuxCurrent();if(selected)cuxSelected=selected.id;
   let workshop=main.querySelector('.cux-workshop');
   if(!workshop||main.dataset.cuxPage!=='stats'){
-    main.innerHTML=`<section class="card ccx-hero cux-compact-hero"><div class="eyebrow">GM • STAT ATÖLYESİ</div><h1>Hızlı Karakter Düzenleme</h1><p class="muted">Soldan karakteri seç, sağdan değerleri değiştir ve kaydet. Ekran seçimlerde baştan kurulmaz; sadece gerekli panel güncellenir.</p></section><div class="cux-workshop"><aside class="card"><div class="eyebrow">KARAKTERLER</div><h3>Hazır & Canlı</h3><div class="cux-character-list">${cuxChars.length?cuxChars.map(cuxCharButton).join(''):'<div class="cc-empty">Karakter yok.</div>'}</div></aside>${cuxEditor(selected)}</div>`;
+    main.innerHTML=`<section class="card ccx-hero cux-compact-hero"><div class="eyebrow">GM • STAT ATÖLYESİ</div><h1>Hızlı Karakter Düzenleme</h1><p class="muted">Soldan karakteri seç, sağdan değerleri değiştir ve kaydet. Değerleri kutuya yazarak ya da − / + düğmeleriyle değiştirebilirsin; düzenleme sırasında ekran yenilenmez.</p></section><div class="cux-workshop"><aside class="card"><div class="eyebrow">KARAKTERLER</div><h3>Hazır & Canlı</h3><div class="cux-character-list">${cuxChars.length?cuxChars.map(cuxCharButton).join(''):'<div class="cc-empty">Karakter yok.</div>'}</div></aside>${cuxEditor(selected)}</div>`;
     main.dataset.cuxPage='stats';cuxDirty=false;return;
   }
   const list=workshop.querySelector('.cux-character-list');
@@ -79,6 +79,25 @@ async function cuxRenderStats(force=false){
 }
 window.__catlakRenderCompactStats=cuxRenderStats;
 
+function cuxEnableInput(input){
+  if(!input?.matches?.('[data-cux-editor] input[data-cux-field]'))return null;
+  input.disabled=false;input.readOnly=false;input.removeAttribute('disabled');input.removeAttribute('readonly');input.style.pointerEvents='auto';
+  return input;
+}
+function cuxFocusInput(input){
+  input=cuxEnableInput(input);if(!input)return;
+  cuxDirty=true;
+  queueMicrotask(()=>{if(input.isConnected&&document.activeElement!==input){try{input.focus({preventScroll:true})}catch{input.focus()}}});
+}
+function cuxStep(btn){
+  const editor=btn?.closest?.('[data-cux-editor]');if(!editor)return;
+  const key=String(btn.dataset.cuxStep||''),input=editor.querySelector(`[data-cux-field="${CSS.escape(key)}"]`);if(!input)return;
+  cuxEnableInput(input);
+  const delta=Number(btn.dataset.cuxDelta||0),min=Number(input.min),max=Number(input.max),current=Number(input.value||0);
+  let next=current+delta;if(Number.isFinite(min))next=Math.max(min,next);if(Number.isFinite(max))next=Math.min(max,next);
+  input.value=String(next);cuxDirty=true;input.dispatchEvent(new Event('input',{bubbles:true}));cuxFocusInput(input);
+}
+
 async function cuxSave(id){
   if(!cuxIsGM())return;const editor=CUX_APP.querySelector(`[data-cux-editor="${CSS.escape(String(id))}"]`);if(!editor)return;
   const val=k=>Number(editor.querySelector(`[data-cux-field="${k}"]`)?.value);
@@ -91,14 +110,20 @@ async function cuxSave(id){
   }catch(e){cuxToast('Kaydedilemedi: '+(e?.message||String(e)))}finally{if(btn?.isConnected){btn.disabled=false;btn.textContent='Kaydet'}}
 }
 
+document.addEventListener('pointerdown',e=>{
+  const input=e.target?.closest?.('[data-cux-editor] input[data-cux-field]');if(input)cuxFocusInput(input);
+},true);
 document.addEventListener('click',e=>{
+  const input=e.target?.closest?.('[data-cux-editor] input[data-cux-field]');if(input){cuxFocusInput(input);return}
+  const step=e.target.closest?.('[data-cux-step]');if(step){e.preventDefault();e.stopImmediatePropagation();cuxStep(step);return}
   const nav=e.target.closest?.('#app .nav button');
   if(nav&&!nav.classList.contains('on')&&!nav.matches('[data-cc-world-tab],[data-cc-stats-tab],[data-cc-map-tab]'))cuxRouteLoading(cuxTxt(nav)||'Sayfa');
-  const pick=e.target.closest?.('[data-cux-character]');if(pick){e.preventDefault();cuxSelect(pick.dataset.cuxCharacter);return}
-  const save=e.target.closest?.('[data-cux-save]');if(save){e.preventDefault();cuxSave(save.dataset.cuxSave);return}
+  const pick=e.target.closest?.('[data-cux-character]');if(pick){e.preventDefault();e.stopImmediatePropagation();cuxSelect(pick.dataset.cuxCharacter);return}
+  const save=e.target.closest?.('[data-cux-save]');if(save){e.preventDefault();e.stopImmediatePropagation();cuxSave(save.dataset.cuxSave);return}
 },true);
 document.addEventListener('input',e=>{if(e.target?.closest?.('[data-cux-editor]')&&e.target.matches?.('input'))cuxDirty=true},true);
+document.addEventListener('change',e=>{if(e.target?.closest?.('[data-cux-editor]')&&e.target.matches?.('input'))cuxDirty=true},true);
 
 CUX_S.channel('cux-stats-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(cuxStatsActive())cuxRenderStats(true)}).subscribe();
 
-window.__catlakStatsTest={render:cuxRenderStats,select:cuxSelect,shell:()=>CUX_APP.querySelector('main .cux-workshop'),selected:()=>cuxSelected,dirty:()=>cuxDirty};
+window.__catlakStatsTest={render:cuxRenderStats,select:cuxSelect,shell:()=>CUX_APP.querySelector('main .cux-workshop'),selected:()=>cuxSelected,dirty:()=>cuxDirty,step:cuxStep,focus:cuxFocusInput};
