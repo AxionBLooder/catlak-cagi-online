@@ -12,10 +12,23 @@ function gmcrRole(){return String(GMCR_APP.querySelector('.role')?.textContent||
 function gmcrIsGM(){return gmcrRole()==='GM'||!!GMCR_APP.querySelector('[data-gm2-centerbar]')}
 function gmcrButton(target){return target?.closest?.('#app [data-gm2-route]')||null}
 function gmcrToast(text){const t=document.getElementById('toast');if(!t)return;t.textContent=String(text);t.classList.remove('hidden');clearTimeout(gmcrToast.t);gmcrToast.t=setTimeout(()=>t.classList.add('hidden'),3600)}
+function gmcrCenterOpen(){
+  const selected=String(window.__catlakGmCenterSelectedRoute||'');
+  if(GMCR_ROUTES.has(selected))return true;
+  if(window.__catlakGmToolsOpen===true)return true;
+  if(window.__catlakCreatureLibraryOpen===true)return true;
+  if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return true;
+  return false;
+}
 
 function gmcrMakeButtonsClickable(){
-  const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
-  bar.style.display='flex';
+  const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
+  const center=GMCR_APP.querySelector('.nav [data-gmt-open]');
+  const open=gmcrCenterOpen();
+  if(center)center.classList.toggle('gm2-center-active',open);
+  if(!bar)return;
+  bar.style.display=open?'flex':'none';
+  if(!open)return;
   bar.style.pointerEvents='auto';
   bar.style.position='sticky';bar.style.top='6px';
   bar.style.zIndex='2147483000';
@@ -113,6 +126,7 @@ window.addEventListener('click',e=>{
   if(e.isTrusted&&e.target?.closest?.('#app .nav button')){
     window.__catlakGmCenterSelectedRoute='';
     gmcrToken++;
+    setTimeout(gmcrMakeButtonsClickable,0);
   }
 },true);
 
@@ -131,5 +145,6 @@ window.__catlakGmCenterRouterCore={
   current:gmcrLogicalRoute,
   select:gmcrSelect,
   makeClickable:gmcrMakeButtonsClickable,
-  reset:()=>{gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;gmcrToken++;window.__catlakGmCenterSelectedRoute=''}
+  centerOpen:gmcrCenterOpen,
+  reset:()=>{gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;gmcrToken++;window.__catlakGmCenterSelectedRoute='';gmcrMakeButtonsClickable()}
 };
