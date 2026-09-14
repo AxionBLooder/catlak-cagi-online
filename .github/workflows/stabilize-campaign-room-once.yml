@@ -82,6 +82,13 @@ jobs:
           replace_once('gm-center-router-core.js',
               "window.__catlakGmCenterRouterCore={",
               "window.__catlakCampaignRouterStableV3=true;\nwindow.__catlakGmCenterRouterCore={")
+
+          replace_once('index.html',
+              'gm-center-router-core.js?v=gmrouter-v5',
+              'gm-center-router-core.js?v=gmrouter-v6-campaign')
+          replace_once('index.html',
+              'gm-hub-v2-patch.js?v=gmhub-v7',
+              'gm-hub-v2-patch.js?v=gmhub-v8-campaign')
           PY
 
           node --check gm-campaign-state-patch.js
@@ -91,15 +98,17 @@ jobs:
           grep -Fq '__catlakCampaignRoomStableV3=true' gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignHubStableV3=true' gm-hub-v2-patch.js
           grep -Fq '__catlakCampaignRouterStableV3=true' gm-center-router-core.js
+          grep -Fq 'gm-center-router-core.js?v=gmrouter-v6-campaign' index.html
+          grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v8-campaign' index.html
 
       - name: Commit stabilized ownership
         run: |
-          if git diff --quiet -- gm-campaign-state-patch.js gm-hub-v2-patch.js gm-center-router-core.js; then
+          if git diff --quiet -- gm-campaign-state-patch.js gm-hub-v2-patch.js gm-center-router-core.js index.html; then
             echo 'No source change needed.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add gm-campaign-state-patch.js gm-hub-v2-patch.js gm-center-router-core.js
-          git commit -m 'Kampanya odası route sahipliğini stabilize et'
+          git add gm-campaign-state-patch.js gm-hub-v2-patch.js gm-center-router-core.js index.html
+          git commit -m 'Kampanya odası cache ve route sahipliğini stabilize et'
           git push
