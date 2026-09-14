@@ -9,7 +9,7 @@ let gmcrPointerRoute='';
 let gmcrPointerAt=0;
 
 function gmcrRole(){return String(GMCR_APP.querySelector('.role')?.textContent||'').trim()}
-function gmcrIsGM(){return gmcrRole()==='GM'||!!GMCR_APP.querySelector('[data-gm2-centerbar]')}
+function gmcrIsGM(){return gmcrRole()==='GM'}
 function gmcrButton(target){return target?.closest?.('#app [data-gm2-route]')||null}
 function gmcrToast(text){const t=document.getElementById('toast');if(!t)return;t.textContent=String(text);t.classList.remove('hidden');clearTimeout(gmcrToast.t);gmcrToast.t=setTimeout(()=>t.classList.add('hidden'),3600)}
 function gmcrCenterOpen(){
@@ -21,24 +21,15 @@ function gmcrCenterOpen(){
   return false;
 }
 
+// Chrome ownership belongs to gm-hub-v2. This controller only makes an existing
+// center bar interactive; it never creates, hides or resurrects the bar itself.
 function gmcrMakeButtonsClickable(){
+  window.__catlakGmHubV2Test?.chrome?.();
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
-  const center=GMCR_APP.querySelector('.nav [data-gmt-open]');
-  const open=gmcrCenterOpen();
-  if(center)center.classList.toggle('gm2-center-active',open);
   if(!bar)return;
-  bar.style.display=open?'flex':'none';
-  if(!open)return;
   bar.style.pointerEvents='auto';
-  bar.style.position='sticky';bar.style.top='6px';
-  bar.style.zIndex='2147483000';
   bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
-    b.disabled=false;
-    b.removeAttribute('disabled');
-    b.style.pointerEvents='auto';
-    b.style.cursor='pointer';
-    b.style.position='relative';
-    b.style.zIndex='1';
+    b.disabled=false;b.removeAttribute('disabled');b.style.pointerEvents='auto';b.style.cursor='pointer';
   });
 }
 
@@ -64,6 +55,13 @@ function gmcrLogicalRoute(){
   return GMCR_ROUTES.has(native)?native:'';
 }
 
+function gmcrLeaveCenter(){
+  gmcrToken++;gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;window.__catlakGmCenterSelectedRoute='';
+  const hub=window.__catlakGmHubV2Test;
+  if(typeof hub?.leave==='function')hub.leave();
+  else{hub?.release?.();window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GMCR_APP.querySelector('[data-gm2-centerbar]')?.remove();GMCR_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active')}
+}
+
 function gmcrGo(route){
   if(!gmcrIsGM()||!GMCR_ROUTES.has(route))return false;
   gmcrSelect(route);
@@ -71,20 +69,17 @@ function gmcrGo(route){
   const run=()=>{
     if(token!==gmcrToken)return true;
     const go=window.__catlakGmHubV2Test?.route;
-    if(typeof go==='function'){
-      go(route);
-      requestAnimationFrame(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect(route)}});
-      setTimeout(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect(route)}},80);
-      return true;
-    }
-    return false;
+    if(typeof go!=='function')return false;
+    go(route);
+    requestAnimationFrame(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect(route)}});
+    return true;
   };
   if(run())return true;
   let tries=0;
   const retry=()=>{
     if(token!==gmcrToken)return;
     if(run())return;
-    if(++tries<80)setTimeout(retry,20);
+    if(++tries<30)setTimeout(retry,20);
     else gmcrToast('GM Merkezi yönlendiricisi hazır değil. Sayfayı yenileyip tekrar dene.');
   };
   setTimeout(retry,0);
@@ -102,13 +97,14 @@ function gmcrConsume(e,route){
 }
 
 window.addEventListener('pointerdown',e=>{
-  const button=gmcrButton(e.target);
-  if(!button||!gmcrIsGM())return;
   if(e.button!=null&&e.button!==0)return;
-  const route=String(button.dataset.gm2Route||'');
-  if(!GMCR_ROUTES.has(route))return;
-  gmcrPointerRoute=route;gmcrPointerAt=performance.now();
-  gmcrConsume(e,route);
+  const button=gmcrButton(e.target);
+  if(button&&gmcrIsGM()){
+    const route=String(button.dataset.gm2Route||'');if(!GMCR_ROUTES.has(route))return;
+    gmcrPointerRoute=route;gmcrPointerAt=performance.now();gmcrConsume(e,route);return;
+  }
+  const nav=e.target?.closest?.('#app .nav button');
+  if(nav&&gmcrIsGM()&&!nav.matches('[data-gmt-open]'))gmcrLeaveCenter();
 },true);
 
 window.addEventListener('click',e=>{
@@ -123,20 +119,9 @@ window.addEventListener('click',e=>{
     return;
   }
 
-  if(e.isTrusted&&e.target?.closest?.('#app .nav button')){
-    window.__catlakGmCenterSelectedRoute='';
-    gmcrToken++;
-    setTimeout(gmcrMakeButtonsClickable,0);
-  }
+  const nav=e.target?.closest?.('#app .nav button');
+  if(e.isTrusted&&nav&&gmcrIsGM()&&!nav.matches('[data-gmt-open]'))gmcrLeaveCenter();
 },true);
-
-const gmcrObserver=new MutationObserver(()=>{
-  gmcrMakeButtonsClickable();
-  const selected=String(window.__catlakGmCenterSelectedRoute||'');
-  if(GMCR_ROUTES.has(selected))gmcrSelect(selected);
-});
-gmcrObserver.observe(GMCR_APP,{childList:true,subtree:true});
-setInterval(gmcrMakeButtonsClickable,1200);
 setTimeout(gmcrMakeButtonsClickable,0);
 
 window.__catlakGmCenterRouterCore={
@@ -146,5 +131,6 @@ window.__catlakGmCenterRouterCore={
   select:gmcrSelect,
   makeClickable:gmcrMakeButtonsClickable,
   centerOpen:gmcrCenterOpen,
-  reset:()=>{gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;gmcrToken++;window.__catlakGmCenterSelectedRoute='';gmcrMakeButtonsClickable()}
+  leave:gmcrLeaveCenter,
+  reset:gmcrLeaveCenter
 };

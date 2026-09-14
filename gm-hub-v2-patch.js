@@ -47,9 +47,11 @@ function gm2EnsureChrome(){
   if(!gm2IsGM()){GM2_APP.classList.remove('gm2-gm');GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();return}
   GM2_APP.classList.add('gm2-gm');gm2PatchLegacyRender();
   const nav=GM2_APP.querySelector('.nav');if(!nav)return;
-  const center=nav.querySelector('[data-gmt-open]');if(center){if(gm2Txt(center)!=='GM Merkezi')center.textContent='GM Merkezi';center.classList.toggle('gm2-center-active',gm2HubContext())}
+  const open=gm2HubContext();
+  const center=nav.querySelector('[data-gmt-open]');if(center){if(gm2Txt(center)!=='GM Merkezi')center.textContent='GM Merkezi';center.classList.toggle('gm2-center-active',open)}
   GM2_APP.querySelectorAll('.gmt-tabs [data-abs-gm-open]').forEach(x=>x.remove());
   let bar=GM2_APP.querySelector('[data-gm2-centerbar]');
+  if(!open){bar?.remove();return}
   if(!bar){bar=document.createElement('div');bar.className='gm2-centerbar';bar.dataset.gm2Centerbar='1';nav.insertAdjacentElement('afterend',bar)}
   if(bar.dataset.gm2Stable!=='1'){
     bar.replaceChildren();
@@ -62,6 +64,7 @@ function gm2EnsureChrome(){
 }
 function gm2QueueChrome(){if(gm2ChromeQueued)return;gm2ChromeQueued=true;requestAnimationFrame(()=>{gm2ChromeQueued=false;gm2EnsureChrome();if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]'))gm2RenderAbility(false)})}
 function gm2ReleaseAbility(){gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';gm2QueueChrome()}
+function gm2LeaveCenter(){window.__catlakGmCenterSelectedRoute='';gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();GM2_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active');gm2QueueChrome()}
 function gm2OpenAbility(){
   if(!gm2IsGM())return;
   window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
@@ -138,7 +141,7 @@ async function gm2Do(fn){if(gm2ActionBusy)return;gm2ActionBusy=true;GM2_APP.quer
 
 document.addEventListener('input',e=>{if(e.target.closest?.('[data-gm2-ability-page]'))gm2Remember()},true);
 document.addEventListener('change',e=>{if(e.target.closest?.('[data-gm2-ability-page]'))gm2Remember()},true);
-document.addEventListener('pointerdown',e=>{if(e.target.closest?.('[data-gmt-sub],.nav [data-gmt-open],.nav button[data-tab],.nav [data-cc-stats-tab]')){if(!e.target.closest?.('[data-gm2-route]'))gm2ReleaseAbility()}},true);
+document.addEventListener('pointerdown',e=>{if(e.target.closest?.('[data-gm2-route]'))return;const sub=e.target.closest?.('[data-gmt-sub]');if(sub){const r=String(sub.dataset.gmtSub||'');window.__catlakGmCenterSelectedRoute=GM2_ROUTES.some(([k])=>k===r)?r:'';gm2ReleaseAbility();return}if(e.target.closest?.('.nav [data-gmt-open]')){window.__catlakGmCenterSelectedRoute='';gm2ReleaseAbility();return}if(e.target.closest?.('.nav button[data-tab],.nav [data-cc-stats-tab]')&&!(window.__catlakGmCenterRouterCore&&window.__catlakGmCenterRouterCore.active))gm2LeaveCenter()},true);
 document.addEventListener('click',e=>{
   const route=e.target.closest?.('[data-gm2-route]');if(route){e.preventDefault();e.stopImmediatePropagation();gm2Go(route.dataset.gm2Route);return}
   if(e.target.closest?.('[data-gm2-save]')){e.preventDefault();e.stopImmediatePropagation();gm2Do(gm2Save);return}
@@ -156,5 +159,5 @@ GM2_S.channel('cc-gm-hub-v2-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gm2DataCache=null;gm2DataAt=0;gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true);gm2QueueChrome()})
  .subscribe();
 setTimeout(()=>{gm2PatchLegacyRender();gm2EnsureChrome()},220);
-window.__catlakGmHubV2Test={chrome:gm2EnsureChrome,openAbility:gm2OpenAbility,renderAbility:gm2RenderAbility,route:gm2Go,release:gm2ReleaseAbility};
+window.__catlakGmHubV2Test={chrome:gm2EnsureChrome,openAbility:gm2OpenAbility,renderAbility:gm2RenderAbility,route:gm2Go,release:gm2ReleaseAbility,leave:gm2LeaveCenter,isOpen:gm2HubContext};
 setTimeout(()=>{if(gm2IsGM())gm2Load(false).catch(()=>{})},520);

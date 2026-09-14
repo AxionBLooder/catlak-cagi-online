@@ -18,41 +18,8 @@ if(!document.querySelector('#crg-gm-center-scope-style')){
   document.head.appendChild(s);
 }
 
-// Savaş Odası'nın eski ana rendererı 2.5 saniyede bir aynı base HTML'i tekrar
-// main.innerHTML'e yazıyordu. Yaratık / büyü / tur kontrolü gibi eklentiler bu sırada
-// silinip birkaç ms sonra geri geldiği için ekran gözle görünür biçimde yanıp sönüyordu.
-// Aynı base savaş HTML'i tekrar geliyorsa yazımı yut; gerçek veri değiştiğinde HTML
-// değişeceği için normal render aynen devam eder.
-if(!window.__catlakBattleInnerHtmlStabilityInstalled){
-  const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
-  if(desc?.get&&desc?.set){
-    let lastBattleBase='',lastBattleMain=null,suppressed=0;
-    const looksBattle=v=>typeof v==='string'&&(v.includes('OYUNCU • SAVAŞ ODASI')||v.includes('⚔ SAVAŞ ODASI'));
-    const currentLooksBattle=el=>{try{const v=desc.get.call(el);return typeof v==='string'&&v.includes('SAVAŞ ODASI')}catch{return false}};
-    Object.defineProperty(Element.prototype,'innerHTML',{
-      configurable:desc.configurable,
-      enumerable:desc.enumerable,
-      get:desc.get,
-      set:function(value){
-        const main=CRG_APP.querySelector('main');
-        if(this===main&&window.__catlakBattleRoomOpen===true&&looksBattle(value)){
-          if(lastBattleMain===this&&lastBattleBase===value&&currentLooksBattle(this)){
-            suppressed++;
-            window.__catlakBattleRenderSuppressed=suppressed;
-            return;
-          }
-          lastBattleMain=this;
-          lastBattleBase=value;
-        }else if(this===main&&window.__catlakBattleRoomOpen!==true){
-          lastBattleMain=null;
-          lastBattleBase='';
-        }
-        return desc.set.call(this,value);
-      }
-    });
-    window.__catlakBattleInnerHtmlStabilityInstalled=true;
-  }
-}
+// Savaş Odası artık periyodik tam-DOM yenilemesi kullanmıyor.
+// Oda verisi room-system-patch içindeki realtime akışından güncellenir.
 
 // GM özel d20/d100 zarları yalnız Zar Akışı'nda görünür.
 // Canlı Oyun Masası'ndaki eski hızlı zar kutusunu görsel olarak kaldırır;
@@ -100,10 +67,7 @@ function crgActionKey(el){
   if(el?.matches?.('[data-ccr-stat]'))return `stat:${el.dataset.ccrStat}`;
   return '';
 }
-function crgRefreshBattle(){
-  setTimeout(()=>window.__catlakRoomSystemTest?.renderBattle?.(true),80);
-  setTimeout(()=>window.__catlakRoomSystemTest?.renderBattle?.(true),450);
-}
+function crgRefreshBattle(){setTimeout(()=>window.__catlakRoomSystemTest?.renderBattle?.(true),60)}
 async function crgRunAction(el){
   const key=crgActionKey(el);if(!key||crgBusy.has(key))return;
   crgBusy.add(key);
@@ -151,4 +115,4 @@ new MutationObserver(crgSchedule).observe(CRG_APP,{childList:true,subtree:true})
 crgOrderNav();
 setTimeout(crgOrderNav,250);
 setTimeout(crgOrderNav,900);
-window.__catlakRoomGuardTest={orderNav:crgOrderNav,plan:[...CRG_NAV_PLAN],runAction:crgRunAction,battleSuppressed:()=>window.__catlakBattleRenderSuppressed||0};
+window.__catlakRoomGuardTest={orderNav:crgOrderNav,plan:[...CRG_NAV_PLAN],runAction:crgRunAction,battleSuppressed:()=>0};

@@ -8,7 +8,7 @@ const gmtTxt=e=>String(e?.textContent||'').trim();
 const gmtIsGM=()=>gmtTxt(GMT_APP.querySelector('.role'))==='GM';
 const gmtBaseTab=()=>GMT_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 const gmtToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gmtToast.t);gmtToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtRenderQueued=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false;
+let gmtOpen=false,gmtSub='combat',gmtBusy=false,gmtRenderQueued=false,gmtGen=0,gmtRuleCache=null,gmtRuleAt=0,gmtPlayerBusy=false,gmtMaintainQueued=false;
 const gmtDataCache={combat:null,events:null,logs:null};
 const gmtDataAt={combat:0,events:0,logs:0};
 const GMT_CACHE_MS=8000;
@@ -164,6 +164,9 @@ async function gmtRenderPlayerPanels(){
   }catch(e){console.warn('GMT_PLAYER_PANEL_SYNC',e)}finally{gmtPlayerBusy=false}
 }
 function gmtInvalidatePlayer(){setTimeout(()=>gmtRenderPlayerPanels(),30)}
+function gmtInvalidateSub(sub){const key=(sub==='events'||sub==='logs')?sub:'combat';gmtDataCache[key]=null;gmtDataAt[key]=0;if(gmtOpen&&gmtSub===sub&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}
+function gmtMaintain(){gmtMaintainQueued=false;gmtInjectNav();const main=GMT_APP.querySelector('main');if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){if(main&&(main.dataset.gmtTools!=='1'||main.dataset.gmtSub!==gmtSub))setTimeout(()=>gmtRender(true),0);return}if(gmtOpen)return;if(!gmtIsGM()&&gmtBaseTab()==='sheet'&&main&&!main.querySelector('[data-gmt-player-panel]'))gmtRenderPlayerPanels();if(gmtIsGM()&&gmtBaseTab()==='rolls')gmtSyncEventRules()}
+function gmtScheduleMaintain(){if(gmtMaintainQueued)return;gmtMaintainQueued=true;requestAnimationFrame(gmtMaintain)}
 
 async function gmtRuleSave(id){const v=document.querySelector('#gmt-rule-'+id)?.value.trim();if(!v)return gmtToast('Olay metni boş olamaz.');await gmtRpc('catlak_gm_update_event_rule',{p_rule_id:Number(id),p_outcome:v},()=>{gmtRuleCache=null;return'Olay kuralı kaydedildi.'})}
 
@@ -188,16 +191,11 @@ document.addEventListener('click',e=>{
 },true);
 
 
-GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}else if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
-GMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>{gmtDataCache.combat=null;gmtDataAt.combat=0;if(gmtOpen&&gmtSub==='combat'&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m)m.dataset.gmtTools='';setTimeout(()=>gmtRender(true),30)}}).subscribe();
-
-const gmtObserver=new MutationObserver(()=>{
-  gmtInjectNav();
-  if(gmtOpen&&window.__catlakGmHubOwnsMain!==true){const m=GMT_APP.querySelector('main');if(m&&(m.dataset.gmtTools!=='1'||m.dataset.gmtSub!==gmtSub))setTimeout(()=>gmtRender(true),0)}
-});
-gmtObserver.observe(GMT_APP,{childList:true,subtree:true});
-setInterval(()=>{gmtInjectNav();if(gmtOpen&&window.__catlakGmHubOwnsMain!==true)gmtRender();else if(!gmtOpen){gmtRenderPlayerPanels();gmtSyncEventRules()}},900);
-setTimeout(()=>{gmtInjectNav();gmtRenderPlayerPanels();gmtSyncEventRules()},150);
+GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{gmtInvalidateSub('combat');if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
+GMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>gmtInvalidateSub('combat')).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>gmtInvalidateSub('combat')).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gmtInvalidateSub('combat');if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
+GMT_S.channel('cc-gmt-player-equipment').on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>{if(!gmtOpen)gmtInvalidatePlayer()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>{if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
+GMT_S.channel('cc-gmt-events-logs').on('postgres_changes',{event:'*',schema:'public',table:'catlak_event_rules'},()=>{gmtRuleCache=null;gmtRuleAt=0;gmtInvalidateSub('events');if(!gmtOpen)setTimeout(()=>gmtSyncEventRules(),30)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_session_log'},()=>gmtInvalidateSub('logs')).subscribe();
+const gmtObserver=new MutationObserver(gmtScheduleMaintain);gmtObserver.observe(GMT_APP,{childList:true,subtree:true});setTimeout(gmtMaintain,150);
 window.gmtRender=gmtRender;
 window.__catlakGmTools={open:gmtOpenSub,close:gmtClose,render:gmtRender,active:()=>gmtOpen?gmtSub:'',isOpen:()=>gmtOpen};
 window.__catlakGmToolsTest={ruleText:gmtRuleText,range:gmtRange,slotName:gmtSlotName};

@@ -126,6 +126,5 @@ window.addEventListener('click',e=>{
 },true);
 
 new MutationObserver(gncSchedule).observe(GNC_APP,{childList:true,subtree:true});
-setInterval(gncClean,1200);
 setTimeout(gncClean,80);
 window.__catlakGmNavCleanupTest={clean:gncClean,alignBattleTop:gncAlignBattleTop,ensureRollLogClear:gncEnsureRollLogClear};

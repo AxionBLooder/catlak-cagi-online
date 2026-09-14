@@ -75,7 +75,7 @@ document.addEventListener('click',e=>{
   const c=e.target.closest('[data-er-clear]');if(c&&erIsGM()){e.preventDefault();e.stopImmediatePropagation();erClear(c.dataset.erClear);return}
 },true);
 
-setInterval(()=>{erNavLabel();if(erIsGM()&&erTab()==='rolls'){const main=ER_APP.querySelector('main');if(main&&!main.dataset.erRollCenter)erRender()}},450);
+document.addEventListener('click',e=>{if(e.target.closest?.('.nav button[data-tab="rolls"]'))setTimeout(()=>{erNavLabel();erRender()},0)},false);
 ER_S.channel('cc-event-rolls-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const main=ER_APP.querySelector('main');if(main)main.dataset.erRollCenter='';setTimeout(()=>erRender(true),80)}).subscribe();
 erNavLabel();
 setTimeout(()=>erRender(),80);
