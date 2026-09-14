@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
       - name: Replace full-render refresh ownership
         run: |
           python3 - <<'PY'
@@ -26,14 +27,17 @@ jobs:
           s=p.read_text(encoding='utf-8')
           old="if(st.role!=='gm'&&guest()&&!st.chars.some(c=>c.owner_id===u))st.tab='builder';render()}"
           new="if(st.role!=='gm'&&guest()&&!st.chars.some(c=>c.owner_id===u))st.tab='builder';const keepView=typeof window.__catlakShouldPreserveCurrentView==='function'&&window.__catlakShouldPreserveCurrentView();if(keepView){window.dispatchEvent(new CustomEvent('catlak:data-refreshed',{detail:{source:'refresh'}}));return}render()}"
-          if s.count(old)!=1: raise SystemExit('live_06 refresh kalıbı beklenen biçimde bulunamadı')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          if old in s:
+              s=s.replace(old,new,1)
+          elif '__catlakShouldPreserveCurrentView' not in s:
+              raise SystemExit('live_06 refresh kalıbı beklenen biçimde bulunamadı')
+          p.write_text(s,encoding='utf-8')
 
           p=Path('stat-roll-patch.js')
           s=p.read_text(encoding='utf-8')
           old="setInterval(srEnsure,1200);\nsetTimeout(srEnsure,80);"
-          if s.count(old)!=1: raise SystemExit('stat-roll polling kalıbı bulunamadı')
-          p.write_text(s.replace(old,"setTimeout(srEnsure,80);",1),encoding='utf-8')
+          if old in s:s=s.replace(old,"setTimeout(srEnsure,80);",1)
+          p.write_text(s,encoding='utf-8')
 
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
@@ -44,8 +48,49 @@ jobs:
             'stat-workshop-route-fix.js?v=statsroute-v4':'stat-workshop-route-fix.js?v=statsroute-v5&no-reset-v1'
           }
           for old,new in replacements.items():
-            if old not in s: raise SystemExit('index sürüm işareti bulunamadı: '+old)
-            s=s.replace(old,new,1)
+              if old in s:s=s.replace(old,new,1)
+              elif new not in s:raise SystemExit('index sürüm işareti bulunamadı: '+old)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Modernize source sanity ownership rules
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/check-live.yml')
+          s=p.read_text(encoding='utf-8')
+          old="""          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')
+          for marker in ['__catlakBattleInnerHtmlStabilityInstalled','crg-gm-center-scope-style','__catlakBattleRenderSuppressed']:
+              if marker not in guard:
+                  raise SystemExit('Savaş/GM Merkezi stabilite işareti eksik: '+marker)
+"""
+          new="""          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')
+          for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']:
+              if marker not in guard:
+                  raise SystemExit('Oda koruma işareti eksik: '+marker)
+          for retired in ['__catlakBattleInnerHtmlStabilityInstalled','__catlakBattleRenderSuppressed']:
+              if retired in guard:
+                  raise SystemExit('Eski global savaş render yaması geri dönmüş: '+retired)
+"""
+          if old not in s:raise SystemExit('check-live eski room-guard beklentisi bulunamadı')
+          s=s.replace(old,new,1)
+          old_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest']:"
+          new_marker="          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest','__catlakShouldPreserveCurrentView']:"
+          if old_marker in s:s=s.replace(old_marker,new_marker,1)
+          start="          if 'room-guard-patch.js?v=guard-v3' not in html:\n"
+          end="              raise SystemExit('GM rota köprüsü cache sürümü inviteui-v3 olmalı')\n"
+          a=s.find(start);b=s.find(end,a)
+          if a<0 or b<0:raise SystemExit('check-live eski cache sürüm bloğu bulunamadı')
+          b+=len(end)
+          current="""          for marker in ['site-stability-patch.js?v=stability-v5','stat-roll-patch.js?v=statroll-v3','stat-workshop-route-fix.js?v=statsroute-v5']:
+              if marker not in html:
+                  raise SystemExit('No-reset üretim sürümü eksik: '+marker)
+"""
+          s=s[:a]+current+s[b:]
+          for path in ["      - 'stat-roll-patch.js'\n","      - 'stat-workshop-route-fix.js'\n"]:
+              if path not in s:
+                  anchor="      - 'site-stability-patch.js'\n"
+                  s=s.replace(anchor,anchor+path,1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -83,10 +128,7 @@ jobs:
                   run: |
                     cat > no-reset-stat.html <<'EOF'
                     <!doctype html><html><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-cc-stats-tab>Stat Atölyesi</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
-                    window.__db=[
-                      {id:'c1',name:'Bir',species_name:'Elf',background_name:'Gezgin',class_name:'Savaşçı',play_status:'active',base_stats:{STR:10,DEX:11,CON:12,INT:13,WIS:14,CHA:15},hp_current:10,hp_max:12,base_ac:13,base_speed:30,level:2,created_at:'1'},
-                      {id:'c2',name:'İki',species_name:'İnsan',background_name:'Asil',class_name:'Büyücü',play_status:'prepared',base_stats:{STR:8,DEX:12,CON:10,INT:16,WIS:13,CHA:11},hp_current:8,hp_max:8,base_ac:11,base_speed:30,level:3,created_at:'2'}
-                    ];
+                    window.__db=[{id:'c1',name:'Bir',species_name:'Elf',background_name:'Gezgin',class_name:'Savaşçı',play_status:'active',base_stats:{STR:10,DEX:11,CON:12,INT:13,WIS:14,CHA:15},hp_current:10,hp_max:12,base_ac:13,base_speed:30,level:2,created_at:'1'},{id:'c2',name:'İki',species_name:'İnsan',background_name:'Asil',class_name:'Büyücü',play_status:'prepared',base_stats:{STR:8,DEX:12,CON:10,INT:16,WIS:13,CHA:11},hp_current:8,hp_max:8,base_ac:11,base_speed:30,level:3,created_at:'2'}];
                     function chars(){const chain={select(){return chain},in(){return chain},order(){return chain},then(ok,bad){return Promise.resolve({data:window.__db.map(x=>structuredClone(x)),error:null}).then(ok,bad)}};return chain}
                     window.__catlakSupabase={from:t=>chars(),rpc:async(fn,args)=>{const c=window.__db.find(x=>x.id===args.p_character_id);if(c){c.base_stats={...args.p_stats};c.hp_current=args.p_hp_current;c.hp_max=args.p_hp_max;c.base_ac=args.p_ac;c.base_speed=args.p_speed;c.level=args.p_level}return{data:true,error:null}},channel:()=>({on(ev,filter,cb){window.__statRealtime=cb;return this},subscribe(){return this}})};
                     </script><script src="./site-stability-patch.js"></script><script src="./ux-patch.js"></script></body></html>
@@ -103,7 +145,7 @@ jobs:
                     LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
                   run: |
                     set -euo pipefail
-                    curl -fsSL --retry 6 --retry-delay 2 "$LIVE_URL?noreset=$(date +%s)" -o /tmp/index.html
+                    curl -fsSL --retry 8 --retry-delay 2 "$LIVE_URL?noreset=$(date +%s)" -o /tmp/index.html
                     grep -q 'bootwatch-234-no-reset-v1' /tmp/index.html
                     grep -q 'statsroute-v5&no-reset-v1' /tmp/index.html
                     for f in browser-app.js ux-patch.js site-stability-patch.js stat-workshop-route-fix.js stat-roll-patch.js; do curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}${f}?n=$(date +%s%N)" -o "/tmp/$f"; node --check "/tmp/$f"; done
@@ -129,7 +171,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f .github/workflows/apply-no-reset-cleanup.yml
-          git add live_06.txt stat-roll-patch.js index.html .github/workflows/check-no-reset.yml .github/workflows/apply-no-reset-cleanup.yml
+          git add -A
           git commit -m "Tıklamalarda aktif ekranı koru ve Stat resetini kaldır"
           git pull --rebase origin main
           git push
@@ -154,6 +196,19 @@ jobs:
           id=""
           for i in $(seq 1 30); do
             cand=$(gh run list --workflow deploy-pages.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+            if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
+            sleep 2
+          done
+          test -n "$id"
+          gh run watch "$id" --exit-status
+
+      - name: Run source sanity
+        run: |
+          before=$(gh run list --workflow check-live.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run check-live.yml --ref main
+          id=""
+          for i in $(seq 1 30); do
+            cand=$(gh run list --workflow check-live.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
             if [ "$cand" != "0" ] && [ "$cand" != "$before" ]; then id="$cand"; break; fi
             sleep 2
           done
