@@ -40,9 +40,9 @@ function gm2NativeRoute(){
   const stat=GM2_APP.querySelector('.nav [data-cc-stats-tab].on');if(stat)return'stats';
   return GM2_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
 }
-function gm2ActiveRoute(){const forced=String(window.__catlakGmCenterSelectedRoute||'');if(GM2_ROUTES.some(([k])=>k===forced))return forced;if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}
+function gm2ActiveRoute(){if(window.__catlakCampaignStateRoom)return'campaign';const forced=String(window.__catlakGmCenterSelectedRoute||'');if(GM2_ROUTES.some(([k])=>k===forced))return forced;if(window.__catlakCreatureLibraryOpen===true)return'creatures';if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true)return'ability';if(window.__catlakGmToolsOpen===true&&window.__catlakGmHubOwnsMain!==true){const r=window.__catlakGmTools?.active?.()||GM2_APP.querySelector('main .gmt-tabs [data-gmt-sub].on')?.dataset.gmtSub||'';if(r==='combat'||r==='events'||r==='logs')return r}return gm2NativeRoute()}
 function gm2Target(route){const nav=GM2_APP.querySelector('.nav');if(!nav)return null;return route==='stats'?nav.querySelector('[data-cc-stats-tab]'):nav.querySelector(`[data-tab="${route}"]`)}
-function gm2HubContext(){const r=gm2ActiveRoute();return gm2AbilityOpen||window.__catlakGmToolsOpen===true||window.__catlakCreatureLibraryOpen===true||GM2_ROUTES.some(([k])=>k===r)}
+function gm2HubContext(){const r=gm2ActiveRoute();return gm2AbilityOpen||window.__catlakGmToolsOpen===true||window.__catlakCreatureLibraryOpen===true||!!window.__catlakCampaignStateRoom||GM2_ROUTES.some(([k])=>k===r)}
 function gm2EnsureChrome(){
   if(!gm2IsGM()){GM2_APP.classList.remove('gm2-gm');GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();return}
   GM2_APP.classList.add('gm2-gm');gm2PatchLegacyRender();
@@ -64,7 +64,7 @@ function gm2EnsureChrome(){
 }
 function gm2QueueChrome(){if(gm2ChromeQueued)return;gm2ChromeQueued=true;requestAnimationFrame(()=>{gm2ChromeQueued=false;gm2EnsureChrome();if(gm2AbilityOpen&&window.__catlakGmHubOwnsMain===true&&!GM2_APP.querySelector('[data-gm2-ability-page]'))gm2RenderAbility(false)})}
 function gm2ReleaseAbility(){gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';gm2QueueChrome()}
-function gm2LeaveCenter(){window.__catlakGmCenterSelectedRoute='';gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();GM2_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active');gm2QueueChrome()}
+function gm2LeaveCenter(){window.__catlakCampaignStateTest?.close?.();window.__catlakGmCenterSelectedRoute='';gm2AbilityOpen=false;window.__catlakGmHubOwnsMain=false;gm2Gen++;gm2Sig='';window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GM2_APP.querySelector('[data-gm2-centerbar]')?.remove();GM2_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active');gm2QueueChrome()}
 function gm2OpenAbility(){
   if(!gm2IsGM())return;
   window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
@@ -78,6 +78,7 @@ function gm2OpenAbility(){
 function gm2Go(route){
   if(!gm2IsGM())return;
   if(!GM2_ROUTES.some(([k])=>k===route))return;
+  window.__catlakCampaignStateTest?.close?.();
   window.__catlakGmCenterSelectedRoute=route;
   const closeCreature=()=>window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
 
@@ -159,5 +160,6 @@ GM2_S.channel('cc-gm-hub-v2-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gm2DataCache=null;gm2DataAt=0;gm2Sig='';if(gm2AbilityOpen)gm2RenderAbility(true);gm2QueueChrome()})
  .subscribe();
 setTimeout(()=>{gm2PatchLegacyRender();gm2EnsureChrome()},220);
+window.__catlakCampaignHubStableV3=true;
 window.__catlakGmHubV2Test={chrome:gm2EnsureChrome,openAbility:gm2OpenAbility,renderAbility:gm2RenderAbility,route:gm2Go,release:gm2ReleaseAbility,leave:gm2LeaveCenter,isOpen:gm2HubContext};
 setTimeout(()=>{if(gm2IsGM())gm2Load(false).catch(()=>{})},520);

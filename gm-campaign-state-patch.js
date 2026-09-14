@@ -4,7 +4,7 @@ if(!GCS_APP)throw new Error('Çatlak Çağı kampanya durum odaları başlatıla
 const GCS_REP_KEY='catlak_cagi_faction_rep_v1';
 const GCS_WORLD_KEY='catlak_cagi_world_state_v1';
 const GCS_SEAL_KEY='ccgm_players';
-const GCS_PLACEHOLDER_ROUTE='characters';
+const GCS_PLACEHOLDER_ROUTE='campaign';
 const GCS_ROUTES=[['reputation','İtibar Odası'],['seals','Mühür Odası']];
 const GCS_REPS=[
   ['altin','Altın Düzen','Düzen / kontrol'],
@@ -98,7 +98,7 @@ function gcsOpen(route){
   window.scrollTo({top:0,left:0,behavior:'auto'});
   return true;
 }
-function gcsClose(){gcsActive='';window.__catlakCampaignStateRoom='';const m=GCS_APP.querySelector('main');if(m)delete m.dataset.gcsRoute;gcsEnsureButtons()}
+function gcsClose(){gcsActive='';window.__catlakCampaignStateRoom='';if(String(window.__catlakGmCenterSelectedRoute||'')===GCS_PLACEHOLDER_ROUTE)window.__catlakGmCenterSelectedRoute='';const m=GCS_APP.querySelector('main');if(m)delete m.dataset.gcsRoute;gcsEnsureButtons()}
 
 function gcsMeterElement(kind,key,source){return source?.closest?.('[data-gcs-meter]')||GCS_APP.querySelector(`[data-gcs-meter="${kind}:${key}"]`)}
 function gcsPaintMeter(kind,key,value,source){
@@ -158,4 +158,5 @@ document.addEventListener('input',e=>{const note=e.target.closest?.('[data-gcs-n
 new MutationObserver(gcsQueue).observe(GCS_APP,{childList:true,subtree:true});
 setTimeout(gcsMaintain,250);setTimeout(gcsMaintain,900);
 window.__catlakGcsDeltaPointerV2=true;
+window.__catlakCampaignRoomStableV3=true;
 window.__catlakCampaignStateTest={open:gcsOpen,close:gcsClose,active:()=>gcsActive,maintain:gcsMaintain,delta:gcsUpdateMeter};

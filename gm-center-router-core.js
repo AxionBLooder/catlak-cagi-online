@@ -17,6 +17,7 @@ function gmcrCenterOpen(){
   if(GMCR_ROUTES.has(selected))return true;
   if(window.__catlakGmToolsOpen===true)return true;
   if(window.__catlakCreatureLibraryOpen===true)return true;
+  if(window.__catlakCampaignStateRoom)return true;
   if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return true;
   return false;
 }
@@ -44,6 +45,7 @@ function gmcrSelect(route){
 }
 
 function gmcrLogicalRoute(){
+  if(window.__catlakCampaignStateRoom)return'campaign';
   const forced=String(window.__catlakGmCenterSelectedRoute||'');
   if(GMCR_ROUTES.has(forced))return forced;
   if(window.__catlakCreatureLibraryOpen===true)return'creatures';
@@ -59,11 +61,12 @@ function gmcrLeaveCenter(){
   gmcrToken++;gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;window.__catlakGmCenterSelectedRoute='';
   const hub=window.__catlakGmHubV2Test;
   if(typeof hub?.leave==='function')hub.leave();
-  else{hub?.release?.();window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GMCR_APP.querySelector('[data-gm2-centerbar]')?.remove();GMCR_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active')}
+  else{window.__catlakCampaignStateTest?.close?.();hub?.release?.();window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GMCR_APP.querySelector('[data-gm2-centerbar]')?.remove();GMCR_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active')}
 }
 
 function gmcrGo(route){
   if(!gmcrIsGM()||!GMCR_ROUTES.has(route))return false;
+  window.__catlakCampaignStateTest?.close?.();
   gmcrSelect(route);
   const token=++gmcrToken;
   const run=()=>{
@@ -124,6 +127,7 @@ window.addEventListener('click',e=>{
 },true);
 setTimeout(gmcrMakeButtonsClickable,0);
 
+window.__catlakCampaignRouterStableV3=true;
 window.__catlakGmCenterRouterCore={
   active:true,
   route:gmcrGo,
