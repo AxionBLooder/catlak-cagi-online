@@ -48,7 +48,7 @@ jobs:
           for name in sorted(files):
               Path('_site', name).write_bytes(Path(name).read_bytes())
 
-          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v3-stable"></script></body>')
+          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
@@ -57,11 +57,14 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v3-stable' _site/index.html
+          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v6-campaign' _site/index.html
           grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v8-campaign' _site/index.html
           grep -Fq '__catlakGcsDeltaPointerV2=true' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignRoomStableV3=true' _site/gm-campaign-state-patch.js
+          grep -Fq '__catlakSealEditorStableV1=true' _site/gm-campaign-state-patch.js
+          grep -Fq 'data-gcs-edit-player' _site/gm-campaign-state-patch.js
+          grep -Fq 'data-gcs-save-player' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignHubStableV3=true' _site/gm-hub-v2-patch.js
           grep -Fq '__catlakCampaignRouterStableV3=true' _site/gm-center-router-core.js
           grep -Fq "GCS_PLACEHOLDER_ROUTE='campaign'" _site/gm-campaign-state-patch.js
