@@ -97,8 +97,18 @@ function gcsOpen(route){
   return true;
 }
 function gcsClose(){gcsActive='';window.__catlakCampaignStateRoom='';const m=GCS_APP.querySelector('main');if(m)delete m.dataset.gcsRoute;gcsEnsureButtons()}
-function gcsUpdateMeter(kind,key,delta){
-  const storage=kind==='world'?GCS_WORLD_KEY:GCS_REP_KEY,state=gcsLoad(storage,{});state[key]=gcsClamp((state[key]||0)+Number(delta||0));gcsSave(storage,state);gcsOpen('reputation')
+function gcsUpdateMeter(kind,key,delta,source){
+  const storage=kind==='world'?GCS_WORLD_KEY:GCS_REP_KEY;
+  const state=gcsLoad(storage,{});
+  const next=gcsClamp((state[key]||0)+Number(delta||0));
+  state[key]=next;
+  gcsSave(storage,state);
+  const meter=source?.closest?.('[data-gcs-meter]')||GCS_APP.querySelector(`[data-gcs-meter="${kind}:${key}"]`);
+  const score=meter?.querySelector('.gcs-score');
+  const marker=meter?.querySelector('.gcs-marker');
+  if(score)score.textContent=next>0?'+'+next:String(next);
+  if(marker)marker.style.left=((next+2)/4*100)+'%';
+  return next;
 }
 function gcsReset(kind){
   const world=kind==='world',label=world?'dünya durumu göstergelerini':'fraksiyon itibarlarını';if(!confirm(`Tüm ${label} 0 yapılsın mı?`))return;
@@ -127,7 +137,7 @@ function gcsQueue(){if(gcsQueued)return;gcsQueued=true;requestAnimationFrame(()=
 document.addEventListener('click',e=>{
   const route=e.target.closest?.('[data-gcs-route]');if(route){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();gcsOpen(String(route.dataset.gcsRoute||''));return}
   if(!e.target.closest?.('[data-gcs-page]'))return;
-  const delta=e.target.closest?.('[data-gcs-delta]');if(delta){e.preventDefault();gcsUpdateMeter(delta.dataset.gcsKind,delta.dataset.gcsKey,delta.dataset.gcsDelta);return}
+  const delta=e.target.closest?.('[data-gcs-delta]');if(delta){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();gcsUpdateMeter(delta.dataset.gcsKind,delta.dataset.gcsKey,delta.dataset.gcsDelta,delta);return}
   const reset=e.target.closest?.('[data-gcs-reset]');if(reset){e.preventDefault();gcsReset(reset.dataset.gcsReset);return}
   if(e.target.closest?.('[data-gcs-add-player]')){e.preventDefault();gcsAddPlayer();return}
   const del=e.target.closest?.('[data-gcs-delete-player]');if(del){e.preventDefault();gcsDeletePlayer(del.dataset.gcsDeletePlayer);return}
