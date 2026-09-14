@@ -8,13 +8,12 @@ const crgToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textC
 let crgScheduled=false;
 
 // GM Merkezi alt sekmeleri yalnız GM Merkezi kendi ekranındayken görünür.
-// Eşya / Stat / Irk / Karakter Oluşturucu / Yönetim Odası gibi yerel sayfalarda
-// üstte ikinci bir küçük GM Merkezi çubuğu bırakılmaz.
+// Görünürlük gm-center-router-core tarafından yönetilir; burada display zorlanmaz.
 if(!document.querySelector('#crg-gm-center-scope-style')){
   const s=document.createElement('style');
   s.id='crg-gm-center-scope-style';
   s.textContent=`
-    #app.gm2-gm [data-gm2-centerbar]{display:flex!important;pointer-events:auto!important}
+    #app.gm2-gm [data-gm2-centerbar]{pointer-events:auto!important}
   `;
   document.head.appendChild(s);
 }
