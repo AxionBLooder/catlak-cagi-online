@@ -27,6 +27,8 @@ jobs:
           grep -q '__catlakShouldPreserveCurrentView' site-stability-patch.js
           grep -q '__catlakShouldPreserveCurrentView' live_06.txt
           grep -q '__catlakStatsTest' ux-patch.js
+          grep -q 'data-cux-step' ux-patch.js
+          grep -q 'cuxFocusInput' ux-patch.js
           ! grep -q 'SWRF_CACHE_KEY' stat-workshop-route-fix.js
           ! grep -q 'swrfRestoreCache' stat-workshop-route-fix.js
           ! grep -q 'setInterval(srEnsure' stat-roll-patch.js
@@ -35,7 +37,7 @@ jobs:
           echo NO_RESET_STATIC_OK
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify stable Stat DOM in Chrome
+      - name: Verify clickable stable Stat DOM in Chrome
         run: |
           cat > no-reset-stat.html <<'EOF'
           <!doctype html><html><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-cc-stats-tab>Stat Atölyesi</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
@@ -48,7 +50,7 @@ jobs:
           PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
           cat > no-reset-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
-          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/no-reset-stat.html',{waitUntil:'domcontentloaded'});await p.evaluate(()=>window.__catlakRenderCompactStats(true));await p.waitForSelector('.cux-workshop');await p.evaluate(()=>window.__stableShell=document.querySelector('.cux-workshop'));if(!await p.evaluate(()=>window.__catlakShouldPreserveCurrentView()))throw new Error('Stat view not managed');await p.click('[data-cux-character="c2"]');if(!await p.evaluate(()=>window.__stableShell===document.querySelector('.cux-workshop')))throw new Error('Character select replaced workshop');await p.fill('[data-cux-field="STR"]','17');await p.evaluate(()=>window.__statRealtime&&window.__statRealtime());await p.waitForTimeout(120);const dirty=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,isDirty:window.__catlakStatsTest.dirty()}));if(!dirty.same||dirty.value!=='17'||!dirty.isDirty)throw new Error('Realtime reset dirty editor '+JSON.stringify(dirty));await p.click('[data-cux-save]');await p.waitForTimeout(180);const saved=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,selected:window.__catlakStatsTest.selected()}));if(!saved.same||saved.value!=='17'||saved.selected!=='c2')throw new Error('Save reset Stat view '+JSON.stringify(saved));if(errs.length)throw new Error(errs.join(' | '));console.log('NO_RESET_BROWSER_OK',JSON.stringify({dirty,saved}));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/no-reset-stat.html',{waitUntil:'domcontentloaded'});await p.evaluate(()=>window.__catlakRenderCompactStats(true));await p.waitForSelector('.cux-workshop');await p.evaluate(()=>window.__stableShell=document.querySelector('.cux-workshop'));if(!await p.evaluate(()=>window.__catlakShouldPreserveCurrentView()))throw new Error('Stat view not managed');await p.click('[data-cux-character="c2"]');if(!await p.evaluate(()=>window.__stableShell===document.querySelector('.cux-workshop')))throw new Error('Character select replaced workshop');const str='[data-cux-field="STR"]';await p.click(str);if(!await p.evaluate(s=>document.activeElement===document.querySelector(s),str))throw new Error('Real click did not focus STR');if(!await p.evaluate(()=>window.__catlakStatsTest.dirty()))throw new Error('Pointer focus did not lock dirty editor');await p.evaluate(()=>window.__statRealtime&&window.__statRealtime());await p.waitForTimeout(120);if(!await p.evaluate(s=>window.__stableShell===document.querySelector('.cux-workshop')&&document.activeElement===document.querySelector(s),str))throw new Error('Realtime replaced focused Stat input');await p.keyboard.press('Control+A');await p.keyboard.type('17');if(await p.inputValue(str)!=='17')throw new Error('Keyboard edit failed');await p.click('[data-cux-step="STR"][data-cux-delta="1"]');if(await p.inputValue(str)!=='18')throw new Error('Plus step failed');await p.click('[data-cux-step="STR"][data-cux-delta="-1"]');if(await p.inputValue(str)!=='17')throw new Error('Minus step failed');await p.evaluate(()=>window.__statRealtime&&window.__statRealtime());await p.waitForTimeout(120);const dirty=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,isDirty:window.__catlakStatsTest.dirty()}));if(!dirty.same||dirty.value!=='17'||!dirty.isDirty)throw new Error('Realtime reset dirty editor '+JSON.stringify(dirty));await p.click('[data-cux-save]');await p.waitForTimeout(180);const saved=await p.evaluate(()=>({same:window.__stableShell===document.querySelector('.cux-workshop'),value:document.querySelector('[data-cux-field="STR"]')?.value,selected:window.__catlakStatsTest.selected()}));if(!saved.same||saved.value!=='17'||saved.selected!=='c2')throw new Error('Save reset Stat view '+JSON.stringify(saved));if(errs.length)throw new Error(errs.join(' | '));console.log('NO_RESET_CLICKABLE_STAT_OK',JSON.stringify({dirty,saved}));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node no-reset-smoke.cjs
       - name: Verify production markers and scripts
@@ -69,7 +71,10 @@ jobs:
           done
           grep -q '__catlakShouldPreserveCurrentView' /tmp/browser-app.js
           grep -q '__catlakStatsTest' /tmp/browser-app.js
+          grep -q 'data-cux-step' /tmp/browser-app.js
+          grep -q 'cux-number-control' /tmp/browser-app.js
+          grep -q 'data-cux-step' /tmp/ux-patch.js
+          grep -q 'cuxFocusInput' /tmp/ux-patch.js
           grep -q '__catlakShouldPreserveCurrentView' /tmp/site-stability-patch.js
           ! grep -q 'SWRF_CACHE_KEY' /tmp/stat-workshop-route-fix.js
           echo NO_RESET_PRODUCTION_OK
-# rerun after Pages no-reset deploy v1
