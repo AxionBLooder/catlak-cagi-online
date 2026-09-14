@@ -72,3 +72,4 @@ jobs:
           grep -q '__catlakShouldPreserveCurrentView' /tmp/site-stability-patch.js
           ! grep -q 'SWRF_CACHE_KEY' /tmp/stat-workshop-route-fix.js
           echo NO_RESET_PRODUCTION_OK
+# rerun after Pages no-reset deploy v1
