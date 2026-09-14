@@ -1,0 +1,31 @@
+name: Debug Stat Click
+on:
+  push:
+    paths:
+      - '.github/workflows/debug-stat-click.yml'
+      - 'ux-patch.js'
+      - 'site-stability-patch.js'
+  workflow_dispatch:
+jobs:
+  click:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Real click focus test
+        run: |
+          cat > stat-click.html <<'EOF'
+          <!doctype html><html><body><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-cc-stats-tab>Stat Atölyesi</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
+          window.__db=[{id:'c1',name:'Bir',species_name:'Elf',background_name:'Gezgin',class_name:'Savaşçı',play_status:'active',base_stats:{STR:10,DEX:11,CON:12,INT:13,WIS:14,CHA:15},hp_current:10,hp_max:12,base_ac:13,base_speed:30,level:2,created_at:'1'}];
+          function chars(){const chain={select(){return chain},in(){return chain},order(){return chain},then(ok,bad){return Promise.resolve({data:window.__db.map(x=>structuredClone(x)),error:null}).then(ok,bad)}};return chain}
+          window.__catlakSupabase={from:t=>chars(),rpc:async()=>({data:true,error:null}),channel:()=>({on(){return this},subscribe(){return this}})};
+          </script><script src="./ux-patch.js"></script><script src="./site-stability-patch.js"></script></body></html>
+          EOF
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > click.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await b.newPage();await p.goto('http://127.0.0.1:4173/stat-click.html',{waitUntil:'domcontentloaded'});await p.evaluate(()=>window.__catlakRenderCompactStats(true));const sel='[data-cux-field="STR"]';await p.waitForSelector(sel);const before=await p.evaluate(sel=>{const el=document.querySelector(sel),r=el.getBoundingClientRect(),top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return {disabled:el.disabled,readOnly:el.readOnly,pointer:getComputedStyle(el).pointerEvents,top:top?.outerHTML?.slice(0,220),active:document.activeElement===el,value:el.value}},sel);console.log('BEFORE',JSON.stringify(before));await p.click(sel);const focused=await p.evaluate(sel=>document.activeElement===document.querySelector(sel),sel);console.log('FOCUSED',focused);if(!focused)throw new Error('STR input real click did not focus');await p.keyboard.press('Control+A');await p.keyboard.type('17');const after=await p.evaluate(sel=>({value:document.querySelector(sel).value,dirty:window.__catlakStatsTest.dirty()}),sel);console.log('AFTER',JSON.stringify(after));if(after.value!=='17'||!after.dirty)throw new Error('Real keyboard edit failed '+JSON.stringify(after));}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node click.cjs
