@@ -3,7 +3,7 @@ const CUX_APP=document.querySelector('#app');
 if(!CUX_S||!CUX_APP)throw new Error('Çatlak Çağı UX katmanı başlatılamadı.');
 
 const CUX_STATS=['STR','DEX','CON','INT','WIS','CHA'];
-const cuxH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const cuxH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cuxTxt=e=>String(e?.textContent||'').trim();
 const cuxIsGM=()=>cuxTxt(CUX_APP.querySelector('.role'))==='GM';
 const cuxStatsActive=()=>!!CUX_APP.querySelector('[data-cc-stats-tab].on');
