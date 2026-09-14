@@ -1,0 +1,39 @@
+name: Apply Runtime Ownership Cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-runtime-ownership-cleanup.yml'
+permissions:
+  contents: write
+concurrency:
+  group: catlak-runtime-cleanup
+  cancel-in-progress: true
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Replace stacked runtime ownership
+        run: |
+          python3 scripts/runtime_ownership_cleanup.py
+          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js event-rolls-patch.js room-system-patch.js room-guard-patch.js; do node --check "$f"; done
+          python3 - <<'PY'
+          from pathlib import Path
+          for f in ['gm-center-router-core.js','gm-hub-v2-patch.js','gm-nav-cleanup-patch.js','gm-tools-patch.js','event-rolls-patch.js','room-system-patch.js','room-guard-patch.js']:
+              assert 'setInterval(' not in Path(f).read_text(), f+' still polls'
+          assert 'Object.defineProperty(Element.prototype' not in Path('room-guard-patch.js').read_text()
+          assert "if(!open){bar?.remove();return}" in Path('gm-hub-v2-patch.js').read_text()
+          assert 'setInterval(maintain,1500)' not in Path('index.html').read_text()
+          assert 'setInterval(check,500)' not in Path('index.html').read_text()
+          print('RUNTIME_CLEANUP_STATIC_OK')
+          PY
+      - name: Commit clean runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm --ignore-unmatch scripts/runtime_ownership_cleanup.py .github/workflows/apply-runtime-ownership-cleanup.yml
+          git add -A
+          git commit -m "Runtime sahipliğini sadeleştir ve eski GM yamalarını kaldır"
+          git pull --rebase origin main
+          git push
