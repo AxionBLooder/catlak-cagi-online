@@ -48,7 +48,7 @@ jobs:
           for name in sorted(files):
               Path('_site', name).write_bytes(Path(name).read_bytes())
 
-          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v1"></script></body>')
+          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v2-pointer"></script></body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
@@ -57,7 +57,8 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v1' _site/index.html
+          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v2-pointer' _site/index.html
+          grep -Fq '__catlakGcsDeltaPointerV2=true' _site/gm-campaign-state-patch.js
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
           grep -Fq 'stat-editor-hardfix.js?v=statfix-v1' _site/index.html
           grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v6&stat-interaction-v1' _site/index.html
