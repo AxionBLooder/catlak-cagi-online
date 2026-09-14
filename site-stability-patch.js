@@ -15,18 +15,17 @@ function sspViewKey(){
   }
   const nav=SSP_APP.querySelector('.nav button.on');
   if(!nav)return role+':unknown';
-  const bits=[
-    nav.dataset.tab,
-    nav.dataset.gmtOpen?'gm-center':'',
-    nav.dataset.ccrBattle?'battle':'',
-    nav.dataset.ccrHub?'hub':'',
-    nav.dataset.ccMapTab?'map':'',
-    nav.dataset.ccWorldTab?'world':'',
-    nav.dataset.ccStatsTab?'stats':''
-  ].filter(Boolean);
+  const bits=[nav.dataset.tab,nav.dataset.gmtOpen?'gm-center':'',nav.dataset.ccrBattle?'battle':'',nav.dataset.ccrHub?'hub':'',nav.dataset.ccMapTab?'map':'',nav.dataset.ccWorldTab?'world':'',nav.dataset.ccStatsTab?'stats':''].filter(Boolean);
   return role+':'+(bits.join(':')||sspTxt(nav)||'view');
 }
 function sspCustomOwnsView(){return window.__catlakBattleRoomOpen===true||window.__catlakGmToolsOpen===true||window.__catlakGmHubOwnsMain===true}
+function sspManagedView(){
+  const main=SSP_APP.querySelector('main');if(!main||main.classList.contains('auth')||main.hasAttribute('data-cc-auth-loading')||main.hasAttribute('data-cc-refresh-error'))return false;
+  if(sspCustomOwnsView()||window.__catlakCreatureLibraryOpen===true)return true;
+  const nav=SSP_APP.querySelector('.nav button.on');
+  if(nav&&(nav.hasAttribute('data-cc-stats-tab')||nav.hasAttribute('data-cc-map-tab')||nav.hasAttribute('data-cc-world-tab')||nav.hasAttribute('data-ccr-battle')||nav.hasAttribute('data-ccr-hub')))return true;
+  return !!main.querySelector('.cux-workshop,.ps-player-sheet,.gmt-shell,.er-wrap,.ccr-battle-grid,[data-iw-editor],[data-gm2-ability-page],[data-cex-gm-panel],[data-qol-creature-library]');
+}
 function sspIsAuthHtml(value){return typeof value==='string'&&(value.includes('class="auth"')||value.includes("class='auth'"))}
 function sspRestoreY(y){if(!Number.isFinite(Number(y)))return;requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:Number(y),left:0,behavior:'auto'})))}
 function sspSuppress(){sspSuppressed++;window.__catlakSiteRenderSuppressed=sspSuppressed}
@@ -37,43 +36,33 @@ function sspFreeze(ms=1200,reason='ui'){
   sspFreezeReason=String(reason||'ui');window.__catlakUiFreezeReason=sspFreezeReason;
   return sspFreezeUntil;
 }
-function sspThaw(){
-  sspFreezeUntil=0;sspFreezeY=null;sspFreezeReason='';
-  window.__catlakUiFreezeUntil=0;window.__catlakUiFreezeScrollY=null;window.__catlakUiFreezeReason='';
-}
+function sspThaw(){sspFreezeUntil=0;sspFreezeY=null;sspFreezeReason='';window.__catlakUiFreezeUntil=0;window.__catlakUiFreezeScrollY=null;window.__catlakUiFreezeReason=''}
 window.__catlakStabilityFreeze=sspFreeze;
 window.__catlakStabilityThaw=sspThaw;
+window.__catlakShouldPreserveCurrentView=sspManagedView;
 
-SSP_APP.addEventListener('pointerdown',e=>{
-  if(e.target?.closest?.('.nav button'))sspThaw();
-},true);
+SSP_APP.addEventListener('pointerdown',e=>{if(e.target?.closest?.('.nav button'))sspThaw()},true);
+SSP_APP.addEventListener('submit',e=>{if(!e.target?.matches?.('[data-allow-native-submit]'))e.preventDefault()},true);
 
 if(!window.__catlakSiteMainStabilityInstalled){
   const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
   if(desc?.get&&desc?.set){
     const lastMainByView=new Map(),lastAppByView=new Map();
     Object.defineProperty(Element.prototype,'innerHTML',{
-      configurable:desc.configurable,
-      enumerable:desc.enumerable,
-      get:desc.get,
+      configurable:desc.configurable,enumerable:desc.enumerable,get:desc.get,
       set:function(value){
         if(typeof value!=='string')return desc.set.call(this,value);
         const now=Date.now(),main=SSP_APP.querySelector('main'),key=sspViewKey();
         if(this===SSP_APP){
           const auth=sspIsAuthHtml(value),freeze=Math.max(sspFreezeUntil,Number(window.__catlakUiFreezeUntil)||0)>now;
-          if(this.childElementCount>0&&!auth&&(sspCustomOwnsView()||freeze)){
-            sspSuppress();if(freeze)sspRestoreY(sspFreezeY??window.__catlakUiFreezeScrollY);return;
-          }
+          if(this.childElementCount>0&&!auth&&(sspCustomOwnsView()||freeze)){sspSuppress();if(freeze)sspRestoreY(sspFreezeY??window.__catlakUiFreezeScrollY);return}
           if(this.childElementCount>0&&lastAppByView.get(key)===value){sspSuppress();return}
-          const y=window.scrollY,out=desc.set.call(this,value);lastAppByView.set(key,value);
-          if(!auth)sspRestoreY(y);return out;
+          const y=window.scrollY,out=desc.set.call(this,value);lastAppByView.set(key,value);if(!auth)sspRestoreY(y);return out;
         }
         if(this===main){
-          const sameView=this.dataset.sspStableView===key;
-          const sameBase=lastMainByView.get(key)===value;
+          const sameView=this.dataset.sspStableView===key,sameBase=lastMainByView.get(key)===value;
           if(sameView&&sameBase&&this.childElementCount>0){sspSuppress();return}
-          const y=window.scrollY,out=desc.set.call(this,value);
-          this.dataset.sspStableView=key;lastMainByView.set(key,value);sspRestoreY(y);return out;
+          const y=window.scrollY,out=desc.set.call(this,value);this.dataset.sspStableView=key;lastMainByView.set(key,value);sspRestoreY(y);return out;
         }
         return desc.set.call(this,value);
       }
@@ -83,20 +72,11 @@ if(!window.__catlakSiteMainStabilityInstalled){
 }
 
 if(!document.querySelector('#ssp-stability-style')){
-  const s=document.createElement('style');
-  s.id='ssp-stability-style';
-  s.textContent=`
+  const s=document.createElement('style');s.id='ssp-stability-style';s.textContent=`
     #app main .br3-card,#app main .ccr-weapon,#app main .gmt-combatant,#app main .gmt-slot,#app main .roll,#app main .iw-player-item,#app main [data-gfs-live-turn]{animation:none!important}
     #app main[data-ssp-stable-view]{overflow-anchor:auto}
     #app .cc-character-stack,#app main .gmt-shell,#app main .er-wrap{isolation:isolate}
-  `;
-  document.head.appendChild(s);
+  `;document.head.appendChild(s)
 }
 
-window.__catlakSiteStabilityTest={
-  viewKey:sspViewKey,
-  suppressed:()=>window.__catlakSiteRenderSuppressed||0,
-  freeze:sspFreeze,
-  thaw:sspThaw,
-  freezeReason:()=>window.__catlakUiFreezeReason||''
-};
+window.__catlakSiteStabilityTest={viewKey:sspViewKey,managed:sspManagedView,suppressed:()=>window.__catlakSiteRenderSuppressed||0,freeze:sspFreeze,thaw:sspThaw,freezeReason:()=>window.__catlakUiFreezeReason||''};
