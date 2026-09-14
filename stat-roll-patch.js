@@ -91,6 +91,5 @@ function srCapture(e){
 document.addEventListener('click',srCapture,true);
 const srObserver=new MutationObserver(()=>srEnsure());
 srObserver.observe(SR_APP,{childList:true,subtree:true});
-setInterval(srEnsure,1200);
 setTimeout(srEnsure,80);
 window.__catlakStatRollTest={ensure:srEnsure,stats:SR_STATS,quickRolls:srQuickRolls};
