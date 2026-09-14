@@ -55,13 +55,18 @@ jobs:
           for file in _site/*.js; do node --check "$file"; done
 
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
-          grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v4' _site/index.html
+          grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v5&no-reset-v1' _site/index.html
+          grep -Fq 'stat-roll-patch.js?v=statroll-v3&no-reset-v1' _site/index.html
+          grep -Fq 'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1' _site/index.html
+          grep -Fq 'browser-app.js?v=bootwatch-234-no-reset-v1' _site/index.html
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
           ! grep -Fq 'slot-sync-hotfix.js' _site/battle-ready-clean-patch.js
           ! grep -Fq 'player-sheet-final-patch.js' _site/player-sheet-final-loader.js
           ! grep -Fq 'data-a="equip"' _site/player-live-actions-patch.js
           ! grep -Fq 'data-a="equip"' _site/item-system-patch.js
           grep -Fq 'catlak_set_equipped_slot' _site/gm-item-slot-patch.js
+          grep -Fq '__catlakShouldPreserveCurrentView' _site/browser-app.js
+          grep -Fq '__catlakStatsTest' _site/browser-app.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
