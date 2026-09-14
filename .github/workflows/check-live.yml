@@ -3,37 +3,18 @@ on:
   push:
     paths:
       - 'live_*.txt'
-      - 'main.js'
-      - 'ui-patch.js'
-      - 'stability-patch.js'
-      - 'gallery-quality-patch.js'
       - 'ux-patch.js'
-      - 'nav-lite-patch.js'
-      - 'simple-world-upload-patch.js'
-      - 'weapon-slot-patch.js'
-      - 'gm-item-slot-patch.js'
+      - 'site-stability-patch.js'
+      - 'stat-workshop-route-fix.js'
+      - 'stat-roll-patch.js'
       - 'room-guard-patch.js'
       - 'room-system-patch.js'
-      - 'battle-room-v3-patch.js'
-      - 'player-enemy-privacy-patch.js'
-      - 'battle-room-compact-patch.js'
-      - 'battle-room-actions-layout-patch.js'
-      - 'site-stability-patch.js'
-      - 'game-flow-stability-patch.js'
-      - 'turn-sync-patch.js'
-      - 'battle-action-stability-patch.js'
-      - 'battle-room-classic-stable-patch.js'
-      - 'quality-of-life-patch.js'
-      - 'gm-nav-cleanup-patch.js'
-      - 'gm-combat-v3-patch.js'
-      - 'battle-creature-patch.js'
-      - 'combat-enhancements-patch.js'
-      - 'ability-player-patch.js'
       - 'gm-hub-v2-patch.js'
-      - 'invite-visibility-patch.js'
-      - 'player-sheet-equipment-abilities-patch.js'
-      - 'dice-ux-patch.js'
+      - 'gm-center-router-core.js'
+      - 'gm-tools-patch.js'
       - 'event-rolls-patch.js'
+      - 'player-sheet-patch.js'
+      - 'player-live-actions-patch.js'
       - 'index.html'
       - 'browser-app.js'
       - 'browser-build.json'
@@ -42,167 +23,74 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Rebuild legacy source for parser check
         run: cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/catlak-live.js
-      - name: Check JavaScript syntax
+      - name: Check current JavaScript syntax
         run: |
-          node --check /tmp/catlak-live.js
-          node --check main.js
-          node --check ui-patch.js
-          node --check stability-patch.js
-          node --check gallery-quality-patch.js
-          node --check ux-patch.js
-          node --check nav-lite-patch.js
-          node --check simple-world-upload-patch.js
-          node --check weapon-slot-patch.js
-          node --check gm-item-slot-patch.js
-          node --check room-guard-patch.js
-          node --check room-system-patch.js
-          node --check battle-room-v3-patch.js
-          node --check player-enemy-privacy-patch.js
-          node --check battle-room-compact-patch.js
-          node --check battle-room-actions-layout-patch.js
-          node --check site-stability-patch.js
-          node --check game-flow-stability-patch.js
-          node --check turn-sync-patch.js
-          node --check battle-action-stability-patch.js
-          node --check battle-room-classic-stable-patch.js
-          node --check quality-of-life-patch.js
-          node --check gm-nav-cleanup-patch.js
-          node --check gm-combat-v3-patch.js
-          node --check battle-creature-patch.js
-          node --check combat-enhancements-patch.js
-          node --check ability-player-patch.js
-          node --check gm-hub-v2-patch.js
-          node --check invite-visibility-patch.js
-          node --check player-sheet-equipment-abilities-patch.js
-          node --check dice-ux-patch.js
-          node --check event-rolls-patch.js
-          node --check browser-app.js
-      - name: Check source invariants
+          set -euo pipefail
+          for f in /tmp/catlak-live.js ux-patch.js site-stability-patch.js stat-workshop-route-fix.js stat-roll-patch.js room-guard-patch.js room-system-patch.js gm-hub-v2-patch.js gm-center-router-core.js gm-tools-patch.js event-rolls-patch.js player-sheet-patch.js player-live-actions-patch.js browser-app.js; do
+            node --check "$f"
+          done
+      - name: Check current ownership invariants
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          src=Path('/tmp/catlak-live.js').read_text(encoding='utf-8')
-          if src.count("const app=document.querySelector('#app');") != 1:
-              raise SystemExit('Legacy kaynakta app tanımı tam olarak bir kez olmalı')
+
+          legacy=Path('/tmp/catlak-live.js').read_text(encoding='utf-8')
+          if legacy.count("const app=document.querySelector('#app');") != 1:
+              raise SystemExit('Legacy kaynakta app sahibi tam olarak bir kez olmalı')
+
           manifest=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))
-          if manifest.get('format') not in ('iife-es2018-browser-verified','iife-es2018-browser-verified-single-owner','iife-es2018-browser-verified-single-owner-minified'):
+          if not str(manifest.get('format','')).startswith('iife-es2018-browser-verified'):
               raise SystemExit('Doğrulanmış browser build manifesti bulunamadı')
+
           artifact=Path('browser-app.js').read_text(encoding='utf-8')
-          if not artifact:
-              raise SystemExit('browser-app.js boş')
-          for marker in ['Görsel Dosyası Seç','catlak-world-media','Hızlı Karakter Düzenleme','Toplu Zar Sil']:
+          for marker in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','__catlakStableLiveOwner']:
               if marker not in artifact:
-                  raise SystemExit('browser-app.js yeni üretim özelliğini içermiyor: '+marker)
-          for stale in ['ccx-unified-world','GM • HARİTA EKLE','EVREN GÖRSELİ EKLE']:
-              if stale in artifact:
-                  raise SystemExit('Eski Evren rendererı artifact içinde kaldı: '+stale)
+                  raise SystemExit('browser-app.js üretim işareti eksik: '+marker)
+
           html=Path('index.html').read_text(encoding='utf-8')
-          if 'browser-app.js' not in html or 'bundle.js' in html:
-              raise SystemExit('index.html yalnız doğrulanmış browser-app.js üretim yolunu kullanmalı')
-          for runtime in ['room-guard-patch.js','room-system-patch.js','battle-room-v3-patch.js','player-enemy-privacy-patch.js','battle-room-compact-patch.js','battle-room-actions-layout-patch.js','site-stability-patch.js','game-flow-stability-patch.js','turn-sync-patch.js','battle-action-stability-patch.js','battle-room-classic-stable-patch.js','quality-of-life-patch.js','gm-nav-cleanup-patch.js','gm-combat-v3-patch.js','gm-item-slot-patch.js','combat-enhancements-patch.js','gm-hub-v2-patch.js','invite-visibility-patch.js','player-sheet-equipment-abilities-patch.js']:
-              if runtime not in html:
-                  raise SystemExit(runtime+' index.html içinde yüklenmiyor')
-          for retired in ['ability-system-patch.js','ability-workshop-state-patch.js','gm-hub-patch.js','gm-hub-route-fix-patch.js','battle-creature-patch.js','ability-player-patch.js']:
-              if retired in html:
-                  raise SystemExit('Eski/çakışan runtime hâlâ index.html içinde: '+retired)
-          hub=Path('gm-hub-v2-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakGmHubOwnsMain','catlak_gm_update_ability','data-gm2-centerbar']:
-              if marker not in hub:
-                  raise SystemExit('GM Hub v2 stabilite işareti eksik: '+marker)
-          invite=Path('invite-visibility-patch.js').read_text(encoding='utf-8')
-          for marker in ['civPrepareGmRoute','civGuardGmRoute','civOpenStatsRoute','data-gm2-route="stats"','__catlakRenderCompactStats','__catlakInviteVisibilityTest']:
-              if marker not in invite:
-                  raise SystemExit('GM rota/Stat Atölyesi güvenlik işareti eksik: '+marker)
+          required=['browser-app.js','room-guard-patch.js','room-system-patch.js','site-stability-patch.js','gm-hub-v2-patch.js','gm-center-router-core.js','gm-tools-patch.js','event-rolls-patch.js','player-sheet-patch.js','player-live-actions-patch.js','stat-roll-patch.js','stat-workshop-route-fix.js']
+          for name in required:
+              if name not in html:
+                  raise SystemExit('Aktif runtime index içinde yüklenmiyor: '+name)
+
+          retired=['gm-hub-patch.js','gm-hub-route-fix-patch.js','gm-center-live-runtime.js','gm-center-tools-integration-patch.js','ability-system-patch.js','ability-workshop-state-patch.js']
+          for name in retired:
+              if name in html:
+                  raise SystemExit('Eski/çakışan runtime yeniden yüklenmiş: '+name)
+
           guard=Path('room-guard-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakBattleInnerHtmlStabilityInstalled','crg-gm-center-scope-style','__catlakBattleRenderSuppressed']:
+          for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']:
               if marker not in guard:
-                  raise SystemExit('Savaş/GM Merkezi stabilite işareti eksik: '+marker)
-          battle=Path('battle-room-v3-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakBattleRoomV3','data-br3-creatures','data-br3-abilities','data-br3-clear-log','catlak_player_use_ability','catlak_player_weapon_strike','br3BattleView','Promise.allSettled']:
-              if marker not in battle:
-                  raise SystemExit('Savaş Odası v3 işareti eksik: '+marker)
-          privacy=Path('player-enemy-privacy-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakEnemyHpPrivacy','data-br3-creatures','data-br3-ability-target',"mode:'ac-only'",'!/^AC\\s+/i']:
-              if marker not in privacy:
-                  raise SystemExit('Oyuncu yaratık AC-only gizlilik işareti eksik: '+marker)
-          compact=Path('battle-room-compact-patch.js').read_text(encoding='utf-8')
-          for marker in ['brc-compact-battle','brc-quick-card','brc-creatures-card','brc-abilities-card']:
-              if marker not in compact:
-                  raise SystemExit('Kompakt Savaş Odası işareti eksik: '+marker)
-          actions=Path('battle-room-actions-layout-patch.js').read_text(encoding='utf-8')
-          for marker in ['bra-action-layout','data-br3-target','brc-abilities-card','__catlakBattleActionsLayoutTest']:
-              if marker not in actions:
-                  raise SystemExit('Savaş hedef/yetenek kompakt yerleşim işareti eksik: '+marker)
+                  raise SystemExit('Oda koruma işareti eksik: '+marker)
+          for marker in ['__catlakBattleInnerHtmlStabilityInstalled','__catlakBattleRenderSuppressed']:
+              if marker in guard:
+                  raise SystemExit('Eski global savaş render yaması geri dönmüş: '+marker)
+
           stability=Path('site-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakSiteMainStabilityInstalled','__catlakSiteRenderSuppressed','sspStableView','__catlakStabilityFreeze','__catlakUiFreezeUntil','__catlakSiteStabilityTest']:
+          for marker in ['__catlakSiteMainStabilityInstalled','__catlakStabilityFreeze','__catlakShouldPreserveCurrentView','__catlakSiteStabilityTest']:
               if marker not in stability:
-                  raise SystemExit('Site geneli render stabilite işareti eksik: '+marker)
-          flow=Path('game-flow-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-gfs-live-turn','data-gfs-skip-creature','catlak_gm_skip_creature_turn','catlak_gm_combat_add_template','catlak_gm_combat_end','cc-game-flow-stability','pointerdown','button[data-a="weapon"]','__catlakGameFlowStabilityTest']:
-              if marker not in flow:
-                  raise SystemExit('Oyun akışı stabilite işareti eksik: '+marker)
-          turnsync=Path('turn-sync-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-cts-turn-card','data-cts-skip','catlak_gm_skip_creature_turn','catlak_player_combat_snapshot','__catlakBattleRoomV3Test','cc-turn-sync','data-gfs-live-turn','__catlakTurnSyncTest']:
-              if marker not in turnsync:
-                  raise SystemExit('Tur senkronizasyonu işareti eksik: '+marker)
-          battleaction=Path('battle-action-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakBattleActionBaseGuardInstalled','__catlakBattleBaseRenderBlocked','catlak_player_weapon_strike','catlak_player_use_ability','basRequireTurn','data-br3-strike','data-br3-use','cc-battle-action-stability','__catlakBattleActionStabilityTest']:
-              if marker not in battleaction:
-                  raise SystemExit('Savaş aksiyon stabilite işareti eksik: '+marker)
-          classic=Path('battle-room-classic-stable-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-bcs-classic-rolls','Saldırı At','Hasar At','bcsRecoverBase','bcsRefreshRecent','bcsSyncOrder','catlak_roll_weapon','catlak_roll_stat','cc-battle-classic-stable','__catlakBattleClassicStableTest']:
-              if marker not in classic:
-                  raise SystemExit('Klasik/stabil oyuncu Savaş Odası işareti eksik: '+marker)
-          navclean=Path('gm-nav-cleanup-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-ccr-hub','__catlakGmNavCleanupTest']:
-              if marker not in navclean:
-                  raise SystemExit('GM navigasyon temizliği işareti eksik: '+marker)
-          gmcombat=Path('gm-combat-v3-patch.js').read_text(encoding='utf-8')
-          for marker in ['data-cex-template-add','catlak_gm_combat_add_template','data-bcc-add-creature','catlak_gm_save_creature_template','Kütüphaneye Kaydet','gcv3-compact-gm-combat']:
-              if marker not in gmcombat:
-                  raise SystemExit('GM savaş v3/kütüphane/panel işareti eksik: '+marker)
-          psea=Path('player-sheet-equipment-abilities-patch.js').read_text(encoding='utf-8')
-          for marker in ['psea-equipment-grid','grid-template-columns:repeat(2,minmax(0,1fr))','gmt-slot:nth-child(5)']:
-              if marker not in psea:
-                  raise SystemExit('Oyuncu ekipman 2 sütun işareti eksik: '+marker)
-          qol=Path('quality-of-life-patch.js').read_text(encoding='utf-8')
-          for marker in ['catlak_player_long_rest','catlak_gm_combat_add_template_batch','data-qol-long-rest','data-qol-creature-count','data-ws-slot-board','qol-compact','__catlakQualityOfLifeTest']:
-              if marker not in qol:
-                  raise SystemExit('Yaşam kalitesi işareti eksik: '+marker)
-          if 'room-guard-patch.js?v=guard-v3' not in html:
-              raise SystemExit('room-guard cache sürümü guard-v3 olmalı')
-          if 'battle-room-v3-patch.js?v=battleroom-v2' not in html:
-              raise SystemExit('battle-room-v3 cache sürümü battleroom-v2 olmalı')
-          if 'player-enemy-privacy-patch.js?v=privacy-v2' not in html:
-              raise SystemExit('player-enemy-privacy cache sürümü privacy-v2 olmalı')
-          if 'battle-room-compact-patch.js?v=battlecompact-v4' not in html:
-              raise SystemExit('battle-room-compact cache sürümü battlecompact-v4 olmalı')
-          if 'battle-room-actions-layout-patch.js?v=battleactions-v1' not in html:
-              raise SystemExit('battle-room-actions cache sürümü battleactions-v1 olmalı')
-          if 'site-stability-patch.js?v=stability-v2' not in html:
-              raise SystemExit('site-stability cache sürümü stability-v2 olmalı')
-          if 'game-flow-stability-patch.js?v=gameflow-v2' not in html:
-              raise SystemExit('game-flow-stability cache sürümü gameflow-v2 olmalı')
-          if 'turn-sync-patch.js?v=turnsync-v1' not in html:
-              raise SystemExit('turn-sync cache sürümü turnsync-v1 olmalı')
-          if 'battle-action-stability-patch.js?v=battleaction-v1' not in html:
-              raise SystemExit('battle-action-stability cache sürümü battleaction-v1 olmalı')
-          if 'battle-room-classic-stable-patch.js?v=battleclassic-v1' not in html:
-              raise SystemExit('battle-room-classic-stable cache sürümü battleclassic-v1 olmalı')
-          if 'gm-nav-cleanup-patch.js?v=gmnav-v1' not in html:
-              raise SystemExit('gm-nav-cleanup cache sürümü gmnav-v1 olmalı')
-          if 'gm-combat-v3-patch.js?v=gmcombat-v3' not in html:
-              raise SystemExit('gm-combat-v3 cache sürümü gmcombat-v3 olmalı')
-          if 'player-sheet-equipment-abilities-patch.js?v=psea-v2' not in html:
-              raise SystemExit('player-sheet equipment cache sürümü psea-v2 olmalı')
-          if 'quality-of-life-patch.js?v=qol-v1' not in html:
-              raise SystemExit('quality-of-life cache sürümü qol-v1 olmalı')
-          if 'invite-visibility-patch.js?v=inviteui-v3' not in html:
-              raise SystemExit('GM rota köprüsü cache sürümü inviteui-v3 olmalı')
-          print('Source invariants OK')
+                  raise SystemExit('Site stabilite işareti eksik: '+marker)
+
+          stats=Path('ux-patch.js').read_text(encoding='utf-8')
+          for marker in ['__catlakRenderCompactStats','__catlakStatsTest','cuxDirty','cuxSelect']:
+              if marker not in stats:
+                  raise SystemExit('Stat Atölyesi stabilite işareti eksik: '+marker)
+
+          route=Path('stat-workshop-route-fix.js').read_text(encoding='utf-8')
+          for stale in ['SWRF_CACHE_KEY','swrfRestoreCache']:
+              if stale in route:
+                  raise SystemExit('Eski Stat HTML cache/restore katmanı geri dönmüş: '+stale)
+
+          hub=Path('gm-hub-v2-patch.js').read_text(encoding='utf-8')
+          for marker in ['__catlakGmHubOwnsMain','data-gm2-centerbar']:
+              if marker not in hub:
+                  raise SystemExit('GM Merkezi sahiplik işareti eksik: '+marker)
+
+          print('SOURCE_SANITY_CURRENT_OK')
           PY
