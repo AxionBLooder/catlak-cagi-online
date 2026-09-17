@@ -59,15 +59,22 @@
     root.querySelectorAll?.(INPUT_SEL).forEach(enable);
   }
 
+  const oldStyle=document.querySelector('#cc-stat-editor-hardfix-style');
+  oldStyle?.remove();
   const style=document.createElement('style');
   style.id='cc-stat-editor-hardfix-style';
   style.textContent=`
-    #app main .cux-editor{z-index:18!important;isolation:isolate!important}
-    #app main .cux-editor,#app main .cux-editor *{pointer-events:auto!important}
+    #app main .cux-workshop{isolation:isolate!important}
+    #app main .cux-workshop>aside{position:relative!important;z-index:10!important;pointer-events:auto!important;min-width:0!important}
+    #app main .cux-character-list{position:relative!important;z-index:11!important;pointer-events:auto!important}
+    #app main .cux-character-btn,#app main .cux-character-btn *{pointer-events:auto!important}
+    #app main .cux-character-btn{position:relative!important;z-index:12!important;cursor:pointer!important;touch-action:manipulation!important}
+    #app main .cux-editor{position:sticky!important;z-index:2!important;isolation:isolate!important;min-width:0!important}
     #app main .cux-number-control{position:relative!important;z-index:2!important}
-    #app main .cux-number-control input{position:relative!important;z-index:3!important;cursor:text!important;user-select:text!important;-webkit-user-select:text!important;touch-action:manipulation!important}
-    #app main .cux-number-control button{position:relative!important;z-index:4!important;cursor:pointer!important;touch-action:manipulation!important}
+    #app main .cux-number-control input{position:relative!important;z-index:3!important;pointer-events:auto!important;cursor:text!important;user-select:text!important;-webkit-user-select:text!important;touch-action:manipulation!important}
+    #app main .cux-number-control button{position:relative!important;z-index:4!important;pointer-events:auto!important;cursor:pointer!important;touch-action:manipulation!important}
     #app main .cux-editor::before,#app main .cux-editor::after,#app main .cux-field::before,#app main .cux-field::after,#app main .cux-number-control::before,#app main .cux-number-control::after{pointer-events:none!important}
+    @media(max-width:900px){#app main .cux-editor{position:static!important}}
   `;
   document.head.appendChild(style);
 
