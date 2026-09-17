@@ -50,6 +50,7 @@ jobs:
               'global-transition-guard.js',
               'battle-party-membership-guard.js',
               'session-log-delete-fix.js',
+              'player-portal-v3.js',
           }
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
@@ -87,7 +88,7 @@ jobs:
           live_html = live_html.replace('</head>',boot_style+'</head>',1)
           live_html = live_html.replace('<script src="./stat-editor-hardfix.js','<script src="./global-transition-guard.js?v=global-transition-v2"></script><script src="./stat-editor-hardfix.js',1)
 
-          late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
+          late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
           live_html = live_html.replace('</body>', late_loader + '</body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
@@ -110,6 +111,7 @@ jobs:
           grep -Fq 'battle-party-membership-guard.js?v=battle-party-v1' _site/index.html
           grep -Fq 'party-player-transition-fix.js?v=party-transition-v1' _site/index.html
           grep -Fq 'session-log-delete-fix.js?v=session-log-v1' _site/index.html
+          grep -Fq 'player-portal-v3.js?v=player-portal-v3-ddb1' _site/index.html
           ! grep -Fq '<script src="./live-combat-center-patch.js?v=livecombat-v1"></script>' _site/index.html
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v7-room-ownership' _site/index.html
@@ -127,9 +129,13 @@ jobs:
           test -f _site/global-transition-guard.js
           test -f _site/battle-party-membership-guard.js
           test -f _site/session-log-delete-fix.js
+          test -f _site/player-portal-v3.js
           grep -Fq '__catlakGlobalTransitionGuardV2' _site/global-transition-guard.js
           grep -Fq '__catlakBattlePartyGuardV1' _site/battle-party-membership-guard.js
           grep -Fq '__catlakSessionLogDeleteFixV1' _site/session-log-delete-fix.js
+          grep -Fq '__catlakPlayerPortalV3' _site/player-portal-v3.js
+          grep -Fq 'Oyuncu görünümü yalnız karakter kağıdına açıktır.' _site/player-portal-v3.js
+          grep -Fq 'data-ccbv-tab="inventory"' _site/player-portal-v3.js
           grep -Fq '__catlakLiveCombatCenterLoaderV1' _site/live-combat-center-loader.js
           grep -Fq 'livecombat-v2-runtime' _site/live-combat-center-loader.js
           grep -Fq '__catlakLiveCombatCenterV1' _site/live-combat-center-patch.js
