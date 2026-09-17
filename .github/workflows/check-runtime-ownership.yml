@@ -11,6 +11,7 @@ on:
       - 'party-eeliot-runtime-hotfix.js'
       - 'gm-center-party-integration.js'
       - 'class-bonus-patch.js'
+      - 'live-combat-anchor-safety.js'
       - '.github/workflows/check-runtime-ownership.yml'
   workflow_dispatch:
 jobs:
@@ -22,11 +23,13 @@ jobs:
       - name: Static ownership checks
         run: |
           set -euo pipefail
-          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js party-eeliot-runtime-hotfix.js gm-center-party-integration.js class-bonus-patch.js; do node --check "$f"; done
+          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js party-eeliot-runtime-hotfix.js gm-center-party-integration.js class-bonus-patch.js live-combat-anchor-safety.js; do node --check "$f"; done
           grep -Fq 'gm-center-router-core.js?v=recovery-gm-7-management-explicit' index.html
           grep -Fq 'gm-management-room-patch.js?v=management-v2-explicit-only' index.html
-          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v5-gm-center' index.html
+          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v6-single-owner' index.html
           grep -Fq 'gm-center-party-integration.js?v=gm-party-center-v2-top' index.html
+          grep -Fq 'live-combat-anchor-safety.js?v=livecombat-anchor-v1' index.html
+          ! grep -Fq 'party-player-transition-fix.js' index.html
           ! grep -Fq "'characters','party'" gm-center-router-core.js
           ! grep -Fq "route==='party'" gm-center-router-core.js
           grep -Fq 'openExplicit' gm-management-room-patch.js
@@ -55,12 +58,7 @@ jobs:
           function rowsFor(table){if(table==='catlak_characters')return chars;if(table==='catlak_classes')return classes;if(table==='catlak_species')return[{name:'İnsan',sort_order:1}];if(table==='catlak_backgrounds')return[{name:'Bilgin',sort_order:1}];return[]}
           function from(table){
             let mode='select',payload=null,filters={},like=null,limitN=null;
-            const c={
-              select(){mode='select';return c},order(){return c},in(k,v){filters[k]=v;return c},limit(v){limitN=v;return c},ilike(k,v){like=[k,String(v).toLowerCase()];return c},
-              eq(k,v){filters[k]=v;return c},update(v){mode='update';payload=v;return c},delete(){mode='delete';return c},upsert(v){mode='upsert';payload=v;return c},
-              maybeSingle(){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));return Promise.resolve({data:data[0]||null,error:null})},
-              then(ok,bad){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));if(limitN!=null)data=data.slice(0,limitN);if(mode==='update'){window.__updates.push({table,payload,filters});for(const x of data)Object.assign(x,payload)}return Promise.resolve({data,error:null}).then(ok,bad)}
-            };return c;
+            const c={select(){mode='select';return c},order(){return c},in(k,v){filters[k]=v;return c},limit(v){limitN=v;return c},ilike(k,v){like=[k,String(v).toLowerCase()];return c},eq(k,v){filters[k]=v;return c},update(v){mode='update';payload=v;return c},delete(){mode='delete';return c},upsert(v){mode='upsert';payload=v;return c},maybeSingle(){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));return Promise.resolve({data:data[0]||null,error:null})},then(ok,bad){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));if(limitN!=null)data=data.slice(0,limitN);if(mode==='update'){window.__updates.push({table,payload,filters});for(const x of data)Object.assign(x,payload)}return Promise.resolve({data,error:null}).then(ok,bad)}};return c;
           }
           const channel={on(){return channel},subscribe(){return channel}};
           window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>channel,auth:{getSession:async()=>({data:{session:null}})},storage:{from:()=>({remove:async()=>({error:null})})}};
@@ -82,20 +80,18 @@ jobs:
             if(await p.locator('.nav [data-prh-manager]').count()!==1)throw new Error('Top Party Room missing');
             const partyLabel=(await p.locator('.nav [data-prh-manager]').innerText()).trim();if(partyLabel!=='Parti Odası')throw new Error('Top Party Room label wrong '+partyLabel);
             const partyDisplay=await p.locator('.nav [data-prh-manager]').evaluate(el=>getComputedStyle(el).display);if(partyDisplay==='none')throw new Error('Top Party Room is hidden');
-
             await p.click('[data-gmt-open]');await p.waitForSelector('[data-gm2-centerbar]');
             if(await p.locator('[data-gm2-route="combat"]').count())throw new Error('Combat should not be in GM Center');
             if(await p.locator('[data-gm2-route="characters"]').count()!==1)throw new Error('Management Room missing from GM Center');
             if(await p.locator('[data-gm2-route="party"]').count()!==0)throw new Error('Party Room must not be inside GM Center');
             await p.click('[data-gm2-route="characters"]');await p.waitForSelector('[data-gmr-page]');
             const management=await p.locator('[data-gmr-page]').innerText();if(!management.includes('Test Şövalye')||!management.includes('Oyuncu Daveti'))throw new Error('Management Room did not render '+management);
-
-            await p.click('.nav [data-prh-manager]');await p.waitForSelector('[data-prh-page]');
+            await p.click('.nav [data-prh-manager]');await p.waitForSelector('[data-prh-page]',{timeout:3000});
             const party=await p.locator('[data-prh-page]').innerText();if(!party.includes('Parti Yönetimi')||!party.includes('Test Şövalye'))throw new Error('Party Room did not render '+party);
+            if(await p.locator('[data-prh-page]').count()!==1)throw new Error('Duplicate Party Room roots detected');
             const gmCenterStillThere=await p.locator('.nav [data-gmt-open]').count();if(gmCenterStillThere!==1)throw new Error('GM Center disappeared after opening Party Room');
             const centerActive=await p.locator('.nav [data-gmt-open]').evaluate(el=>el.classList.contains('gm2-center-active')||el.classList.contains('on'));if(centerActive)throw new Error('GM Center should not stay active while Party Room is open');
             const partyActive=await p.locator('.nav [data-prh-manager]').evaluate(el=>el.classList.contains('on'));if(!partyActive)throw new Error('Top Party Room should be active');
-
             await p.waitForFunction(()=>window.__updates.some(x=>x.table==='catlak_characters'&&x.payload?.data?.class_bonus_v1?.applied===true),null,{timeout:5000});
             const out=await p.evaluate(()=>({management:!!window.__catlakManagementRoom,party:!!window.__catlakPartyEeliotHotfix?.isOpen?.(),center:window.__catlakGmCenterRouterCore?.centerOpen?.()}));
             if(!out.party||out.center)throw new Error('Top Party Room ownership wrong '+JSON.stringify(out));
