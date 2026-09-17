@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'player-sheet-runtime-v4.js'
       - 'player-sheet-support-runtime.js'
       - 'player-live-actions-patch.js'
       - 'player-sheet-equipment-abilities-patch.js'
@@ -18,13 +19,21 @@ jobs:
       - name: Static checks
         run: |
           set -euo pipefail
+          node --check player-sheet-runtime-v4.js
           node --check player-sheet-support-runtime.js
           node --check player-live-actions-patch.js
           node --check player-sheet-equipment-abilities-patch.js
-          grep -Fq 'player-sheet-support-runtime.js?v=player-support-v1' index.html
-          grep -Fq 'player-speed-v3-restore' index.html
+          grep -Fq 'player-sheet-runtime-v4.js?v=player-sheet-v4b' index.html
+          grep -Fq 'player-sheet-support-runtime.js?v=player-support-v2b' index.html
+          ! grep -Fq 'player-sheet-patch.js' index.html
+          grep -Fq 'cc-player-critical-pending' index.html
           grep -Fq "main_weapon:'1. Silah'" player-sheet-support-runtime.js
           grep -Fq "off_weapon:'2. Silah'" player-sheet-support-runtime.js
+          grep -Fq 'catlak_character_conditions' player-sheet-support-runtime.js
+          grep -Fq 'data-psv4-hp' player-sheet-runtime-v4.js
+          grep -Fq 'Irk Becerileri' player-sheet-runtime-v4.js
+          grep -Fq 'data-psea-long-rest' player-sheet-equipment-abilities-patch.js
+          grep -Fq 'catlak_player_use_ability' player-sheet-equipment-abilities-patch.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify equipment slots and live inventory in Chrome
@@ -34,49 +43,28 @@ jobs:
           const {execFileSync}=require('child_process');
           const path=require('path');
           (async()=>{
-            let exe='';
-            for(const c of ['google-chrome','google-chrome-stable','chromium']){
-              try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}
-            }
+            let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
             if(!exe)throw new Error('Chrome missing');
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             try{
-              const page=await browser.newPage();
-              const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
-              await page.setContent(`<!doctype html><meta charset="utf-8"><div id="app"><div class="role">OYUNCU</div><nav class="nav"><button class="on" data-tab="sheet">Kağıt</button></nav><main class="ps-player-sheet"><div class="cc-character-stack"><section class="hero card"><h1>Test Oyuncu</h1><button data-a="hp" data-id="c1">10</button></section><section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2><div class="iw-empty">Envanter boş.</div></section><section class="card"><div class="eyebrow">SON ZARLAR</div></section></div></main></div><div id="toast" class="hidden"></div>`);
+              const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><div class="role">OYUNCU</div><nav class="nav"><button class="on" data-tab="sheet">Kağıt</button></nav><main><div class="cc-character-stack"><section class="hero card"><h1>Test Oyuncu</h1><div class="vitals"><div class="vital"><span>HP</span><b>10/20</b><button data-a="hp" data-id="c1">-</button></div></div></section><section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2><div class="iw-empty">Envanter boş.</div></section><section class="card"><div class="eyebrow">SON ZARLAR</div></section></div></main></div><div id="toast" class="hidden"></div>`);
               await page.evaluate(()=>{
-                const rows={
-                  catlak_character_conditions:[],
-                  catlak_inventory:[{id:'inv1',character_id:'c1',item_id:'item1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:'',granted_at:'2026-01-01T00:00:00Z'}],
-                  catlak_items:[{id:'item1',name:'Test Kılıcı',item_type:'weapon',description:'Test silahı',attack_stat:'STR',attack_bonus:1,attack_formula:'',damage_formula:'1d8',damage_type:'kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],
-                  catlak_rolls:[]
-                };
-                function query(table){return {select(){return this},in(){return this},eq(){return this},order(){return this},limit(){return this},then(ok,bad){return Promise.resolve({data:rows[table]||[],error:null}).then(ok,bad)}}}
+                const rows={catlak_character_conditions:[{id:'cond1',character_id:'c1',name:'Yanıyor',remaining_rounds:2,note:'1 hasar',active:true}],catlak_inventory:[{id:'inv1',character_id:'c1',item_id:'item1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:'',granted_at:'2026-01-01'}],catlak_items:[{id:'item1',name:'Test Kılıcı',item_type:'weapon',description:'Test silahı',attack_stat:'STR',attack_bonus:1,attack_formula:'',damage_formula:'1d8',damage_type:'kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],catlak_rolls:[]};
+                function query(table){const q={select(){return q},in(){return q},eq(){return q},order(){return q},limit(){return q},then(ok,bad){return Promise.resolve({data:rows[table]||[],error:null}).then(ok,bad)}};return q}
                 const channel={on(){return this},subscribe(){return this}};
-                window.__catlakSupabase={from:t=>query(t),channel:()=>channel,rpc:async()=>({data:null,error:null})};
-                window.__catlakPlayerSheetTest={apply(){}};
+                window.__catlakSupabase={from:t=>query(t),channel:()=>channel,rpc:async name=>name==='catlak_player_abilities'?{data:[],error:null}:name==='catlak_player_combat_snapshot'?{data:{active:false,order:[]},error:null}:{data:null,error:null}};
               });
+              await page.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
               await page.addScriptTag({path:path.resolve('player-sheet-support-runtime.js')});
-              await page.waitForFunction(()=>!!window.__catlakPlayerSheetSupport);
-              await page.evaluate(()=>window.__catlakPlayerSheetSupport.refresh(true));
               await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
-              await page.waitForFunction(()=>!!window.__catlakPlayerLiveTest);
-              await page.evaluate(()=>window.__catlakPlayerLiveTest.refresh(true));
-              await page.waitForFunction(()=>{
-                const slot=document.querySelector('[data-gmt-slot="main_weapon"] > span');
-                const inv=document.querySelector('[data-pla-inv-row="inv1"] h3');
-                return slot?.textContent.includes('Test Kılıcı')&&inv?.textContent.includes('Test Kılıcı');
-              });
-              const result=await page.evaluate(()=>({
-                panel:!!document.querySelector('[data-gmt-player-panel]'),
-                slots:document.querySelectorAll('[data-gmt-player-panel] .gmt-slot').length,
-                mainWeapon:document.querySelector('[data-gmt-slot="main_weapon"] > span')?.textContent||'',
-                inventory:document.querySelector('[data-pla-inv-row="inv1"] h3')?.textContent||'',
-                empty:!![...document.querySelectorAll('.iw-empty')].find(x=>x.textContent.includes('Envanter boş'))
-              }));
-              if(!result.panel||result.slots!==5||result.mainWeapon!=='Test Kılıcı'||!result.inventory.includes('Test Kılıcı')||result.empty)throw new Error('Player sheet support failed '+JSON.stringify(result));
+              await page.addScriptTag({path:path.resolve('player-sheet-equipment-abilities-patch.js')});
+              await page.evaluate(async()=>{await window.__catlakPlayerSheetSupport.refresh(true);await window.__catlakPlayerLiveTest.refresh(true);await window.__catlakPlayerSheetEquipmentAbilitiesTest.paint(true);window.__catlakPlayerSheetTest.apply()});
+              await page.waitForFunction(()=>document.body.textContent.includes('Test Kılıcı')&&document.body.textContent.includes('Yanıyor'));
+              const result=await page.evaluate(()=>({panel:!!document.querySelector('[data-gmt-player-panel]'),slots:document.querySelectorAll('[data-gmt-player-panel] .gmt-slot').length,mainWeapon:document.querySelector('[data-gmt-slot="main_weapon"] > span')?.textContent||'',inventory:document.querySelector('[data-pla-inv-row="inv1"] h3')?.textContent||'',condition:document.querySelector('[data-gmt-status-list]')?.textContent||'',inventoryTitle:[...document.querySelectorAll('.eyebrow')].find(x=>x.textContent==='ENVANTER')?.textContent||'',hp:!!document.querySelector('[data-psv4-hp]'),raceNav:!!document.querySelector('[data-psv4-race-nav]')}));
+              if(!result.panel||result.slots!==5||result.mainWeapon!=='Test Kılıcı'||!result.inventory.includes('Test Kılıcı')||!result.condition.includes('Yanıyor')||result.inventoryTitle!=='ENVANTER'||!result.hp||!result.raceNav)throw new Error('Player v4 failed '+JSON.stringify(result));
               if(errors.length)throw new Error(errors.join(' | '));
-              console.log('PLAYER_SHEET_SUPPORT_OK',JSON.stringify(result));
+              console.log('PLAYER_SHEET_V4_OK',JSON.stringify(result));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
