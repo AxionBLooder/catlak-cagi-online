@@ -58,6 +58,7 @@ jobs:
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "${LIVE_URL}?world-browser-smoke=$(date +%s%N)" >/tmp/live-dom.html 2>/tmp/live-chrome.log || true
-          if grep -Eqi '(Invalid or unexpected token|Uncaught SyntaxError|Missing \} in template expression|Uygulama başlatılamadı|Site yüklenemedi|Başlangıç hatası)' /tmp/live-dom.html /tmp/live-chrome.log; then cat /tmp/live-chrome.log; exit 1; fi
+          if grep -Eqi '(Invalid or unexpected token|Uncaught SyntaxError|Missing \} in template expression)' /tmp/live-chrome.log; then cat /tmp/live-chrome.log; exit 1; fi
+          if grep -Eqi '<h2[^>]*>(Başlangıç hatası|Site yüklenemedi|Uygulama başlatılamadı)</h2>' /tmp/live-dom.html; then echo 'Görünür başlangıç hata ekranı oluştu'; cat /tmp/live-chrome.log; exit 1; fi
           grep -Eqi '(Giriş Yap|Hesap Aç|TEK EVREN)' /tmp/live-dom.html || { echo 'Auth ekranı oluşmadı'; cat /tmp/live-chrome.log; exit 1; }
           echo 'Permanent Pages world-upload smoke OK'
