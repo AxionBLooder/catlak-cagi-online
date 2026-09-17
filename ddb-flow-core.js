@@ -1,6 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakDdbFlowCoreV1)return;
+if(window.__catlakDdbFlowCoreV2)return;
+window.__catlakDdbFlowCoreV2=true;
 window.__catlakDdbFlowCoreV1=true;
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -24,6 +25,10 @@ if(!document.getElementById('ddb-flow-core-style')){
 }
 
 function clearCloaks(){HTML.classList.remove('cc-route-cloak')}
+function showMain(){
+ const m=APP.querySelector('main');
+ if(isPlayer()&&m&&!m.classList.contains('auth'))m.style.setProperty('visibility','visible','important');
+}
 function forcePlayerSheet(){
  if(!isPlayer()||forcing)return;
  const b=APP.querySelector('.nav [data-tab="sheet"]');if(!b)return;
@@ -39,7 +44,6 @@ function inviteOnlyAuth(){
  const login=auth.querySelector('[data-a="amode"][data-v="login"]');
  if(signup?.classList.contains('on'))login?.click();
  const h1=auth.querySelector('h1');if(h1)h1.textContent='Çatlak Çağı';
- const h2=auth.querySelector('h2');if(h2&&/hesap|giriş/i.test(txt(h2)))h2.textContent='GM Girişi';
  const p=auth.querySelector('h1 + p, .card > p.muted');
  if(p)p.textContent='Karakterleri GM oluşturur. Oyuncular kendilerine gönderilen karakter davet bağlantısını açarak doğrudan kendi karakter kağıdına girer.';
  const form=auth.querySelector('.form');
@@ -60,29 +64,28 @@ function gmShell(){
 function playerShell(){
  if(!isPlayer()){HTML.classList.remove('ddb-player');return}
  HTML.classList.add('ddb-player');
- forcePlayerSheet();
+ clearCloaks();forcePlayerSheet();showMain();
  APP.querySelectorAll('[data-tab="builder"],[data-a="create"],[data-a="guestinvite"]').forEach(x=>x.style.display='none');
  const main=APP.querySelector('main');
  if(main&&!main.classList.contains('auth')){
+  main.style.setProperty('visibility','visible','important');
   const empty=[...main.querySelectorAll('.empty,.card.empty')].find(x=>/Henüz karakterin yok|Karakter Oluştur/i.test(txt(x)));
   if(empty){empty.innerHTML='<div class="eyebrow">KARAKTER DAVETİ GEREKLİ</div><h2>Henüz sana atanmış bir karakter yok</h2><p>Karakteri GM oluşturur. Sana gönderilen karakter davet bağlantısını açtığında kağıdın otomatik olarak burada görünür.</p>'}
  }
 }
-function apply(){
- scheduled=false;clearCloaks();inviteOnlyAuth();gmShell();playerShell();
-}
+function apply(){scheduled=false;clearCloaks();inviteOnlyAuth();gmShell();playerShell();showMain()}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply)}
-window.addEventListener('pointerdown',clearCloaks,true);
+window.addEventListener('pointerdown',()=>{clearCloaks();showMain()},true);
 window.addEventListener('click',e=>{
- clearCloaks();
+ clearCloaks();showMain();
  if(isPlayer()&&e.target?.closest?.('[data-tab="builder"],[data-tab="rules"],[data-tab="account"],[data-ccr-battle],[data-prh-party],[data-pm3-open],[data-a="create"]')){
   e.preventDefault();e.stopImmediatePropagation();forcePlayerSheet();
  }
  if(e.target?.closest?.('[data-a="amode"][data-v="signup"]')){e.preventDefault();e.stopImmediatePropagation()}
 },true);
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-new MutationObserver(clearCloaks).observe(HTML,{attributes:true,attributeFilter:['class']});
-setInterval(clearCloaks,500);
+new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+new MutationObserver(()=>{clearCloaks();showMain()}).observe(HTML,{attributes:true,attributeFilter:['class']});
+setInterval(()=>{clearCloaks();showMain()},350);
 setTimeout(schedule,0);setTimeout(schedule,120);setTimeout(schedule,450);
-window.__catlakDdbFlowCore={apply,forcePlayerSheet,clearCloaks};
+window.__catlakDdbFlowCore={apply,forcePlayerSheet,clearCloaks,showMain};
 })();
