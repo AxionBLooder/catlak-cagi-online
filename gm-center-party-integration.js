@@ -44,4 +44,5 @@ function schedule(){if(queued)return;queued=true;requestAnimationFrame(ensure)}
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 setTimeout(ensure,0);setTimeout(ensure,250);setTimeout(ensure,1000);
 window.__catlakGmCenterPartyIntegration={ensure,ensureTopParty,removePartyFromCenter};
+// layout-v2: GM Merkezi üstte kalır, Parti Odası üst menüde ayrıdır.
 })();
