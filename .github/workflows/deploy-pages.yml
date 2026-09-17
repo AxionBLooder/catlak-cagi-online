@@ -75,8 +75,7 @@ jobs:
           for old,new in replacements.items():
               live_html = live_html.replace(old,new)
 
-          # Geçişlerde artık tam ekran hazırlık perdesi yok.
-          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v2"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v1"></script>'
+          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v2"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v2"></script>'
           live_html = live_html.replace('<script src="./stat-editor-hardfix.js', early + '<script src="./stat-editor-hardfix.js', 1)
 
           late = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
@@ -90,13 +89,13 @@ jobs:
 
           grep -Fq 'global-transition-guard.js?v=global-transition-v4' _site/index.html
           grep -Fq 'ddb-flow-core.js?v=ddb-flow-v2' _site/index.html
-          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v1' _site/index.html
+          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v2' _site/index.html
           ! grep -Fq 'Bölüm hazırlanıyor' _site/index.html
           ! grep -Fq 'cc-route-cloak #app main{visibility:hidden' _site/index.html
           ! grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
           grep -Fq '__catlakGlobalTransitionGuardV4' _site/global-transition-guard.js
           grep -Fq '__catlakDdbFlowCoreV2' _site/ddb-flow-core.js
-          grep -Fq '__catlakDdbSiteThemeV1' _site/ddb-site-theme-v1.js
+          grep -Fq '__catlakDdbSiteThemeV2' _site/ddb-site-theme-v1.js
           grep -Fq 'player-portal-v3.js?v=player-portal-v3-ddb1' _site/index.html
           grep -Fq 'battle-party-membership-guard.js?v=battle-party-v1' _site/index.html
           grep -Fq 'session-log-delete-fix.js?v=session-log-v1' _site/index.html
