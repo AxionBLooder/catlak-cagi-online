@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPartyManagerV3)return;
-window.__catlakPartyManagerV3=true;
+if(window.__catlakPartyManagerV4)return;
+window.__catlakPartyManagerV4=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
@@ -34,26 +34,48 @@ async function setFlag(id,key,value){const c=await latest(id);const data={...(c.
 function ensureButtons(){
  if(!isGM())return;
  const nav=APP.querySelector('.nav');
- if(nav&&!nav.querySelector('[data-pm3-open]')){const b=document.createElement('button');b.type='button';b.dataset.pm3Open='1';b.textContent='Parti Yönetimi';const a=nav.querySelector('[data-gmt-open]');a?a.after(b):nav.appendChild(b)}
+ if(nav){
+  nav.querySelectorAll('[data-cpr-manager],[data-prh-manager]').forEach(x=>x.remove());
+  let b=nav.querySelector('[data-pm3-open]');
+  if(!b){b=document.createElement('button');b.type='button';b.dataset.pm3Open='1';b.textContent='Parti Yönetimi'}
+  const live=nav.querySelector('[data-tab="gm"]');
+  if(live){if(live.nextElementSibling!==b)live.insertAdjacentElement('afterend',b)}
+  else if(b.parentElement!==nav)nav.appendChild(b);
+ }
  const bar=APP.querySelector('[data-gm2-centerbar]');
  if(bar&&!bar.querySelector('[data-pm3-center]')){const b=document.createElement('button');b.type='button';b.dataset.pm3Center='1';b.textContent='Parti Yönetimi';bar.appendChild(b)}
 }
+
+function cleanLiveTableIntro(){
+ if(!isGM())return;
+ const live=APP.querySelector('.nav [data-tab="gm"].on');
+ if(!live)return;
+ APP.querySelectorAll('main section.card').forEach(sec=>{
+  if(txt(sec.querySelector('.eyebrow'))!=='CANLI OYUN MASASI')return;
+  sec.querySelectorAll('p.muted,p').forEach(p=>{
+   if(txt(p).includes('Solda oyuncuların attığı zarlar'))p.remove();
+  });
+ });
+}
+
 function card(c){const d=c.data||{},p=d[PKEY]===true,b=d[BKEY]===true;return `<article class="pm3-card ${p?'party':''} ${b?'battle':''}"><div class="eyebrow">${c.owner_id?'OYUNCUYA BAĞLI':d.cc_companion?'OYNANABİLİR YARDIMCI':'HAZIR KARAKTER'}</div><h3>${esc(c.name)}</h3><div class="muted">${esc(c.species_name||'')} • ${esc(d.cc_role||c.class_name||'')} • Seviye ${Number(c.level||1)}</div><div class="pm3-flags"><span class="pm3-flag ${p?'on':''}">${p?'✓ PARTİDE':'PARTİ DIŞI'}</span><span class="pm3-flag ${b?'war':''}">${b?'⚔ SAVAŞ ODASINDA':'SAVAŞ DIŞI'}</span></div><div class="muted" style="margin-top:8px">HP ${Number(c.hp_current||0)}/${Number(c.hp_max||0)} • AC ${Number(c.base_ac||0)} • Hız ${Number(c.base_speed||0)}</div><div class="pm3-actions"><button type="button" class="${p?'danger':'primary'}" data-pm3-party="${esc(c.id)}" data-v="${p?'0':'1'}">${p?'Partiden Çıkar':'Partiye Al'}</button><button type="button" class="${b?'danger':'primary'}" data-pm3-battle="${esc(c.id)}" data-v="${b?'0':'1'}">${b?'Savaştan Çıkar':'Savaş Odasına Al'}</button>${!c.owner_id?`<button type="button" data-pm3-invite="${esc(c.id)}" data-name="${esc(c.name)}">Oyuncuya Davet</button>`:''}</div></article>`}
 
 async function render(){if(!open||!isGM()||busy)return;busy=true;try{const list=await chars();if(!open)return;const main=APP.querySelector('main');if(!main)return;main.innerHTML=`<div class="pm3-shell" data-pm3-page><section class="card pm3-top"><div class="eyebrow">GM • PARTİ & SAVAŞ KATILIMI</div><h1>Parti Yönetimi</h1><p class="muted">Buradaki seçimler karakter statlarını değiştirmez. Yalnız parti ve savaş odası katılımını yönetir.</p></section><section class="card"><div class="section-title"><div><div class="eyebrow">KATILIMCI HAVUZU</div><h2>${list.length} Karakter</h2></div></div><div class="pm3-grid">${list.map(card).join('')}</div></section></div>`;const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));nav?.querySelector('[data-pm3-open]')?.classList.add('on');APP.querySelector('[data-pm3-center]')?.classList.add('on')}catch(e){console.error('PM3 render',e);toast('Parti Yönetimi yüklenemedi: '+(e?.message||String(e)))}finally{busy=false}}
-function openManager(){if(!isGM())return;open=true;window.__catlakGmCenterSelectedRoute='party-manager-v3';window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();window.__catlakBattleRoomOpen=false;render()}
+function openManager(){if(!isGM())return;open=true;window.__catlakGmCenterSelectedRoute='party-manager-v4';window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();window.__catlakBattleRoomOpen=false;render()}
 function closeManager(){open=false}
 async function invite(id,name){const r=await S.rpc('catlak_generate_character_claim',{p_character_id:id});if(r.error)throw r.error;const link='https://axionblooder.github.io/catlak-cagi-online/?join='+encodeURIComponent(r.data);try{await navigator.clipboard.writeText(link)}catch(_){}prompt(`${name||'Karakter'} için oyuncu davet linki:`,link)}
 
+function openFromEvent(e){const op=e.target?.closest?.('#app [data-pm3-open],#app [data-pm3-center]');if(!op)return false;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openManager();return true}
+window.addEventListener('pointerdown',openFromEvent,true);
 window.addEventListener('click',e=>{
- const op=e.target.closest?.('#app [data-pm3-open],#app [data-pm3-center]');if(op){e.preventDefault();e.stopImmediatePropagation();openManager();return}
+ if(openFromEvent(e))return;
  const p=e.target.closest?.('#app [data-pm3-party]');if(p){e.preventDefault();e.stopImmediatePropagation();setFlag(p.dataset.pm3Party,PKEY,p.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
  const b=e.target.closest?.('#app [data-pm3-battle]');if(b){e.preventDefault();e.stopImmediatePropagation();setFlag(b.dataset.pm3Battle,BKEY,b.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
  const i=e.target.closest?.('#app [data-pm3-invite]');if(i){e.preventDefault();e.stopImmediatePropagation();invite(i.dataset.pm3Invite,i.dataset.name).catch(x=>toast(x.message||String(x)));return}
  if(e.target.closest?.('#app .nav button:not([data-pm3-open]),#app [data-gm2-route],#app [data-gmt-sub]'))closeManager();
 },true);
-new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;ensureButtons();if(open&&!APP.querySelector('[data-pm3-page]'))render()})}).observe(APP,{childList:true,subtree:true});
-S.channel('pm3-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ensureButtons();if(open)render()}).subscribe();
-setTimeout(ensureButtons,80);setTimeout(ensureButtons,350);setTimeout(ensureButtons,1200);
-window.__catlakPartyManager={open:openManager,close:closeManager,render,ensureButtons};
+new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;ensureButtons();cleanLiveTableIntro();if(open&&!APP.querySelector('[data-pm3-page]'))render()})}).observe(APP,{childList:true,subtree:true});
+S.channel('pm3-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ensureButtons();cleanLiveTableIntro();if(open)render()}).subscribe();
+setTimeout(()=>{ensureButtons();cleanLiveTableIntro()},80);setTimeout(()=>{ensureButtons();cleanLiveTableIntro()},350);setTimeout(()=>{ensureButtons();cleanLiveTableIntro()},1200);
+window.__catlakPartyManager={open:openManager,close:closeManager,render,ensureButtons,cleanLiveTableIntro};
 })();

@@ -79,5 +79,5 @@ window.__catlakStatWorkshopRouteFix={open:swrfOpen,draw:()=>swrfDraw(true),activ
     document.body.appendChild(s);
   }
   load('./stat-character-switch-fix.js?v=stat-switch-v2-pointerdown','stat-switch-direct');
-  load('./party-manager-v3.js?v=party-manager-v3-direct','party-manager-v3-direct');
+  load('./party-manager-v3.js?v=party-manager-v4-live-adjacent','party-manager-v3-direct');
 })();
