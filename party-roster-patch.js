@@ -85,7 +85,7 @@
       partyAllowed=owned.some(c=>c.data?.[KEY_PARTY]===true);
       battleAllowed=owned.some(c=>c.data?.[KEY_BATTLE]===true);
       lastAccessAt=Date.now();
-    }catch(e){console.warn('CPR_ACCESS',e)}finally{accessBusy=false;injectNav();decorateOwnedProfiles()}
+    }catch(e){console.warn('CPR_ACCESS',e)}finally{accessBusy=false;injectNav()}
   }
 
   async function allCharacters(){
@@ -246,14 +246,6 @@
     toast('Oynanabilir karakter davet linki kopyalandı.');
   }
 
-  function decorateOwnedProfiles(){
-    if(isGM()||partyOpen)return;const main=APP.querySelector('main');if(!main)return;
-    for(const c of owned){const p=c.data?.cc_profile;if(!p)continue;if(main.querySelector(`[data-cpr-owned-profile="${CSS.escape(String(c.id))}"]`))continue;
-      const hp=main.querySelector(`[data-a="hp"][data-id="${CSS.escape(String(c.id))}"]`);const hero=hp?.closest('section.hero');if(!hero)continue;
-      const box=document.createElement('section');box.className='card cpr-profile cpr-eeliot';box.dataset.cprOwnedProfile=String(c.id);box.innerHTML=`<div class="eyebrow">OYNANABİLİR YARDIMCI • ${esc(p.title||'')}</div><h2>${esc(c.name)}</h2><p class="muted">${esc(p.summary||'')}</p><div class="cpr-pills">${(p.traits||[]).map(x=>`<span class="cpr-pill">${esc(x)}</span>`).join('')}</div>`;hero.insertAdjacentElement('afterend',box);
-    }
-  }
-
   function openGM(){
     if(!isGM())return;gmOpen=true;partyOpen=false;window.__catlakGmToolsOpen=false;window.__catlakGmHubOwnsMain=false;window.__catlakCreatureLibraryOpen=false;window.__catlakBattleRoomOpen=false;window.__catlakRouteGeneration=(window.__catlakRouteGeneration||0)+1;injectNav();renderManager();
   }
@@ -273,7 +265,7 @@
   function maintain(){
     injectNav();
     if(isGM()){ensureEeliot();if(gmOpen&&!APP.querySelector('[data-cpr-manager-page]'))renderManager()}
-    else{refreshAccess(false);if(partyOpen&&!APP.querySelector('[data-cpr-party-page]'))renderParty();decorateOwnedProfiles()}
+    else{refreshAccess(false);if(partyOpen&&!APP.querySelector('[data-cpr-party-page]'))renderParty()}
   }
   function schedule(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;maintain()})}
   new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
