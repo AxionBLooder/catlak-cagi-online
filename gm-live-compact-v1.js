@@ -11,8 +11,10 @@ const st=document.createElement('style');st.id='glc-style';st.textContent=`
  #app main[data-cc-simple-live="1"] .cc-live-two{grid-template-columns:minmax(0,1.55fr) minmax(240px,.45fr)!important;gap:10px!important;margin-bottom:10px!important}
  #app main[data-cc-simple-live="1"] .cc-live-two>.card{padding:11px 13px!important;margin:0!important;max-height:34vh;overflow:auto}
  #app main[data-cc-simple-live="1"] .cc-live-two h2{font-size:1rem!important;margin:.15em 0 .35em!important}
- #app main[data-cc-simple-live="1"] .cc-simple-roll{grid-template-columns:48px minmax(0,1fr) auto!important;gap:8px!important;padding:6px 0!important}
- #app main[data-cc-simple-live="1"] .cc-simple-total{font-size:1.15rem!important}
+ #app main[data-cc-simple-live="1"] .cc-simple-roll{grid-template-columns:34px minmax(0,1fr) auto!important;gap:6px!important;padding:3px 0!important;align-items:center!important}
+ #app main[data-cc-simple-live="1"] .cc-simple-total{font-size:.88rem!important;line-height:1!important;min-width:28px!important}
+ #app main[data-cc-simple-live="1"] .cc-simple-roll b{font-size:.78rem!important;line-height:1.2!important}
+ #app main[data-cc-simple-live="1"] .cc-simple-roll small{font-size:.65rem!important;line-height:1.2!important}
  #app main[data-cc-simple-live="1"] .cc-simple-player{padding:6px 0!important}
  #app main[data-cc-simple-live="1"] .lcc-board{margin-top:8px!important}
  #app main[data-cc-simple-live="1"] .lcc-columns{grid-template-columns:minmax(260px,.9fr) minmax(300px,1.05fr) minmax(280px,.95fr)!important;gap:10px!important}
