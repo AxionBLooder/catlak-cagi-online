@@ -16,23 +16,26 @@ const plaActed=new Map();
 
 if(!document.querySelector('#pla-player-live-style')){
   const s=document.createElement('style');s.id='pla-player-live-style';s.textContent=`
-  .ps-player-sheet .pla-static-stats .eyebrow{display:none!important}
-  .ps-player-sheet .pla-static-stats .stat{cursor:default!important;pointer-events:none!important;transform:none!important}
-  .ps-player-sheet .pla-static-stats .stat:hover{transform:none!important;box-shadow:none!important}
-  .ps-player-sheet .iw-player-item.pla-equip-pending{opacity:1!important;filter:none!important;transition:none!important}
-  .ps-player-sheet [data-pla-inventory-owner="1"] .iw-player-item{animation:none!important}
+  .psv4-sheet .pla-static-stats .eyebrow,.ps-player-sheet .pla-static-stats .eyebrow{display:none!important}
+  .psv4-sheet .pla-static-stats .stat,.ps-player-sheet .pla-static-stats .stat{cursor:default!important;pointer-events:none!important;transform:none!important}
+  .psv4-sheet .pla-static-stats .stat:hover,.ps-player-sheet .pla-static-stats .stat:hover{transform:none!important;box-shadow:none!important}
+  .psv4-sheet .iw-player-item.pla-equip-pending,.ps-player-sheet .iw-player-item.pla-equip-pending{opacity:1!important;filter:none!important;transition:none!important}
+  .psv4-sheet [data-pla-inventory-owner="1"] .iw-player-item,.ps-player-sheet [data-pla-inventory-owner="1"] .iw-player-item{animation:none!important}
   `;document.head.appendChild(s)
 }
 
 function plaCharId(stack){return stack?.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||''}
 function plaEyebrow(sec){return plaTxt(sec?.querySelector(':scope > .eyebrow, :scope > .section-title .eyebrow'))}
-function plaInventorySection(stack){return [...stack.querySelectorAll('section.card')].find(s=>plaEyebrow(s)==='CANLI ENVANTER')||null}
+function plaIsInventory(sec){const e=plaEyebrow(sec);return e==='ENVANTER'||e==='CANLI ENVANTER'}
+function plaInventorySection(stack){return [...stack.querySelectorAll('section.card')].find(plaIsInventory)||null}
 function plaRollSection(stack){return [...stack.querySelectorAll('section.card')].find(s=>plaEyebrow(s)==='SON ZARLAR')||null}
 function plaModeLabel(m){return m==='accessory'?'Pasif / Aksesuar':m==='consumable'?'Tüketilebilir':'Genel Eşya'}
 function plaClaimInventory(){
   if(!plaIsSheet())return;
   PLA_APP.querySelectorAll('main .cc-character-stack section.card').forEach(sec=>{
-    if(plaEyebrow(sec)!=='CANLI ENVANTER')return;
+    if(!plaIsInventory(sec))return;
+    const e=sec.querySelector(':scope > .eyebrow');if(e)e.textContent='ENVANTER';
+    const h=sec.querySelector(':scope > h2');if(h&&/silah\s*[•·-]\s*zırh\s*[•·-]\s*eşya/i.test(plaTxt(h)))h.remove();
     sec.dataset.iwPlayerInventory='1';sec.dataset.plaInventoryOwner='1';
   });
 }
@@ -89,9 +92,7 @@ function plaSyncInventoryState(sec,rows){
 function plaSyncEquipmentPanel(stack,rows){
   const panel=stack?.querySelector('[data-gmt-player-panel]');if(!panel)return;
   const equip=[...panel.querySelectorAll('.gmt-player-two>div')].find(x=>plaTxt(x.querySelector(':scope > .eyebrow'))==='TAKILI TEÇHİZAT');if(!equip)return;
-  const byLabel={
-    'Ana Silah':'main_weapon','İkinci Silah':'off_weapon','1. Silah':'main_weapon','2. Silah':'off_weapon','Zırh':'armor','Aksesuar 1':'accessory_1','Aksesuar 2':'accessory_2'
-  };
+  const byLabel={'Ana Silah':'main_weapon','İkinci Silah':'off_weapon','1. Silah':'main_weapon','2. Silah':'off_weapon','Zırh':'armor','Aksesuar 1':'accessory_1','Aksesuar 2':'accessory_2'};
   equip.querySelectorAll('.gmt-slot').forEach(slot=>{
     const key=slot.dataset.gmtSlot||byLabel[plaTxt(slot.querySelector('b'))];if(!key)return;
     const hit=rows.find(x=>x.r?.equipped&&String(x.r?.equipped_slot||'')===key);
@@ -132,7 +133,7 @@ async function plaRefreshNow(force=false){
         const structureSig=plaSignature(stateRows,['id','item_id','quantity','item_name','item_type','description','attack_stat','attack_bonus','attack_formula','damage_formula','effects','ac_mode','ac_value']);
         const stateSig=plaSignature(stateRows,['id','equipped','equipped_slot']);
         if(sec.dataset.plaInventoryStructureSig!==structureSig||!plaSyncInventoryState(sec,rows)){
-          sec.innerHTML=`<div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${rows.length?`<div class="iw-player-grid">${rows.map(x=>plaPlayerItem(x.r,x.i)).join('')}</div>`:'<div class="iw-empty">Envanter boş.</div>'}`;
+          sec.innerHTML=`<div class="eyebrow">ENVANTER</div>${rows.length?`<div class="iw-player-grid">${rows.map(x=>plaPlayerItem(x.r,x.i)).join('')}</div>`:'<div class="iw-empty">Envanter boş.</div>'}`;
           sec.dataset.plaInventoryStructureSig=structureSig;sec.dataset.iwPlayerInventory='1';sec.dataset.plaInventoryOwner='1';plaSyncInventoryState(sec,rows);
         }
         sec.dataset.plaInventorySig=stateSig;
