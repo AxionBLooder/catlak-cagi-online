@@ -42,7 +42,6 @@ jobs:
               'gm-campaign-state-patch.js',
               'party-eeliot-runtime-hotfix.js',
               'party-stable-entry.js',
-              'live-combat-center-loader.js',
               'live-combat-center-patch.js',
           }
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
@@ -55,13 +54,35 @@ jobs:
           for name in sorted(files):
               Path('_site', name).write_bytes(Path(name).read_bytes())
 
-          live_html = html.replace(
+          live_html = html
+          # Tüm addonlar için ayrı ayrı Supabase bekleme timer'ı açmak yerine bir kez bekle.
+          live_html = live_html.replace(
+              'function loadAddons(){preclaimPlayerInventory();',
+              'function loadAddons(){if(!window.__catlakSupabase){setTimeout(loadAddons,80);return}preclaimPlayerInventory();'
+          )
+          # Eski Parti Yönetimi runtime'ı yeni kalıcı runtime ile çakışıyordu; canlıdan kaldır.
+          live_html = live_html.replace(
+              "loadAddon('./party-roster-patch.js?v=party-roster-v3-direct','cpr-loader');",
+              ''
+          )
+          # Canlı savaş merkezini Supabase hazır olduktan sonra normal addon zincirinde başlat.
+          live_html = live_html.replace(
+              "loadAddon('./gm-nav-cleanup-patch.js?v=gmnav-v2','cc-gm-nav-cleanup-loader');",
+              "loadAddon('./gm-nav-cleanup-patch.js?v=gmnav-v2','cc-gm-nav-cleanup-loader');loadAddon('./live-combat-center-patch.js?v=livecombat-v3-integrated','cc-live-combat-center-loader');"
+          )
+          # Cache anahtarlarını yeni yönlendirici/sabit parti sürümüne taşı.
+          live_html = live_html.replace(
+              'gm-center-router-core.js?v=gmrouter-v6-campaign',
+              'gm-center-router-core.js?v=gmrouter-v7-no-combat-fast'
+          )
+          live_html = live_html.replace(
               'player-enemy-privacy-patch.js?v=privacy-v3-party-eeliot',
               'player-enemy-privacy-patch.js?v=privacy-v4-live-party'
           )
+          # Ek loader artık gereksiz; sadece kampanya durum katmanı en sonda yüklenir.
           live_html = live_html.replace(
               '</body>',
-              '<script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>'
+              '<script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>'
           )
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
@@ -71,18 +92,17 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v1' _site/index.html
-          ! grep -Fq '<script src="./live-combat-center-patch.js?v=livecombat-v1"></script>' _site/index.html
+          grep -Fq 'live-combat-center-patch.js?v=livecombat-v3-integrated' _site/index.html
+          ! grep -Fq 'live-combat-center-loader.js' _site/index.html
+          ! grep -Fq "party-roster-patch.js?v=party-roster-v3-direct" _site/index.html
+          grep -Fq 'function loadAddons(){if(!window.__catlakSupabase){setTimeout(loadAddons,80);return}' _site/index.html
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
-          grep -Fq 'gm-center-router-core.js?v=gmrouter-v6-campaign' _site/index.html
+          grep -Fq 'gm-center-router-core.js?v=gmrouter-v7-no-combat-fast' _site/index.html
           grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v8-campaign' _site/index.html
           grep -Fq 'player-enemy-privacy-patch.js?v=privacy-v4-live-party' _site/index.html
-          test -f _site/live-combat-center-loader.js
           test -f _site/live-combat-center-patch.js
           test -f _site/party-eeliot-runtime-hotfix.js
           test -f _site/party-stable-entry.js
-          grep -Fq '__catlakLiveCombatCenterLoaderV1' _site/live-combat-center-loader.js
-          grep -Fq 'livecombat-v2-runtime' _site/live-combat-center-loader.js
           grep -Fq '__catlakLiveCombatCenterV1' _site/live-combat-center-patch.js
           grep -Fq 'data-gm2-route="combat"' _site/live-combat-center-patch.js
           grep -Fq 'SAVAŞ KONTROLÜ' _site/live-combat-center-patch.js
@@ -98,7 +118,8 @@ jobs:
           grep -Fq 'data-gcs-edit-player' _site/gm-campaign-state-patch.js
           grep -Fq 'data-gcs-save-player' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignHubStableV3=true' _site/gm-hub-v2-patch.js
-          grep -Fq '__catlakCampaignRouterStableV3=true' _site/gm-center-router-core.js
+          grep -Fq '__catlakCampaignRouterStableV4=true' _site/gm-center-router-core.js
+          ! grep -Fq "GMCR_ROUTES=new Set(['ability','items','stats','races','builder','combat'" _site/gm-center-router-core.js
           grep -Fq "GCS_PLACEHOLDER_ROUTE='campaign'" _site/gm-campaign-state-patch.js
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
           grep -Fq 'stat-editor-hardfix.js?v=statfix-v4-character-switch' _site/index.html
