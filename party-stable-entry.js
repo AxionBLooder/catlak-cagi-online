@@ -30,20 +30,14 @@ function ensureTop(){
  else if(b.parentElement!==nav)nav.appendChild(b);
  return b;
 }
-function cleanCenter(){
- APP.querySelectorAll('[data-gm2-centerbar] [data-ps-party-center]').forEach(x=>x.remove());
-}
-function cleanPartyManager(){
- APP.querySelectorAll('main [data-prh-page] > .prh-top').forEach(x=>x.remove());
-}
+function cleanCenter(){APP.querySelectorAll('[data-gm2-centerbar] [data-ps-party-center]').forEach(x=>x.remove())}
+function cleanPartyManager(){APP.querySelectorAll('main [data-prh-page] > .prh-top').forEach(x=>x.remove())}
 function cleanLiveChrome(){
  if(!isGM())return;
- const live=APP.querySelector('.nav [data-tab="gm"].on');
- if(!live)return;
+ const live=APP.querySelector('.nav [data-tab="gm"].on');if(!live)return;
  if(txt(live)!=='Canlı Oyun')live.textContent='Canlı Oyun';
  APP.querySelectorAll('main section.card').forEach(sec=>{
-  const eyebrow=txt(sec.querySelector('.eyebrow'));
-  const title=txt(sec.querySelector('h1,h2'));
+  const eyebrow=txt(sec.querySelector('.eyebrow')),title=txt(sec.querySelector('h1,h2'));
   if((eyebrow==='CANLI OYUN MASASI'||eyebrow==='CANLI OYUN')&&title==='Oyuncular & Zarlar')sec.remove();
  });
 }
@@ -52,9 +46,10 @@ function schedule(){if(queued)return;queued=true;requestAnimationFrame(maintain)
 function openPartyManager(){
  if(!isGM())return;
  const run=(n=0)=>{
-  const b=ensureTop();
-  if(window.__catlakPartyEeliotHotfix&&b){
-   b.click();
+  ensureTop();
+  const api=window.__catlakPartyEeliotHotfix;
+  if(api&&typeof api.open==='function'){
+   api.open();
    setTimeout(()=>{cleanPartyManager();if(!APP.querySelector('main [data-prh-page]')&&n<8)run(n+1)},90);
    return;
   }
