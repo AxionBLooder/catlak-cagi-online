@@ -48,6 +48,7 @@ jobs:
               'seal-character-controls-patch.js',
               'party-player-transition-fix.js',
               'global-transition-guard.js',
+              'ddb-flow-core.js',
               'battle-party-membership-guard.js',
               'session-log-delete-fix.js',
               'player-portal-v3.js',
@@ -83,10 +84,10 @@ jobs:
               'route-stability-patch.js?v=routes-v3-real-view'
           )
 
-          boot_style = '''<style id="cc-global-transition-style">html.cc-global-boot-cloak #app{visibility:hidden!important}html.cc-route-cloak #app main{visibility:hidden!important}html.cc-global-boot-cloak body::before,html.cc-route-cloak body::before{content:'Çatlak Çağı hazırlanıyor…';position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:#071019;color:#d9e8f5;font:700 15px/1.4 system-ui,sans-serif;letter-spacing:.04em;pointer-events:none}html.cc-route-cloak body::before{content:'Bölüm hazırlanıyor…';inset:72px 0 0;background:#071019f2}</style>'''
+          boot_style = '''<style id="cc-global-transition-style">html.cc-global-boot-cloak #app{visibility:hidden!important}html.cc-global-boot-cloak body::before{content:'Çatlak Çağı hazırlanıyor…';position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:#071019;color:#d9e8f5;font:700 15px/1.4 system-ui,sans-serif;letter-spacing:.04em;pointer-events:none}</style>'''
           live_html = live_html.replace('<html lang="tr">','<html lang="tr" class="cc-global-boot-cloak">',1)
           live_html = live_html.replace('</head>',boot_style+'</head>',1)
-          live_html = live_html.replace('<script src="./stat-editor-hardfix.js','<script src="./global-transition-guard.js?v=global-transition-v2"></script><script src="./stat-editor-hardfix.js',1)
+          live_html = live_html.replace('<script src="./stat-editor-hardfix.js','<script src="./global-transition-guard.js?v=global-transition-v3"></script><script src="./ddb-flow-core.js?v=ddb-flow-v1"></script><script src="./stat-editor-hardfix.js',1)
 
           late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
           live_html = live_html.replace('</body>', late_loader + '</body>')
@@ -99,7 +100,9 @@ jobs:
           for file in _site/*.js; do node --check "$file"; done
 
           grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
-          grep -Fq 'global-transition-guard.js?v=global-transition-v2' _site/index.html
+          grep -Fq 'global-transition-guard.js?v=global-transition-v3' _site/index.html
+          grep -Fq 'ddb-flow-core.js?v=ddb-flow-v1' _site/index.html
+          ! grep -Fq 'Bölüm hazırlanıyor' _site/index.html
           grep -Fq 'route-stability-patch.js?v=routes-v3-real-view' _site/index.html
           grep -Fq 'window.__catlakLateRuntimeReady=true' _site/index.html
           grep -Fq 'data-cc-late-runtime="1"' _site/index.html
@@ -127,10 +130,13 @@ jobs:
           test -f _site/seal-character-controls-patch.js
           test -f _site/party-player-transition-fix.js
           test -f _site/global-transition-guard.js
+          test -f _site/ddb-flow-core.js
           test -f _site/battle-party-membership-guard.js
           test -f _site/session-log-delete-fix.js
           test -f _site/player-portal-v3.js
-          grep -Fq '__catlakGlobalTransitionGuardV2' _site/global-transition-guard.js
+          grep -Fq '__catlakGlobalTransitionGuardV3' _site/global-transition-guard.js
+          grep -Fq '__catlakDdbFlowCoreV1' _site/ddb-flow-core.js
+          grep -Fq 'Karakterleri GM oluşturur.' _site/ddb-flow-core.js
           grep -Fq '__catlakBattlePartyGuardV1' _site/battle-party-membership-guard.js
           grep -Fq '__catlakSessionLogDeleteFixV1' _site/session-log-delete-fix.js
           grep -Fq '__catlakPlayerPortalV3' _site/player-portal-v3.js
