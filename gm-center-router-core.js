@@ -1,7 +1,8 @@
 const GMCR_APP=document.getElementById('app');
 if(!GMCR_APP)throw new Error('GM Merkezi yönlendiricisi başlatılamadı.');
 
-const GMCR_ROUTES=new Set(['ability','items','stats','races','builder','combat','events','logs','creatures','characters']);
+// Savaş & Durumlar artık GM Merkezi rotası değildir; Canlı Oyun tarafından yönetilir.
+const GMCR_ROUTES=new Set(['ability','items','stats','races','builder','events','logs','creatures','characters']);
 let gmcrLastRoute='';
 let gmcrLastAt=0;
 let gmcrToken=0;
@@ -44,6 +45,8 @@ function gmcrMakeButtonsClickable(){
   window.__catlakGmHubV2Test?.chrome?.();
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
   if(!bar)return;
+  // Eski merkez savaş girişini hub yeniden üretse bile merkezden kaldır.
+  bar.querySelectorAll('[data-gm2-route="combat"]').forEach(b=>b.remove());
   bar.style.pointerEvents='auto';
   bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
     b.disabled=false;b.removeAttribute('disabled');b.style.pointerEvents='auto';b.style.cursor='pointer';
@@ -67,7 +70,7 @@ function gmcrLogicalRoute(){
   if(window.__catlakCreatureLibraryOpen===true)return'creatures';
   if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return'ability';
   const tool=window.__catlakGmTools?.active?.();
-  if(tool==='combat'||tool==='events'||tool==='logs')return tool;
+  if(tool==='events'||tool==='logs')return tool;
   if(GMCR_APP.querySelector('.nav [data-cc-stats-tab].on'))return'stats';
   const native=String(GMCR_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'');
   return GMCR_ROUTES.has(native)?native:'';
@@ -115,11 +118,16 @@ function gmcrConsume(e,route){
   return gmcrGo(route);
 }
 
+// Bubble fallback. Normal kullanıcı tıklaması aşağıdaki window-capture korumasında
+// ele alınır; böylece eski gm-tools document-capture handler'ı combat açamaz.
 GMCR_APP.addEventListener('click',e=>{
   const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
   if(!entry||!gmcrIsGM())return;
   setTimeout(()=>{
+    window.__catlakGmTools?.close?.();
+    window.__catlakGmCenterSelectedRoute='';
     if(!gmcrCenterOpen())gmcrGo('ability');
+    else gmcrGo('ability');
     gmcrMakeButtonsClickable();
   },0);
 },false);
@@ -138,6 +146,18 @@ window.addEventListener('pointerdown',e=>{
 },true);
 
 window.addEventListener('click',e=>{
+  // GM Merkezi tıklamasını document seviyesindeki eski GM Araçları handler'ından
+  // önce yakala. Merkez açılışında savaş ekranı artık hiçbir zaman varsayılan olmaz.
+  const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
+  if(entry&&gmcrIsGM()){
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    window.__catlakGmTools?.close?.();
+    window.__catlakGmCenterSelectedRoute='';
+    gmcrGo('ability');
+    requestAnimationFrame(gmcrMakeButtonsClickable);
+    return;
+  }
+
   const button=gmcrButton(e.target);
   if(button&&gmcrIsGM()){
     const route=String(button.dataset.gm2Route||'');
