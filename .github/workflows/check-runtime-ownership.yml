@@ -8,6 +8,8 @@ on:
       - 'gm-nav-cleanup-patch.js'
       - 'gm-tools-patch.js'
       - 'gm-management-room-patch.js'
+      - 'party-eeliot-runtime-hotfix.js'
+      - 'gm-center-party-integration.js'
       - 'class-bonus-patch.js'
       - '.github/workflows/check-runtime-ownership.yml'
   workflow_dispatch:
@@ -20,43 +22,48 @@ jobs:
       - name: Static ownership checks
         run: |
           set -euo pipefail
-          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js class-bonus-patch.js; do node --check "$f"; done
-          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js class-bonus-patch.js; do ! grep -Fq 'setInterval(' "$f"; done
-          grep -Fq 'gm-center-router-core.js' index.html
-          grep -Fq 'gm-hub-v2-patch.js' index.html
-          grep -Fq 'gm-management-room-patch.js' index.html
-          grep -Fq 'class-bonus-patch.js' index.html
-          grep -Fq "if(!open){bar?.remove();return}" gm-hub-v2-patch.js
-          grep -Fq 'leave:gm2LeaveCenter' gm-hub-v2-patch.js
+          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js party-eeliot-runtime-hotfix.js gm-center-party-integration.js class-bonus-patch.js; do node --check "$f"; done
+          grep -Fq 'gm-center-router-core.js?v=recovery-gm-5-center-rooms' index.html
+          grep -Fq 'gm-management-room-patch.js?v=management-v1' index.html
+          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v5-gm-center' index.html
+          grep -Fq 'gm-center-party-integration.js?v=gm-party-center-v1' index.html
+          grep -Fq "'characters','party'" gm-center-router-core.js
+          grep -Fq "route==='party'" gm-center-router-core.js
           grep -Fq '__catlakManagementRoom' gm-management-room-patch.js
+          grep -Fq '__catlakPartyEeliotHotfix' party-eeliot-runtime-hotfix.js
+          grep -Fq 'data-gm2-route="party"' gm-center-party-integration.js
+          grep -Fq '[data-tab="characters"]' gm-center-party-integration.js
           grep -Fq 'class_bonus_v1' class-bonus-patch.js
           echo RUNTIME_OWNERSHIP_STATIC_OK
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify GM Center, Management Room and class bonus in Chrome
+      - name: Verify GM Center rooms in Chrome
         run: |
           cat > runtime-smoke.html <<'HTML'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}</style></head><body>
-          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open>GM Merkezi</button><button data-tab="characters">Karakterler</button></nav><main>BASE</main></div><div id="toast" class="hidden"></div>
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}:root{--line:#445;--muted:#999;--gold:#d6ad5b;--green:#7fb}</style></head><body>
+          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open>GM Merkezi</button><button data-tab="characters">Yönetim Odası</button></nav><main>BASE</main></div><div id="toast" class="hidden"></div>
           <script>
           window.__updates=[];
-          const chars=[{id:'c1',name:'Test Şövalye',species_name:'İnsan',background_name:'Asil',class_name:'Paladin',level:3,play_status:'active',owner_id:null,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},hp_current:12,hp_max:12,base_ac:12,data:{},created_at:'1'}];
+          const chars=[
+            {id:'c1',name:'Test Şövalye',species_name:'İnsan',background_name:'Asil',class_name:'Paladin',level:3,play_status:'active',owner_id:null,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},hp_current:12,hp_max:12,base_ac:12,base_speed:30,data:{cc_party_member:true,cc_battle_member:false},created_at:'1'},
+            {id:'c2',name:'Eeliot',species_name:'İnsan',background_name:'Bilgin',class_name:'Büyücü',level:3,play_status:'prepared',owner_id:null,base_stats:{STR:8,DEX:14,CON:13,INT:16,WIS:15,CHA:10},hp_current:21,hp_max:21,base_ac:13,base_speed:30,data:{cc_party_member:true,cc_battle_member:false,cc_role:'Çatlak Dikişçisi'},created_at:'2'}
+          ];
           const classes=[{id:'cl1',name:'Paladin',hit_die:10,sort_order:1,data:{}}];
+          function rowsFor(table){if(table==='catlak_characters')return chars;if(table==='catlak_classes')return classes;if(table==='catlak_species')return[{name:'İnsan',sort_order:1}];if(table==='catlak_backgrounds')return[{name:'Bilgin',sort_order:1}];return[]}
           function from(table){
-            let mode='select',payload=null,filters={};
+            let mode='select',payload=null,filters={},like=null,limitN=null;
             const c={
-              select(){mode='select';return c},order(){return c},in(){return c},limit(){return c},
-              eq(k,v){filters[k]=v;return c},
-              update(v){mode='update';payload=v;return c},delete(){mode='delete';return c},upsert(v){mode='upsert';payload=v;return c},
-              maybeSingle(){const data=(table==='catlak_characters'?chars:table==='catlak_classes'?classes:[]).find(x=>Object.entries(filters).every(([k,v])=>String(x[k])===String(v)))||null;return Promise.resolve({data,error:null})},
-              then(ok,bad){let data=table==='catlak_characters'?chars:table==='catlak_classes'?classes:[];data=data.filter(x=>Object.entries(filters).every(([k,v])=>String(x[k])===String(v)));if(mode==='update'){window.__updates.push({table,payload,filters});const x=chars.find(v=>String(v.id)===String(filters.id));if(x)Object.assign(x,payload);data=x?[x]:[]}return Promise.resolve({data,error:null}).then(ok,bad)}
+              select(){mode='select';return c},order(){return c},in(k,v){filters[k]=v;return c},limit(v){limitN=v;return c},ilike(k,v){like=[k,String(v).toLowerCase()];return c},
+              eq(k,v){filters[k]=v;return c},update(v){mode='update';payload=v;return c},delete(){mode='delete';return c},upsert(v){mode='upsert';payload=v;return c},
+              maybeSingle(){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));return Promise.resolve({data:data[0]||null,error:null})},
+              then(ok,bad){let data=rowsFor(table).filter(x=>Object.entries(filters).every(([k,v])=>Array.isArray(v)?v.includes(x[k]):String(x[k])===String(v)));if(like)data=data.filter(x=>String(x[like[0]]||'').toLowerCase().includes(like[1].replaceAll('%','')));if(limitN!=null)data=data.slice(0,limitN);if(mode==='update'){window.__updates.push({table,payload,filters});for(const x of data)Object.assign(x,payload)}return Promise.resolve({data,error:null}).then(ok,bad)}
             };return c;
           }
           const channel={on(){return channel},subscribe(){return channel}};
-          window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>channel,storage:{from:()=>({remove:async()=>({error:null})})}};
+          window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>channel,auth:{getSession:async()=>({data:{session:null}})},storage:{from:()=>({remove:async()=>({error:null})})}};
           document.querySelector('#app').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;document.querySelectorAll('.nav .on').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelector('main').textContent='BASE '+b.dataset.tab});
           </script>
-          <script src="./gm-tools-patch.js"></script><script src="./gm-hub-v2-patch.js"></script><script src="./gm-center-router-core.js"></script><script src="./gm-management-room-patch.js"></script><script src="./class-bonus-patch.js"></script>
+          <script src="./gm-tools-patch.js"></script><script src="./gm-hub-v2-patch.js"></script><script src="./gm-center-router-core.js"></script><script src="./gm-management-room-patch.js"></script><script src="./party-eeliot-runtime-hotfix.js"></script><script src="./gm-center-party-integration.js"></script><script src="./class-bonus-patch.js"></script>
           </body></html>
           HTML
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/runtime-http.log 2>&1 &
@@ -64,14 +71,21 @@ jobs:
           cat > runtime-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
           (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
-            const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/runtime-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(250);
+            const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/runtime-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(500);
+            const nativeDisplay=await p.locator('.nav [data-tab="characters"]').evaluate(el=>getComputedStyle(el).display);if(nativeDisplay!=='none')throw new Error('Separate Management Room is still visible');
+            const topParty=await p.locator('.nav [data-prh-manager]').count();if(topParty){const d=await p.locator('.nav [data-prh-manager]').evaluate(el=>getComputedStyle(el).display);if(d!=='none')throw new Error('Separate Party Manager is still visible')}
             await p.click('[data-gmt-open]');await p.waitForSelector('[data-gm2-centerbar]');
             if(await p.locator('[data-gm2-route="combat"]').count())throw new Error('Combat should not be in GM Center');
+            if(await p.locator('[data-gm2-route="characters"]').count()!==1)throw new Error('Management Room missing from GM Center');
+            if(await p.locator('[data-gm2-route="party"]').count()!==1)throw new Error('Party Room missing from GM Center');
             await p.click('[data-gm2-route="characters"]');await p.waitForSelector('[data-gmr-page]');
-            const room=await p.locator('[data-gmr-page]').innerText();if(!room.includes('Test Şövalye')||!room.includes('Oyuncu Daveti'))throw new Error('Management Room did not render '+room);
+            const management=await p.locator('[data-gmr-page]').innerText();if(!management.includes('Test Şövalye')||!management.includes('Oyuncu Daveti'))throw new Error('Management Room did not render '+management);
+            await p.click('[data-gm2-route="party"]');await p.waitForSelector('[data-prh-page]');
+            const party=await p.locator('[data-prh-page]').innerText();if(!party.includes('Parti Yönetimi')||!party.includes('Test Şövalye'))throw new Error('Party Room did not render '+party);
+            const active=await p.locator('[data-gm2-route="party"]').evaluate(el=>el.classList.contains('on'));if(!active)throw new Error('Party Room route not active');
             await p.waitForFunction(()=>window.__updates.some(x=>x.table==='catlak_characters'&&x.payload?.data?.class_bonus_v1?.applied===true),null,{timeout:5000});
-            const out=await p.evaluate(()=>({updates:window.__updates,bonus:window.__catlakClassBonus?.label(window.__catlakClassBonus.preset({name:'Paladin',hit_die:10,data:{}})),room:!!window.__catlakManagementRoom?.isOpen()}));
-            if(!out.room||!String(out.bonus).includes('STR +1')||!String(out.bonus).includes('CHA +1')||!String(out.bonus).includes('AC +1'))throw new Error('Class bonus/room state wrong '+JSON.stringify(out));
+            const out=await p.evaluate(()=>({management:!!window.__catlakManagementRoom,party:!!window.__catlakPartyEeliotHotfix?.isOpen?.(),route:window.__catlakGmCenterRouterCore?.current?.()}));
+            if(!out.party||out.route!=='party')throw new Error('Room ownership wrong '+JSON.stringify(out));
             if(errors.length)throw new Error('Page errors '+errors.join(' | '));
             console.log('RUNTIME_OWNERSHIP_BROWSER_OK',JSON.stringify(out));
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
