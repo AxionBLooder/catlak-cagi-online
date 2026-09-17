@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPartyStableEntryV4)return;
-window.__catlakPartyStableEntryV4=true;
+if(window.__catlakPartyStableEntryV3)return;
+window.__catlakPartyStableEntryV3=true;
 const APP=document.querySelector('#app');
 if(!APP)return;
 const txt=e=>String(e?.textContent||'').trim();
