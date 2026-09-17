@@ -41,7 +41,7 @@ jobs:
             if(b.dataset.tab==='gm'){
               main.removeAttribute('data-cc-simple-live');
               main.innerHTML='<section id="legacy-live">GM CANLI MASA • ESKİ SAYFA</section>';
-              window.__legacyPaintState={visibility:getComputedStyle(main).visibility,pending:document.documentElement.classList.contains('cc-live-entry-pending'),text:main.innerText};
+              window.__legacyPaintState={visibility:getComputedStyle(main).visibility,pending:document.documentElement.classList.contains('cc-live-entry-pending'),text:main.textContent};
               setTimeout(()=>{
                 if(!b.classList.contains('on'))return;
                 main.innerHTML='<section>CANLI OYUN MASASI</section><div class="cc-live-two">Oyuncular & Zarlar</div>';
