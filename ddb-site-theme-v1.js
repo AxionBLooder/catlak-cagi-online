@@ -1,6 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakDdbSiteThemeV1)return;
+if(window.__catlakDdbSiteThemeV2)return;
+window.__catlakDdbSiteThemeV2=true;
 window.__catlakDdbSiteThemeV1=true;
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -12,9 +13,10 @@ let scheduled=false;
 
 if(!document.getElementById('ddb-site-theme-style')){
  const s=document.createElement('style');s.id='ddb-site-theme-style';s.textContent=`
-/* Eski geçiş perdelerini site genelinde etkisizleştir. */
-html.cc-route-cloak #app main{visibility:visible!important}
+/* Tüm eski geçiş gizleme/perde katmanlarını etkisizleştir. */
+html.cc-route-cloak #app main,html.pptf-player-prep #app main,html.pptf-live-prep #app main{visibility:visible!important}
 html.cc-route-cloak body::before{content:none!important;display:none!important}
+html.fup-battle-prep #app main .ccr-battle-grid,html.bra-battle-prep #app main .ccr-battle-grid{visibility:visible!important}
 html.ddb-site body{background:#111417!important}
 html.ddb-site #app>.top{background:#1d2226!important;border-bottom:1px solid #3a4045!important;box-shadow:0 2px 12px #0005!important;backdrop-filter:none!important}
 html.ddb-site #app>.top .mark{border-radius:6px!important;border-color:#9f3438!important;color:#d55358!important;background:#131719!important}
@@ -74,13 +76,17 @@ function renameNav(){
  if(!isGM())return;const map={gm:'Kampanya',characters:'Karakterler',builder:'Karakter Oluştur',races:'Oyun İçeriği',items:'Eşyalar',rolls:'Oyun Günlüğü',rules:'Kurallar',account:'Hesap'};
  APP.querySelectorAll('.nav button[data-tab]').forEach(b=>{const n=map[b.dataset.tab];if(n&&txt(b)!==n)b.textContent=n})
 }
-function apply(){scheduled=false;HTML.classList.add('ddb-site');HTML.classList.toggle('ddb-gm',isGM());renameNav();ensureWorkspace();markView()}
+function clearLegacyPrep(){HTML.classList.remove('cc-route-cloak','pptf-player-prep','pptf-live-prep','fup-battle-prep','bra-battle-prep')}
+function apply(){scheduled=false;clearLegacyPrep();HTML.classList.add('ddb-site');HTML.classList.toggle('ddb-gm',isGM());renameNav();ensureWorkspace();markView()}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply)}
 APP.addEventListener('click',e=>{
+ clearLegacyPrep();
  const b=e.target.closest('[data-ddb-open-builder]');if(b){e.preventDefault();APP.querySelector('.nav [data-tab="builder"]')?.click();return}
  const c=e.target.closest('[data-ddb-open-characters]');if(c){e.preventDefault();APP.querySelector('.nav [data-tab="characters"]')?.click()}
 },true);
+window.addEventListener('pointerdown',clearLegacyPrep,true);
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+new MutationObserver(clearLegacyPrep).observe(HTML,{attributes:true,attributeFilter:['class']});
 setTimeout(schedule,0);setTimeout(schedule,200);setTimeout(schedule,700);
-window.__catlakDdbSiteTheme={apply};
+window.__catlakDdbSiteTheme={apply,clearLegacyPrep};
 })();
