@@ -68,14 +68,16 @@ window.addEventListener('click',e=>{
 
 window.__catlakStatWorkshopRouteFix={open:swrfOpen,draw:()=>swrfDraw(true),active:()=>swrfActive&&!!swrfNativeStat()?.classList.contains('on'),patched:()=>swrfPatched};
 
-// Karakter seçimi için ek click katmanı kullanılmaz.
-// browser-app.js içindeki native [data-cux-character] -> __catlakStatsTest.select akışı tek yetkilidir.
-(function loadPartyManagerOnly(){
-  if(document.querySelector('script[data-party-manager-v3-direct]'))return;
-  const s=document.createElement('script');
-  s.setAttribute('data-party-manager-v3-direct','1');
-  s.src='./party-manager-v3.js?v=party-manager-v3-direct';
-  s.async=false;
-  s.onerror=()=>console.error('./party-manager-v3.js yüklenemedi.');
-  document.body.appendChild(s);
+(function loadDirectStableFixes(){
+  function load(src,key){
+    if(document.querySelector('script[data-'+key+']'))return;
+    const s=document.createElement('script');
+    s.setAttribute('data-'+key,'1');
+    s.src=src;
+    s.async=false;
+    s.onerror=()=>console.error(src+' yüklenemedi.');
+    document.body.appendChild(s);
+  }
+  load('./stat-character-switch-fix.js?v=stat-switch-v2-pointerdown','stat-switch-direct');
+  load('./party-manager-v3.js?v=party-manager-v3-direct','party-manager-v3-direct');
 })();
