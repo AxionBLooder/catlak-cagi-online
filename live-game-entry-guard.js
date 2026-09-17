@@ -74,6 +74,7 @@ function keepInternalManagementStable(){
  }
 }
 
+function playerLayersReady(){return !!(window.__catlakPlayerSheetTest&&window.__catlakPlayerSheetSupport&&window.__catlakPlayerLiveTest&&window.__catlakPlayerSheetEquipmentAbilitiesTest)}
 function playerSheetReady(){
  const main=APP.querySelector('main');if(!main)return false;
  if(main.querySelector('.cc-character-stack,.ps-sheet-empty,.ccbv-no-character'))return true;
@@ -105,7 +106,11 @@ function repairPlayerSheet(force=false){
  if(active&&ready){
    playerRepairAttempts=0;
    refreshPlayerLayers();
-   clearPlayerPending();
+   if(playerLayersReady()||!ROOT.classList.contains('cc-player-critical-pending'))clearPlayerPending();
+   else{
+     clearTimeout(playerRevealTimer);
+     playerRevealTimer=setTimeout(clearPlayerPending,4500);
+   }
    return true;
  }
  if(playerRepairAttempts>=5&&!force){
