@@ -1,6 +1,8 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanClickGuardV1)return;window.__catlakGmCleanClickGuardV1=true;
+if(window.__catlakGmCleanClickGuardV2)return;
+window.__catlakGmCleanClickGuardV2=true;
+window.__catlakGmCleanClickGuardV1=true;
 function stop(e,prevent=false){if(prevent)e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 function dispatch(el){
   if(!el)return;
@@ -14,12 +16,19 @@ function dispatch(el){
 window.addEventListener('pointerdown',e=>{
   if(e.button!=null&&e.button!==0)return;
   const el=e.target?.closest?.('[data-gmc-open],[data-gmc-route],[data-gmc-action],[data-prh-manager],[data-prh-party]');
-  if(!el)return;stop(e,false);
+  if(!el)return;
+  stop(e,false);
 },true);
 window.addEventListener('click',e=>{
   const el=e.target?.closest?.('[data-gmc-open],[data-gmc-route],[data-gmc-action],[data-prh-manager],[data-prh-party]');
   if(el){stop(e,true);dispatch(el);return}
+
+  // Yalnız kullanıcının GERÇEK üst-menü tıklaması GM Merkezi'ni kapatır.
+  // Router'ın native Eşya/Irk/Stat/Builder sekmelerini açmak için yaptığı element.click()
+  // sentetik (isTrusted=false) olduğundan artık merkezi yanlışlıkla sıfırlamaz.
   const nav=e.target?.closest?.('#app .nav button');
-  if(nav&&!nav.matches('[data-gmc-open],[data-prh-manager],[data-prh-party]'))window.__catlakGmCleanRouter?.close?.();
+  if(e.isTrusted&&nav&&!nav.matches('[data-gmc-open],[data-prh-manager],[data-prh-party]')){
+    window.__catlakGmCleanRouter?.close?.();
+  }
 },true);
 })();
