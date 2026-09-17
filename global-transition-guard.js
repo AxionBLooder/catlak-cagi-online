@@ -1,6 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGlobalTransitionGuardV1)return;
+if(window.__catlakGlobalTransitionGuardV2)return;
+window.__catlakGlobalTransitionGuardV2=true;
 window.__catlakGlobalTransitionGuardV1=true;
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -9,7 +10,8 @@ const ROUTES='#app .nav button,#app [data-gm2-route],#app [data-gmt-sub],#app [d
 let token=0,lastMutation=performance.now(),routeStarted=0,routeKey='',beforeSig='',routeTimer=0,routeMax=0,bootMax=0;
 
 function main(){return APP.querySelector('main')}
-function sig(){const m=main();if(!m)return'';return [m.className,m.dataset.ccMapPage||'',m.dataset.swPage||'',m.dataset.gmtSub||'',m.dataset.gm2Route||'',m.dataset.gcsPage||'',m.dataset.ccSimpleLive||'',m.dataset.ccrBattle||'',m.querySelector('[data-pptf-page]')?'party-manager':'',m.querySelector('[data-prh-party-page]')?'party-room':'',m.querySelector('[data-gm2-ability-page]')?'ability':'',m.querySelector('.ccr-battle-grid')?'battle':'',m.querySelector('.ps-player-sheet')?'sheet':''].join('|')}
+function textSig(m){if(!m)return'';const h=m.querySelector('h1,h2,.eyebrow');return String(h?.textContent||'').trim().slice(0,90)}
+function sig(){const m=main();if(!m)return'';return [m.className,m.dataset.ccMapPage||'',m.dataset.swPage||'',m.dataset.gmtSub||'',m.dataset.gm2Route||'',m.dataset.gcsPage||'',m.dataset.ccSimpleLive||'',m.dataset.ccrBattle||'',m.childElementCount,m.querySelectorAll(':scope > *').length,textSig(m),m.querySelector('[data-pptf-page]')?'party-manager':'',m.querySelector('[data-prh-page]')?'party-manager-legacy':'',m.querySelector('[data-prh-party-page]')?'party-room':'',m.querySelector('[data-gm2-ability-page]')?'ability':'',m.querySelector('.ccr-battle-grid')?'battle':'',m.classList.contains('ps-player-sheet')?'sheet':''].join('|')}
 function key(el){
  if(!el)return'';
  if(el.matches('[data-prh-manager],[data-pm3-open]'))return'party-manager';
@@ -35,7 +37,13 @@ function actualReady(k){
  if(k==='battle')return m.dataset.ccrBattle==='1'||!!m.querySelector('.ccr-battle-grid');
  if(k==='stats')return m.dataset.gm2Route==='stats'||!!m.querySelector('.cux-workshop,[data-cux-editor]');
  if(k==='gm-center')return !!APP.querySelector('[data-gm2-centerbar]')||!!window.__catlakGmCenterSelectedRoute;
- if(k.startsWith('gm2:')){const r=k.slice(4);if(String(window.__catlakGmCenterSelectedRoute||'')!==r)return false;if(r==='ability')return !!m.querySelector('[data-gm2-ability-page]');if(r==='logs'||r==='events')return m.dataset.gmtSub===r||m.dataset.gm2Route===r;return true}
+ if(k.startsWith('gm2:')){
+  const r=k.slice(4);
+  if(String(window.__catlakGmCenterSelectedRoute||'')!==r)return false;
+  if(r==='ability')return !!m.querySelector('[data-gm2-ability-page]');
+  if(r==='logs'||r==='events')return m.dataset.gmtSub===r||m.dataset.gm2Route===r;
+  return true;
+ }
  if(k.startsWith('gmt:'))return m.dataset.gmtSub===k.slice(4);
  if(k.startsWith('gcs:'))return !!m.querySelector(`[data-gcs-page="${CSS.escape(k.slice(4))}"]`);
  if(k.startsWith('tab:')){
@@ -46,18 +54,33 @@ function actualReady(k){
  }
  return sig()!==beforeSig;
 }
-function clearRoute(){clearTimeout(routeTimer);clearTimeout(routeMax);HTML.classList.remove('cc-route-cloak');routeKey='';beforeSig=''}
+function clearRoute(){
+ clearTimeout(routeTimer);clearTimeout(routeMax);
+ HTML.classList.remove('cc-route-cloak');
+ routeKey='';beforeSig='';
+}
+function meaningfulChanged(){return sig()!==beforeSig}
 function checkRoute(my){
  if(my!==token||!HTML.classList.contains('cc-route-cloak'))return;
- const stable=performance.now()-lastMutation>95,elapsed=performance.now()-routeStarted;
- if(elapsed>90&&stable&&actualReady(routeKey)){clearRoute();return}
- routeTimer=setTimeout(()=>checkRoute(my),45);
+ const elapsed=performance.now()-routeStarted;
+ const stable=performance.now()-lastMutation>55;
+ // Yeni ekranın gerçekten hazır olması ideal; ama DOM anlamlı biçimde değiştiyse
+ // eski görünüm artık yoktur, kilidi hemen bırak.
+ if(elapsed>45&&stable&&(actualReady(routeKey)||meaningfulChanged())){clearRoute();return}
+ routeTimer=setTimeout(()=>checkRoute(my),35);
 }
 function begin(el){
  const k=key(el);if(!k||el.disabled)return;
+ const now=performance.now();
+ // pointerdown + click aynı rota için iki kez begin çağırabiliyor.
+ // İkinci çağrı süreyi yeniden başlatıp ekranı kilitlemesin.
+ if(HTML.classList.contains('cc-route-cloak')&&k===routeKey&&now-routeStarted<500)return;
  if(actualReady(k))return;
- token++;routeKey=k;routeStarted=performance.now();beforeSig=sig();lastMutation=performance.now();HTML.classList.add('cc-route-cloak');
- clearTimeout(routeTimer);clearTimeout(routeMax);const my=token;routeTimer=setTimeout(()=>checkRoute(my),55);routeMax=setTimeout(()=>{if(my===token)clearRoute()},1850);
+ token++;routeKey=k;routeStarted=now;beforeSig=sig();lastMutation=now;HTML.classList.add('cc-route-cloak');
+ clearTimeout(routeTimer);clearTimeout(routeMax);const my=token;
+ routeTimer=setTimeout(()=>checkRoute(my),40);
+ // Kesin emniyet: hiçbir oda tam ekran hazırlık katmanında takılı kalamaz.
+ routeMax=setTimeout(()=>{if(my===token)clearRoute()},720);
 }
 function revealBoot(){
  if(!HTML.classList.contains('cc-global-boot-cloak'))return;
@@ -69,8 +92,14 @@ function tryBoot(){if(window.__catlakLateRuntimeReady)requestAnimationFrame(()=>
 
 window.addEventListener('pointerdown',e=>{if(!e.isTrusted||e.button!=null&&e.button!==0)return;const el=e.target?.closest?.(ROUTES);if(el)begin(el)},true);
 window.addEventListener('catlak:late-ready',tryBoot);
-new MutationObserver(()=>{lastMutation=performance.now();if(HTML.classList.contains('cc-route-cloak')){const my=token;clearTimeout(routeTimer);routeTimer=setTimeout(()=>checkRoute(my),45)}tryBoot()}).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-cc-map-page','data-sw-page','data-gmt-sub','data-gm2-route','data-gcs-page','data-cc-simple-live','data-ccr-battle']});
+new MutationObserver(()=>{
+ lastMutation=performance.now();
+ if(HTML.classList.contains('cc-route-cloak')){
+  const my=token;clearTimeout(routeTimer);routeTimer=setTimeout(()=>checkRoute(my),30);
+ }
+ tryBoot();
+}).observe(APP,{childList:true,subtree:true,attributes:true,characterData:true,attributeFilter:['class','data-cc-map-page','data-sw-page','data-gmt-sub','data-gm2-route','data-gcs-page','data-cc-simple-live','data-ccr-battle']});
 bootMax=setTimeout(()=>{if(!APP.querySelector('[data-cc-boot-placeholder]'))revealBoot()},5200);
 setTimeout(tryBoot,120);setTimeout(tryBoot,500);
-window.__catlakGlobalTransition={begin,clear:clearRoute,ready:actualReady};
+window.__catlakGlobalTransition={begin,clear:clearRoute,ready:actualReady,version:2};
 })();
