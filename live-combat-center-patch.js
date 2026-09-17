@@ -91,25 +91,47 @@ async function render(force=false){
  wrapOldCombatRoute();
  if(!liveActive())return;
  const main=APP.querySelector('main');if(!main||busy)return;
- const anchor=main.querySelector('.cc-live-two');if(!anchor){if(force)setTimeout(()=>render(false),80);return}
+ if(!main.querySelector('.cc-live-two')){if(force)setTimeout(()=>render(false),80);return}
  if(!force&&main.querySelector('[data-lcc-board]'))return;
  busy=true;
  try{
-  const d=await loadData();if(!liveActive()||APP.querySelector('main')!==main)return;
+  const d=await loadData();
+  if(!liveActive()||APP.querySelector('main')!==main)return;
+  const anchor=main.querySelector('.cc-live-two');
+  if(!anchor||!anchor.parentNode){setTimeout(()=>render(true),80);return}
   main.querySelector('[data-lcc-board]')?.remove();
   anchor.insertAdjacentHTML('afterend',boardHtml(d));
  }catch(e){console.error('LCC render',e);toast('Savaş masası yüklenemedi: '+(e?.message||String(e)))}finally{busy=false}
 }
 async function rpc(name,args,msg){
  if(busy)return;busy=true;
- try{const r=await S.rpc(name,args||{});if(r.error)throw r.error;toast(typeof msg==='function'?msg(r.data):msg);}
+ try{const r=await S.rpc(name,args||{});if(r.error)throw r.error;toast(typeof msg==='function'?msg(r.data):msg)}
  catch(e){toast('İşlem başarısız: '+(e?.message||String(e)))}
+ finally{busy=false;setTimeout(()=>render(true),20)}
+}
+async function startCombat(){
+ if(busy)return;busy=true;
+ try{
+  const snap=await S.from('catlak_character_abilities').select('id,uses_remaining,uses_per_combat');
+  if(snap.error)throw new Error('Yetenek kullanım hakları okunamadı; savaş güvenli biçimde başlatılmadı: '+snap.error.message);
+  const before=new Map((snap.data||[]).map(x=>[String(x.id),x.uses_remaining]));
+  const start=await S.rpc('catlak_gm_combat_start',{p_name:APP.querySelector('#lcc-combat-name')?.value||'Savaş'});
+  if(start.error)throw start.error;
+  const after=await S.from('catlak_character_abilities').select('id,uses_remaining');
+  if(after.error)throw after.error;
+  const changed=(after.data||[]).filter(x=>before.has(String(x.id))&&before.get(String(x.id))!==x.uses_remaining);
+  if(changed.length){
+   const restored=await Promise.all(changed.map(x=>S.from('catlak_character_abilities').update({uses_remaining:before.get(String(x.id))}).eq('id',x.id)));
+   const bad=restored.find(x=>x.error);if(bad?.error)throw new Error('Savaş başladı ancak yetenek hakları korunamadı: '+bad.error.message)
+  }
+  toast('Savaş başlatıldı. Yetenek hakları uzun dinlenmeye kadar korundu.');
+ }catch(e){toast('Savaş başlatılamadı: '+(e?.message||String(e)))}
  finally{busy=false;setTimeout(()=>render(true),20)}
 }
 
 APP.addEventListener('click',e=>{
  if(!isGM())return;
- const start=e.target.closest?.('[data-lcc-start]');if(start){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_start',{p_name:APP.querySelector('#lcc-combat-name')?.value||'Savaş'},'Savaş başlatıldı.');return}
+ const start=e.target.closest?.('[data-lcc-start]');if(start){e.preventDefault();e.stopImmediatePropagation();startCombat();return}
  if(e.target.closest?.('[data-lcc-end]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş sona erdirilsin mi?'))rpc('catlak_gm_combat_end',{},'Savaş sona erdi.');return}
  if(e.target.closest?.('[data-lcc-next]')){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_next_turn',{},d=>`Sıra: ${d?.name||'?'} • Round ${d?.round||1}`);return}
  if(e.target.closest?.('[data-lcc-add-char]')){e.preventDefault();e.stopImmediatePropagation();const cid=APP.querySelector('#lcc-add-char')?.value,raw=APP.querySelector('#lcc-char-init')?.value;if(!cid)return toast('Eklenecek oyuncu yok.');rpc('catlak_gm_combat_add_character',{p_character_id:cid,p_initiative:raw===''?null:Number(raw)},'Oyuncu savaşa eklendi.');return}
@@ -126,5 +148,5 @@ new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
 const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(liveActive())render(true)},35)};
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).subscribe();
 setTimeout(schedule,120);setTimeout(schedule,700);setTimeout(schedule,1600);
-window.__catlakLiveCombatCenter={render:()=>render(true),open:openLive,removeLegacy:removeOldCombatEntry};
+window.__catlakLiveCombatCenter={render:()=>render(true),open:openLive,removeLegacy:removeOldCombatEntry,start:startCombat};
 })();
