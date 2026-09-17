@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- runtime-audit-v1 -->
+<!-- clean-gm-runtime-v1 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -23,118 +23,63 @@
 </head>
 <body>
   <div id="cc-start-cover" aria-hidden="true"><strong>Çatlak Çağı</strong></div>
-  <div id="app">
-    <main id="cc-safe-boot">
-      <div>
-        <h1>Çatlak Çağı</h1>
-        <p>Uygulama açılıyor…</p>
-      </div>
-    </main>
-  </div>
+  <div id="app"><main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><p>Uygulama açılıyor…</p></div></main></div>
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Canlı Oyun eski GM ekranını tek kare bile göstermesin; core'dan önce dinlemeye başlar. -->
+  <!-- Çekirdekten önce yalnız tıklama güvenliği ve Canlı Oyun giriş koruması çalışır. -->
   <script src="./live-game-entry-guard.js?v=live-entry-v1"></script>
+  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v1"></script>
 
   <script>
   (function(){
     'use strict';
     var app=document.getElementById('app');
     var cover=document.getElementById('cc-start-cover');
-    var started=false;
-    var addonsStarted=false;
-    var uiReady=false;
-    var bootTimer=null;
-    var revealFallback=null;
+    var started=false,addonsStarted=false,uiReady=false,bootTimer=null,revealFallback=null;
 
     function reveal(){
-      if(uiReady)return;
-      uiReady=true;
-      clearTimeout(revealFallback);
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){
-          if(!cover)return;
-          cover.classList.add('cc-done');
-          setTimeout(function(){cover?.remove()},180);
-        });
-      });
+      if(uiReady)return;uiReady=true;clearTimeout(revealFallback);
+      requestAnimationFrame(function(){requestAnimationFrame(function(){if(!cover)return;cover.classList.add('cc-done');setTimeout(function(){cover?.remove()},180)})});
     }
-
     function clearLocalSession(){
-      try{Object.keys(localStorage).forEach(function(k){if(/^sb-.*-auth-token$/i.test(k))localStorage.removeItem(k)})}catch(_){ }
-      try{sessionStorage.removeItem('cc-boot-recovered')}catch(_){ }
+      try{Object.keys(localStorage).forEach(function(k){if(/^sb-.*-auth-token$/i.test(k))localStorage.removeItem(k)})}catch(_){}
+      try{sessionStorage.removeItem('cc-boot-recovered')}catch(_){}
     }
-
     function fail(title,detail){
-      clearTimeout(bootTimer);clearTimeout(revealFallback);
-      cover?.remove();uiReady=true;
+      clearTimeout(bootTimer);clearTimeout(revealFallback);cover?.remove();uiReady=true;
       app.innerHTML='<main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><h2>'+title+'</h2><p>'+String(detail||'Uygulama başlatılamadı.').replace(/[<>]/g,'')+'</p><button id="cc-reload">Yeniden Yükle</button><button id="cc-reset">Oturumu Temizle</button></div></main>';
       document.getElementById('cc-reload').onclick=function(){location.replace(location.pathname+'?reload='+Date.now())};
       document.getElementById('cc-reset').onclick=function(){clearLocalSession();location.replace(location.pathname+'?recover='+Date.now())};
     }
-
     function load(src,key){
       return new Promise(function(resolve){
-        var old=document.querySelector('script[data-cc-addon="'+key+'"]');
-        if(old){resolve(true);return}
-        var s=document.createElement('script');
-        s.src=src;
-        s.async=false;
-        s.dataset.ccAddon=key;
-        s.onload=function(){resolve(true)};
-        s.onerror=function(){console.warn('CATLAK_ADDON_LOAD_FAILED',src);resolve(false)};
-        document.body.appendChild(s);
+        var old=document.querySelector('script[data-cc-addon="'+key+'"]');if(old){resolve(true);return}
+        var s=document.createElement('script');s.src=src;s.async=false;s.dataset.ccAddon=key;
+        s.onload=function(){resolve(true)};s.onerror=function(){console.warn('CATLAK_ADDON_LOAD_FAILED',src);resolve(false)};document.body.appendChild(s);
       });
     }
-
     function loadParallel(list){return Promise.all(list.map(function(x){return load(x[0],x[1])}))}
+    async function waitForRuntime(){for(var i=0;i<120;i++){if(window.__catlakSupabase)return true;await new Promise(function(r){setTimeout(r,50)})}return false}
 
     async function loadGmCore(){
-      // GM Merkezi üst menüde kalır; Yönetim Odası merkezdedir, Parti Odası üst menüde ayrıdır.
-      await load('./gm-tools-patch.js?v=recovery-gm-3','gm-tools');
-      await load('./quality-of-life-patch.js?v=recovery-gm-3','qol');
-      await load('./gm-hub-v2-patch.js?v=recovery-gm-3','gm-hub');
-      await load('./gm-center-router-core.js?v=recovery-gm-7-management-explicit','gm-router');
+      // Tek sahipli GM mimarisi: araç motorları + tek router + tek Parti Odası.
+      await load('./gm-tools-patch.js?v=clean-gm-tools-v1','gm-tools');
+      await load('./quality-of-life-patch.js?v=clean-qol-v1','qol');
+      await load('./gm-campaign-state-patch.js?v=clean-campaign-v1','gm-campaign-state');
+      await load('./seal-character-controls-patch.js?v=clean-seal-controls-v1','seal-character-controls');
+      await load('./party-room-stable-v2.js?v=party-room-clean-v3','party-room-clean');
+      await load('./gm-clean-router-v1.js?v=gm-clean-router-v1','gm-clean-router');
 
-      // GM Merkezi'nin sonradan eklenen kampanya odaları. Bunlar barı yeniden kurmaz;
-      // mevcut merkeze İtibar ve Mühür butonlarını ekler.
-      await load('./gm-campaign-state-patch.js?v=gmstate-v5-safe-restore','gm-campaign-state');
-      await load('./gm-management-room-patch.js?v=management-v2-explicit-only','gm-management-room');
-      await load('./seal-character-controls-patch.js?v=seal-controls-v2-safe-restore','seal-character-controls');
-
-      // Parti Odası'nın tek sahibi yeni runtime'dır. Eski transition runtime tekrar yüklenmez.
-      await load('./party-eeliot-runtime-hotfix.js?v=party-v6-single-owner','party-runtime');
-      await load('./gm-center-party-integration.js?v=gm-party-center-v2-top','gm-party-integration');
-      await load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
-
-      // Savaş kontrolü GM Merkezi'nde ayrı oda değildir; Canlı Oyun Masası altında yaşar.
-      // Veri beklerken canlı masa yeniden çizilirse kopmuş anchor hatasını güvenle toparla.
+      // Savaş kontrolü yalnız Canlı Oyun Masası altında yaşar.
       await load('./live-combat-anchor-safety.js?v=livecombat-anchor-v1','live-combat-anchor-safety');
       await load('./live-combat-center-loader.js?v=livecombat-loader-v3-anchor-safe','live-combat-loader');
 
-      try{
-        window.__catlakGmHubV2Test?.chrome?.();
-        window.__catlakCampaignStateTest?.maintain?.();
-        window.__catlakGmCenterPartyIntegration?.ensure?.();
-        window.__catlakGmCenterRouterCore?.ensureEntry?.();
-        window.__catlakGmCenterRouterCore?.makeClickable?.();
-      }catch(e){console.warn('CATLAK_GM_CORE_REFRESH',e)}
-    }
-
-    async function waitForRuntime(){
-      for(var i=0;i<120;i++){
-        if(window.__catlakSupabase)return true;
-        await new Promise(function(r){setTimeout(r,50)});
-      }
-      return false;
+      try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
     async function loadSafeAddons(){
-      if(addonsStarted)return;
-      addonsStarted=true;
-      var runtimeReady=await waitForRuntime();
-      if(!runtimeReady){console.warn('CATLAK_SAFE_ADDONS_SKIPPED');reveal();return}
-
+      if(addonsStarted)return;addonsStarted=true;
+      var runtimeReady=await waitForRuntime();if(!runtimeReady){console.warn('CATLAK_SAFE_ADDONS_SKIPPED');reveal();return}
       await loadGmCore();
       await loadParallel([
         ['./class-bonus-patch.js?v=classbonus-v1','class-bonus'],
@@ -147,42 +92,25 @@
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
         ['./room-system-patch.js?v=recovery-3','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./invite-visibility-patch.js?v=recovery-3','invites'],
         ['./player-sheet-patch.js?v=recovery-3','player-sheet'],
         ['./player-sheet-equipment-abilities-patch.js?v=recovery-3','player-equip'],
         ['./player-live-actions-patch.js?v=recovery-3','player-actions'],
         ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
         ['./stat-roll-patch.js?v=recovery-3','stat-roll'],
-
-        // Temiz başlangıçta düşen ama birbirinden bağımsız çalışan koruma/fix modülleri.
         ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
-        ['./session-log-delete-fix.js?v=session-log-v2-safe-restore','session-log-delete']
+        ['./session-log-delete-fix.js?v=session-log-v3-stay','session-log-delete']
       ]);
-
-      try{
-        window.__catlakCampaignStateTest?.maintain?.();
-        window.__catlakGmCenterPartyIntegration?.ensure?.();
-        window.__catlakGmCenterRouterCore?.makeClickable?.();
-        window.__catlakLiveCombatCenter?.render?.();
-      }catch(_){ }
+      try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakLiveCombatCenter?.render?.()}catch(_){}
       reveal();
     }
 
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');
-    core.src='./browser-app.js?v=recovery-core-3';
-    core.async=false;
-    core.onload=function(){
-      started=true;clearTimeout(bootTimer);
-      loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);reveal()});
-      // Bir yardımcı dosya takılırsa ekran sonsuza kadar kapalı kalmasın.
-      revealFallback=setTimeout(reveal,5000);
-    };
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-4-clean';core.async=false;
+    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);reveal()});revealFallback=setTimeout(reveal,5000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
-
     bootTimer=setTimeout(function(){if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.')},8000);
   })();
   </script>
