@@ -23,21 +23,22 @@ jobs:
         run: |
           set -euo pipefail
           for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js party-eeliot-runtime-hotfix.js gm-center-party-integration.js class-bonus-patch.js; do node --check "$f"; done
-          grep -Fq 'gm-center-router-core.js?v=recovery-gm-5-center-rooms' index.html
+          grep -Fq 'gm-center-router-core.js?v=recovery-gm-6-party-top' index.html
           grep -Fq 'gm-management-room-patch.js?v=management-v1' index.html
           grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v5-gm-center' index.html
-          grep -Fq 'gm-center-party-integration.js?v=gm-party-center-v1' index.html
-          grep -Fq "'characters','party'" gm-center-router-core.js
-          grep -Fq "route==='party'" gm-center-router-core.js
+          grep -Fq 'gm-center-party-integration.js?v=gm-party-center-v2-top' index.html
+          ! grep -Fq "'characters','party'" gm-center-router-core.js
+          ! grep -Fq "route==='party'" gm-center-router-core.js
           grep -Fq '__catlakManagementRoom' gm-management-room-patch.js
           grep -Fq '__catlakPartyEeliotHotfix' party-eeliot-runtime-hotfix.js
-          grep -Fq 'data-gm2-route="party"' gm-center-party-integration.js
+          grep -Fq "b.textContent='Parti Odası'" gm-center-party-integration.js
+          grep -Fq 'removePartyFromCenter' gm-center-party-integration.js
           grep -Fq '[data-tab="characters"]' gm-center-party-integration.js
           grep -Fq 'class_bonus_v1' class-bonus-patch.js
           echo RUNTIME_OWNERSHIP_STATIC_OK
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify GM Center rooms in Chrome
+      - name: Verify GM Center and top Party Room in Chrome
         run: |
           cat > runtime-smoke.html <<'HTML'
           <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}:root{--line:#445;--muted:#999;--gold:#d6ad5b;--green:#7fb}</style></head><body>
@@ -73,19 +74,27 @@ jobs:
           (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
             const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/runtime-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(500);
             const nativeDisplay=await p.locator('.nav [data-tab="characters"]').evaluate(el=>getComputedStyle(el).display);if(nativeDisplay!=='none')throw new Error('Separate Management Room is still visible');
-            const topParty=await p.locator('.nav [data-prh-manager]').count();if(topParty){const d=await p.locator('.nav [data-prh-manager]').evaluate(el=>getComputedStyle(el).display);if(d!=='none')throw new Error('Separate Party Manager is still visible')}
+            if(await p.locator('.nav [data-gmt-open]').count()!==1)throw new Error('GM Center missing from top navigation');
+            if(await p.locator('.nav [data-prh-manager]').count()!==1)throw new Error('Top Party Room missing');
+            const partyLabel=(await p.locator('.nav [data-prh-manager]').innerText()).trim();if(partyLabel!=='Parti Odası')throw new Error('Top Party Room label wrong '+partyLabel);
+            const partyDisplay=await p.locator('.nav [data-prh-manager]').evaluate(el=>getComputedStyle(el).display);if(partyDisplay==='none')throw new Error('Top Party Room is hidden');
+
             await p.click('[data-gmt-open]');await p.waitForSelector('[data-gm2-centerbar]');
             if(await p.locator('[data-gm2-route="combat"]').count())throw new Error('Combat should not be in GM Center');
             if(await p.locator('[data-gm2-route="characters"]').count()!==1)throw new Error('Management Room missing from GM Center');
-            if(await p.locator('[data-gm2-route="party"]').count()!==1)throw new Error('Party Room missing from GM Center');
+            if(await p.locator('[data-gm2-route="party"]').count()!==0)throw new Error('Party Room must not be inside GM Center');
             await p.click('[data-gm2-route="characters"]');await p.waitForSelector('[data-gmr-page]');
             const management=await p.locator('[data-gmr-page]').innerText();if(!management.includes('Test Şövalye')||!management.includes('Oyuncu Daveti'))throw new Error('Management Room did not render '+management);
-            await p.click('[data-gm2-route="party"]');await p.waitForSelector('[data-prh-page]');
+
+            await p.click('.nav [data-prh-manager]');await p.waitForSelector('[data-prh-page]');
             const party=await p.locator('[data-prh-page]').innerText();if(!party.includes('Parti Yönetimi')||!party.includes('Test Şövalye'))throw new Error('Party Room did not render '+party);
-            const active=await p.locator('[data-gm2-route="party"]').evaluate(el=>el.classList.contains('on'));if(!active)throw new Error('Party Room route not active');
+            const gmCenterStillThere=await p.locator('.nav [data-gmt-open]').count();if(gmCenterStillThere!==1)throw new Error('GM Center disappeared after opening Party Room');
+            const centerActive=await p.locator('.nav [data-gmt-open]').evaluate(el=>el.classList.contains('gm2-center-active')||el.classList.contains('on'));if(centerActive)throw new Error('GM Center should not stay active while Party Room is open');
+            const partyActive=await p.locator('.nav [data-prh-manager]').evaluate(el=>el.classList.contains('on'));if(!partyActive)throw new Error('Top Party Room should be active');
+
             await p.waitForFunction(()=>window.__updates.some(x=>x.table==='catlak_characters'&&x.payload?.data?.class_bonus_v1?.applied===true),null,{timeout:5000});
-            const out=await p.evaluate(()=>({management:!!window.__catlakManagementRoom,party:!!window.__catlakPartyEeliotHotfix?.isOpen?.(),route:window.__catlakGmCenterRouterCore?.current?.()}));
-            if(!out.party||out.route!=='party')throw new Error('Room ownership wrong '+JSON.stringify(out));
+            const out=await p.evaluate(()=>({management:!!window.__catlakManagementRoom,party:!!window.__catlakPartyEeliotHotfix?.isOpen?.(),center:window.__catlakGmCenterRouterCore?.centerOpen?.()}));
+            if(!out.party||out.center)throw new Error('Top Party Room ownership wrong '+JSON.stringify(out));
             if(errors.length)throw new Error('Page errors '+errors.join(' | '));
             console.log('RUNTIME_OWNERSHIP_BROWSER_OK',JSON.stringify(out));
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
