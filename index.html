@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v5 -->
+<!-- clean-gm-runtime-v6 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -70,6 +70,7 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await loadParallel([
+          ['./player-sheet-bind-fix.js?v=player-bind-v1','player-bind'],
           ['./player-sheet-runtime-v4.js?v=player-sheet-v4c','player-sheet'],
           ['./stat-roll-patch.js?v=player-sheet-v4c','stat-roll'],
           ['./item-system-patch.js?v=player-sheet-v4c','items'],
@@ -85,6 +86,7 @@
         if(jobs.length)await Promise.allSettled(jobs);
         try{await awaitMaybe(window.__catlakPlayerSheetSupport?.refresh?.(false))}catch(_){}
         try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
+        try{window.__catlakPlayerSheetBindFix?.repair?.()}catch(_){}
         try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
         await twoFrames();
       }finally{
@@ -113,10 +115,10 @@
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v3-fast','gm-clean-router'],
-        ['./gm-live-compact-v1.js?v=gm-live-compact-v4','gm-live-compact']
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v5','gm-live-compact']
       ]);
       await load('./live-combat-center-loader.js?v=livecombat-loader-v7-fast','live-combat-loader');
-      try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
+      try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
     async function loadGmBackground(){
@@ -149,6 +151,7 @@
           window.__catlakGmCleanRouter?.ensure?.();
           window.__catlakLiveCombatCenter?.render?.();
           window.__catlakGmUiPolish?.maintain?.();
+          window.__catlakGmLiveCompact?.maintain?.();
           window.__catlakLiveGameEntryGuard?.maintain?.();
           if(app.querySelector('.nav [data-tab="gm"].on'))window.__catlakLiveGameEntryGuard?.begin?.();
         }catch(_){}
