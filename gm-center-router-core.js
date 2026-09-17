@@ -22,9 +22,25 @@ function gmcrCenterOpen(){
   return false;
 }
 
+function gmcrEnsureEntry(){
+  if(!gmcrIsGM())return;
+  const nav=GMCR_APP.querySelector('.nav');
+  if(!nav)return;
+  let entry=nav.querySelector('[data-gmt-open]');
+  if(!entry){
+    entry=document.createElement('button');
+    entry.type='button';
+    entry.dataset.gmtOpen='1';
+    entry.textContent='GM Merkezi';
+    entry.title='GM Merkezi';
+    nav.appendChild(entry);
+  }else if(String(entry.textContent||'').trim()!=='GM Merkezi')entry.textContent='GM Merkezi';
+}
+
 // Chrome ownership belongs to gm-hub-v2. This controller only makes an existing
 // center bar interactive; it never creates, hides or resurrects the bar itself.
 function gmcrMakeButtonsClickable(){
+  gmcrEnsureEntry();
   window.__catlakGmHubV2Test?.chrome?.();
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
   if(!bar)return;
@@ -99,6 +115,17 @@ function gmcrConsume(e,route){
   return gmcrGo(route);
 }
 
+GMCR_APP.addEventListener('click',e=>{
+  const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
+  if(!entry||!gmcrIsGM())return;
+  setTimeout(()=>{
+    if(!gmcrCenterOpen())gmcrGo('ability');
+    gmcrMakeButtonsClickable();
+  },0);
+},false);
+
+new MutationObserver(()=>{requestAnimationFrame(gmcrEnsureEntry)}).observe(GMCR_APP,{childList:true,subtree:true});
+
 window.addEventListener('pointerdown',e=>{
   if(e.button!=null&&e.button!==0)return;
   const button=gmcrButton(e.target);
@@ -126,6 +153,8 @@ window.addEventListener('click',e=>{
   if(e.isTrusted&&nav&&gmcrIsGM()&&!nav.matches('[data-gmt-open]'))gmcrLeaveCenter();
 },true);
 setTimeout(gmcrMakeButtonsClickable,0);
+setTimeout(gmcrEnsureEntry,250);
+setTimeout(gmcrEnsureEntry,1000);
 
 window.__catlakCampaignRouterStableV3=true;
 window.__catlakGmCenterRouterCore={
@@ -136,5 +165,6 @@ window.__catlakGmCenterRouterCore={
   makeClickable:gmcrMakeButtonsClickable,
   centerOpen:gmcrCenterOpen,
   leave:gmcrLeaveCenter,
-  reset:gmcrLeaveCenter
+  reset:gmcrLeaveCenter,
+  ensureEntry:gmcrEnsureEntry
 };
