@@ -1,0 +1,79 @@
+name: Check Restored GM Rooms
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'gm-hub-v2-patch.js'
+      - 'gm-campaign-state-patch.js'
+      - 'seal-character-controls-patch.js'
+      - 'live-combat-center-loader.js'
+      - 'live-combat-center-patch.js'
+      - '.github/workflows/check-restored-gm-rooms.yml'
+  workflow_dispatch:
+
+jobs:
+  restored-rooms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          for f in gm-hub-v2-patch.js gm-campaign-state-patch.js seal-character-controls-patch.js live-combat-center-loader.js live-combat-center-patch.js; do node --check "$f"; done
+          grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v5-safe-restore' index.html
+          grep -Fq 'seal-character-controls-patch.js?v=seal-controls-v2-safe-restore' index.html
+          grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v2-safe-restore' index.html
+          grep -Fq "['reputation','İtibar Odası']" gm-campaign-state-patch.js
+          grep -Fq "['seals','Mühür Odası']" gm-campaign-state-patch.js
+          grep -Fq 'Savaşı Başlat' live-combat-center-patch.js
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Browser restored-room smoke
+        run: |
+          cat > restored-smoke.html <<'HTML'
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}</style></head><body>
+          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open>GM Merkezi</button><button data-tab="items">Eşyalar</button><button data-tab="races">Irklar</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button></nav><main data-cc-simple-live="1"><div class="cc-live-two">Oyuncular & Zarlar</div></main></div><div id="toast" class="hidden"></div>
+          <script>
+          const chars=[{id:'c1',name:'Test Karakter',species_name:'Vampir',level:3,data:{vampire_kp:3},play_status:'active',owner_id:'u1',created_at:'1',hp_current:10,hp_max:12,base_ac:12,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}];
+          function rows(table){
+            if(table==='catlak_combat_state')return [{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null}];
+            if(table==='catlak_combatants')return [];
+            if(table==='catlak_characters')return chars;
+            if(table==='catlak_character_conditions')return [];
+            if(table==='catlak_abilities'||table==='catlak_character_abilities')return [];
+            return [];
+          }
+          function from(table){let filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},in(){return q},order(){return q},limit(){return q},maybeSingle(){let a=rows(table).filter(x=>filters.every(([k,v])=>String(x[k])===String(v)));return Promise.resolve({data:a[0]||null,error:null})},then(ok,bad){let a=rows(table).filter(x=>filters.every(([k,v])=>String(x[k])===String(v)));return Promise.resolve({data:a,error:null}).then(ok,bad)}};return q}
+          const channel={on(){return channel},subscribe(){return channel}};
+          window.__catlakSupabase={from,channel:()=>channel,rpc:async()=>({data:true,error:null})};
+          window.__catlakGmTools={open(){},close(){},active(){return''}};
+          window.__catlakQualityOfLifeTest={closeCreatureLibrary(){},openCreatureLibrary(){}};
+          </script>
+          <script src="./gm-hub-v2-patch.js"></script>
+          <script src="./gm-campaign-state-patch.js"></script>
+          <script src="./seal-character-controls-patch.js"></script>
+          <script src="./live-combat-center-patch.js"></script>
+          <script>
+            document.querySelector('[data-gmt-open]').click();
+            window.__catlakGmHubV2Test?.chrome?.();
+            window.__catlakCampaignStateTest?.maintain?.();
+            window.__catlakLiveCombatCenter?.render?.();
+          </script>
+          </body></html>
+          HTML
+          python3 -m http.server 4175 --bind 127.0.0.1 >/tmp/restored-http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > restored-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
+            const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4175/restored-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(500);
+            const state=await p.evaluate(()=>({buttons:[...document.querySelectorAll('[data-gm2-centerbar] button')].map(x=>x.textContent.trim()),combat:document.querySelector('[data-lcc-board]')?.textContent||'',seal:!!window.__catlakCampaignStateTest,sealControls:!!window.__catlakSealCharacterControls,combatApi:!!window.__catlakLiveCombatCenter}));
+            if(!state.buttons.includes('İtibar Odası')||!state.buttons.includes('Mühür Odası')||!state.buttons.includes('Yönetim Odası'))throw new Error('GM room buttons missing '+JSON.stringify(state));
+            if(!state.combat.includes('Savaşı Başlat')||!state.combat.includes('TUR SIRASI')||!state.combat.includes('DURUM ETKİLERİ'))throw new Error('Live combat panel missing '+JSON.stringify(state));
+            if(!state.seal||!state.sealControls||!state.combatApi)throw new Error('Restored APIs missing '+JSON.stringify(state));
+            if(errors.length)throw new Error('Page errors '+errors.join(' | '));
+            console.log('RESTORED_GM_ROOMS_OK',JSON.stringify(state));
+          }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node restored-smoke.cjs
