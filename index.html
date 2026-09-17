@@ -63,19 +63,24 @@
       });
     }
 
-    function loadParallel(list){
-      list.forEach(function(x){load(x[0],x[1])});
-    }
+    function loadParallel(list){list.forEach(function(x){load(x[0],x[1])})}
 
     async function loadGmCore(){
-      // GM Merkezi için sıra önemlidir: eski araçlar -> merkez motoru -> yönlendirici -> doğrudan yönetim odası.
+      // GM özel odaları tek merkezde ve kontrollü sırada yüklenir.
       await load('./gm-tools-patch.js?v=recovery-gm-3','gm-tools');
       await load('./quality-of-life-patch.js?v=recovery-gm-3','qol');
       await load('./gm-hub-v2-patch.js?v=recovery-gm-3','gm-hub');
-      await load('./gm-center-router-core.js?v=recovery-gm-4-management-direct','gm-router');
+      await load('./gm-center-router-core.js?v=recovery-gm-5-center-rooms','gm-router');
       await load('./gm-management-room-patch.js?v=management-v1','gm-management-room');
+      await load('./party-eeliot-runtime-hotfix.js?v=party-v5-gm-center','party-runtime');
+      await load('./gm-center-party-integration.js?v=gm-party-center-v1','gm-party-integration');
       load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
-      try{window.__catlakGmHubV2Test?.chrome?.();window.__catlakGmCenterRouterCore?.ensureEntry?.()}catch(e){console.warn('CATLAK_GM_CORE_REFRESH',e)}
+      try{
+        window.__catlakGmHubV2Test?.chrome?.();
+        window.__catlakGmCenterPartyIntegration?.ensure?.();
+        window.__catlakGmCenterRouterCore?.ensureEntry?.();
+        window.__catlakGmCenterRouterCore?.makeClickable?.();
+      }catch(e){console.warn('CATLAK_GM_CORE_REFRESH',e)}
     }
 
     function loadSafeAddons(){
@@ -111,27 +116,17 @@
       })();
     }
 
-    window.addEventListener('error',function(e){
-      if(!started&&String(e && e.message || '').trim())fail('Başlangıç hatası',e.message);
-    },true);
-    window.addEventListener('unhandledrejection',function(e){
-      if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'));}
-    });
+    window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
+    window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
     var core=document.createElement('script');
     core.src='./browser-app.js?v=recovery-core-3';
     core.async=false;
-    core.onload=function(){
-      started=true;
-      clearTimeout(bootTimer);
-      loadSafeAddons();
-    };
+    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons()};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
 
-    bootTimer=setTimeout(function(){
-      if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.');
-    },8000);
+    bootTimer=setTimeout(function(){if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.')},8000);
   })();
   </script>
 </body>
