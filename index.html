@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v2 -->
+<!-- clean-gm-runtime-v3 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -11,6 +11,7 @@
   <link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co">
   <style>
     html,body{margin:0;min-height:100%;background:#071019;color:#edf6ff;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
+    html.cc-player-critical-pending #app main{visibility:hidden!important}
     #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .14s ease}
     #cc-start-cover.cc-done{opacity:0;pointer-events:none}
     #cc-start-cover strong{font-size:clamp(2rem,7vw,4.6rem);letter-spacing:.04em;color:#edf6ff;text-shadow:0 8px 32px #000}
@@ -26,7 +27,7 @@
   <div id="app"><main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><p>Uygulama açılıyor…</p></div></main></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="./live-game-entry-guard.js?v=live-entry-v1"></script>
+  <script src="./live-game-entry-guard.js?v=live-entry-v2"></script>
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v2"></script>
 
   <script>
@@ -45,7 +46,7 @@
       try{sessionStorage.removeItem('cc-boot-recovered')}catch(_){}
     }
     function fail(title,detail){
-      clearTimeout(bootTimer);clearTimeout(revealFallback);cover?.remove();uiReady=true;
+      clearTimeout(bootTimer);clearTimeout(revealFallback);document.documentElement.classList.remove('cc-player-critical-pending');cover?.remove();uiReady=true;
       app.innerHTML='<main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><h2>'+title+'</h2><p>'+String(detail||'Uygulama başlatılamadı.').replace(/[<>]/g,'')+'</p><button id="cc-reload">Yeniden Yükle</button><button id="cc-reset">Oturumu Temizle</button></div></main>';
       document.getElementById('cc-reload').onclick=function(){location.replace(location.pathname+'?reload='+Date.now())};
       document.getElementById('cc-reset').onclick=function(){clearLocalSession();location.replace(location.pathname+'?recover='+Date.now())};
@@ -60,60 +61,59 @@
     function loadParallel(list){return Promise.all(list.map(function(x){return load(x[0],x[1])}))}
     async function waitForRuntime(){for(var i=0;i<120;i++){if(window.__catlakSupabase)return true;await new Promise(function(r){setTimeout(r,50)})}return false}
     async function waitForRole(){for(var i=0;i<80;i++){var t=String(app.querySelector('.role')?.textContent||'').trim();if(t)return t;await new Promise(function(r){setTimeout(r,25)})}return String(app.querySelector('.role')?.textContent||'').trim()}
-    async function waitForPlayerSheet(){for(var i=0;i<60;i++){if(app.querySelector('main .cc-character-stack'))return true;await new Promise(function(r){setTimeout(r,25)})}return !!app.querySelector('main .cc-character-stack')}
+    async function waitForPlayerSheet(){for(var i=0;i<80;i++){if(app.querySelector('main .cc-character-stack'))return true;await new Promise(function(r){setTimeout(r,20)})}return !!app.querySelector('main .cc-character-stack')}
+    function twoFrames(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(resolve)})})}
 
     async function loadPlayerCritical(){
-      // Önce kağıdın iskeleti ve temel eşya altyapısı. Ağ istekleri birbirini beklemez.
-      await loadParallel([
-        ['./player-sheet-patch.js?v=player-speed-v3-restore','player-sheet'],
-        ['./stat-roll-patch.js?v=player-speed-v3-restore','stat-roll'],
-        ['./item-system-patch.js?v=player-speed-v3-restore','items']
-      ]);
-      await waitForPlayerSheet();
-      try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
-
-      // GM araçlarını oyuncuya yüklemeden eski silah/zırh/aksesuar/durum panelini hafif runtime ile geri kur.
-      await load('./player-sheet-support-runtime.js?v=player-support-v1','player-support');
-      try{var ps=window.__catlakPlayerSheetSupport?.refresh?.(true);if(ps&&typeof ps.then==='function')await ps}catch(_){}
-
-      // Canlı envanter + yetenekler destek panelinden sonra bağlanır; böylece boş panel yarışı oluşmaz.
-      await loadParallel([
-        ['./player-live-actions-patch.js?v=player-speed-v3-restore','player-actions'],
-        ['./player-sheet-equipment-abilities-patch.js?v=player-speed-v3-restore','player-equip']
-      ]);
-      var jobs=[];
-      try{var p1=window.__catlakPlayerLiveTest?.refresh?.(true);if(p1&&typeof p1.then==='function')jobs.push(p1)}catch(_){}
-      try{var p2=window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);if(p2&&typeof p2.then==='function')jobs.push(p2)}catch(_){}
-      if(jobs.length)await Promise.allSettled(jobs);
-      try{window.__catlakPlayerSheetSupport?.refresh?.(false)}catch(_){}
-      try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
+      document.documentElement.classList.add('cc-player-critical-pending');
+      try{
+        // Oyuncu kağıdının bütün kritik katmanları aynı anda indirilir.
+        await loadParallel([
+          ['./player-sheet-runtime-v4.js?v=player-sheet-v4','player-sheet'],
+          ['./stat-roll-patch.js?v=player-sheet-v4','stat-roll'],
+          ['./item-system-patch.js?v=player-sheet-v4','items'],
+          ['./player-sheet-support-runtime.js?v=player-support-v2','player-support'],
+          ['./player-live-actions-patch.js?v=player-sheet-v4','player-actions'],
+          ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4','player-equip']
+        ]);
+        await waitForPlayerSheet();
+        var jobs=[];
+        try{var ps=window.__catlakPlayerSheetSupport?.refresh?.(true);if(ps&&typeof ps.then==='function')jobs.push(ps)}catch(_){}
+        try{var p1=window.__catlakPlayerLiveTest?.refresh?.(true);if(p1&&typeof p1.then==='function')jobs.push(p1)}catch(_){}
+        try{var p2=window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);if(p2&&typeof p2.then==='function')jobs.push(p2)}catch(_){}
+        if(jobs.length)await Promise.allSettled(jobs);
+        try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
+        await twoFrames();
+      }finally{
+        document.documentElement.classList.remove('cc-player-critical-pending');
+      }
     }
 
     async function loadPlayerBackground(){
       await loadParallel([
-        ['./presence-patch.js?v=player-bg-v2','presence'],
-        ['./dice-ux-patch.js?v=player-bg-v2','dice'],
-        ['./room-guard-patch.js?v=player-bg-v2','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v2','rooms'],
-        ['./party-roster-patch.js?v=player-bg-v2','party-roster'],
-        ['./battle-party-membership-guard.js?v=player-bg-v2','battle-party-guard']
+        ['./presence-patch.js?v=player-bg-v3','presence'],
+        ['./dice-ux-patch.js?v=player-bg-v3','dice'],
+        ['./room-guard-patch.js?v=player-bg-v3','room-guard'],
+        ['./room-system-patch.js?v=player-bg-v3','rooms'],
+        ['./party-roster-patch.js?v=player-bg-v3','party-roster'],
+        ['./battle-party-membership-guard.js?v=player-bg-v3','battle-party-guard']
       ]);
     }
 
     async function loadGmCore(){
-      // Bağımsız GM modüllerini seri bekletme: ilk oda açılışını hızlandırmak için paralel indir.
       await loadParallel([
-        ['./gm-tools-patch.js?v=clean-gm-tools-v2-fast','gm-tools'],
-        ['./quality-of-life-patch.js?v=clean-qol-v2-fast','qol'],
-        ['./gm-campaign-state-patch.js?v=clean-campaign-v2-fast','gm-campaign-state'],
-        ['./party-room-stable-v2.js?v=party-room-clean-v4-fast','party-room-clean']
+        ['./gm-tools-patch.js?v=clean-gm-tools-v3-fast','gm-tools'],
+        ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
+        ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
+        ['./party-room-stable-v2.js?v=party-room-clean-v5-fast','party-room-clean']
       ]);
       await loadParallel([
-        ['./seal-character-controls-patch.js?v=clean-seal-controls-v2-fast','seal-character-controls'],
-        ['./gm-clean-router-v1.js?v=gm-clean-router-v2-fast','gm-clean-router'],
-        ['./live-combat-anchor-safety.js?v=livecombat-anchor-v2-fast','live-combat-anchor-safety']
+        ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v3-fast','gm-clean-router'],
+        ['./live-combat-anchor-safety.js?v=livecombat-anchor-v3-fast','live-combat-anchor-safety'],
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v1','gm-live-compact']
       ]);
-      await load('./live-combat-center-loader.js?v=livecombat-loader-v4-fast','live-combat-loader');
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v5-fast','live-combat-loader');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -148,7 +148,6 @@
         return;
       }
 
-      // Oyuncu: GM araçları indirilmez; eski kağıt bilgileri hafif oyuncu runtime'larıyla korunur.
       await loadPlayerCritical();
       reveal();
       loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)});
@@ -157,11 +156,11 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-4-clean';core.async=false;
-    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);reveal()});revealFallback=setTimeout(reveal,5000)};
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-5-clean';core.async=false;
+    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
-    bootTimer=setTimeout(function(){if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.')},8000);
+    bootTimer=setTimeout(function(){if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.')},10000);
   })();
   </script>
 </body>
