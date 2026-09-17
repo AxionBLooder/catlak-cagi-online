@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v1 -->
+<!-- clean-gm-runtime-v2 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -26,9 +26,8 @@
   <div id="app"><main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><p>Uygulama açılıyor…</p></div></main></div>
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Çekirdekten önce yalnız tıklama güvenliği ve Canlı Oyun giriş koruması çalışır. -->
   <script src="./live-game-entry-guard.js?v=live-entry-v1"></script>
-  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v1"></script>
+  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v2"></script>
 
   <script>
   (function(){
@@ -62,18 +61,14 @@
     async function waitForRuntime(){for(var i=0;i<120;i++){if(window.__catlakSupabase)return true;await new Promise(function(r){setTimeout(r,50)})}return false}
 
     async function loadGmCore(){
-      // Tek sahipli GM mimarisi: araç motorları + tek router + tek Parti Odası.
       await load('./gm-tools-patch.js?v=clean-gm-tools-v1','gm-tools');
       await load('./quality-of-life-patch.js?v=clean-qol-v1','qol');
       await load('./gm-campaign-state-patch.js?v=clean-campaign-v1','gm-campaign-state');
       await load('./seal-character-controls-patch.js?v=clean-seal-controls-v1','seal-character-controls');
       await load('./party-room-stable-v2.js?v=party-room-clean-v3','party-room-clean');
       await load('./gm-clean-router-v1.js?v=gm-clean-router-v1','gm-clean-router');
-
-      // Savaş kontrolü yalnız Canlı Oyun Masası altında yaşar.
       await load('./live-combat-anchor-safety.js?v=livecombat-anchor-v1','live-combat-anchor-safety');
       await load('./live-combat-center-loader.js?v=livecombat-loader-v3-anchor-safe','live-combat-loader');
-
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -98,7 +93,7 @@
         ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
         ['./stat-roll-patch.js?v=recovery-3','stat-roll'],
         ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
-        ['./session-log-delete-fix.js?v=session-log-v3-stay','session-log-delete']
+        ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakLiveCombatCenter?.render?.()}catch(_){}
       reveal();
