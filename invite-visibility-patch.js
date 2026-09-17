@@ -26,7 +26,7 @@ async function civLoad(force=false){
 }
 function civCard(c,mode){
   const prepared=mode==='invite';
-  return `<article class="civ-card"><div class="eyebrow">${prepared?'HAZIR • OYUNCU BEKLİYOR':'AKTİF • BAĞLI KARAKTER'}</div><h3>${civEsc(c.name)}</h3><div class="muted">${civEsc(c.species_name||'')} • ${civEsc(c.class_name||'')} ${Number(c.level||1)}</div><div class="civ-actions"><button type="button" class="primary" ${prepared?`data-civ-invite="${c.id}" data-civ-name="${civEsc(c.name)}"`:`data-civ-reconnect="${c.id}" data-civ-name="${civEsc(c.name)}"`}>${prepared?'Oyuncu Davet Linki Oluştur':'Yeniden Bağlama Linki Oluştur'}</button><button type="button" class="civ-delete" data-civ-delete="${c.id}" data-civ-name="${civEsc(c.name)}" data-civ-mode="${prepared?'prepared':'active'}">${prepared?'Hazır Karakteri Sil':'Oyuncuyu / Karakteri Sil'}</button></div></article>`;
+  return `<article class="civ-card"><div class="eyebrow">${prepared?'HAZIR • OYUNCU BEKLİYOR':'AKTİF • BAĞLI KARAKTER'}</div><h3>${civEsc(c.name)}</h3><div class="muted">${civEsc(c.species_name||'')} • ${civEsc(c.class_name||'')} ${Number(c.level||1)}</div><div class="civ-actions"><button type="button" class="primary" ${prepared?`data-civ-invite="${c.id}" data-civ-name="${civEsc(c.name)}"`:`data-civ-reconnect="${c.id}" data-civ-name="${civEsc(c.name)}"`}>${prepared?'Oyuncuya Bu Karakteri Davet Et':'Yeniden Bağlama Linki Oluştur'}</button><button type="button" class="civ-delete" data-civ-delete="${c.id}" data-civ-name="${civEsc(c.name)}" data-civ-mode="${prepared?'prepared':'active'}">${prepared?'Hazır Karakteri Sil':'Oyuncuyu / Karakteri Sil'}</button></div></article>`;
 }
 async function civRender(){
   if(!civIsGM()||!civCharTab())return;
@@ -36,7 +36,7 @@ async function civRender(){
     const prepared=rows.filter(c=>c.play_status==='prepared');
     const active=rows.filter(c=>c.play_status==='active'&&c.owner_id);
     const section=document.createElement('section');section.className='card civ-panel';section.dataset.civPanel='1';
-    section.innerHTML=`<div class="eyebrow">GM • DAVET & BAĞLANTI</div><h2>Karakteri Oyuncuya Gönder</h2><p class="muted">Hazır karakter için normal oyuncu daveti; daha önce bağlanmış aktif karakter için güvenli yeniden bağlama linki oluştur. Yanlışlıkla açılmış veya masaya alınmış karakterleri GM olarak buradan silebilirsin.</p><h3>Hazır Karakterler</h3>${prepared.length?`<div class="civ-grid">${prepared.map(c=>civCard(c,'invite')).join('')}</div>`:'<div class="cc-empty">Davet bekleyen hazır karakter yok.</div>'}<h3 style="margin-top:18px">Aktif / Bağlı Karakterler</h3>${active.length?`<div class="civ-grid">${active.map(c=>civCard(c,'reconnect')).join('')}</div>`:'<div class="cc-empty">Yeniden bağlanabilecek aktif karakter yok.</div>'}<div class="civ-note">Silme işlemi karakter kaydını kalıcı olarak kaldırır; oyuncunun ChatGPT/site hesabını silmez. Güvenlik için silmeden önce iki aşamalı onay istenir. Yeniden bağlama bağlantısı tek kullanımlık ve 24 saat geçerlidir.</div>`;
+    section.innerHTML=`<div class="eyebrow">GM • KARAKTER DAVETLERİ</div><h2>Karakteri Sen Oluştur, Oyuncuya Kağıdını Gönder</h2><p class="muted">Yeni sistemde karakterleri yalnız GM hazırlar. Karakter tamamlandığında aşağıdaki davet düğmesiyle o karakteri oyuncuya bağla. Oyuncu daveti açınca karakter oluşturucuya gitmez; doğrudan kendi karakter kağıdını görür.</p><h3>Hazır Karakterler</h3>${prepared.length?`<div class="civ-grid">${prepared.map(c=>civCard(c,'invite')).join('')}</div>`:'<div class="cc-empty">Davet bekleyen hazır karakter yok. Önce GM olarak karakteri oluştur.</div>'}<h3 style="margin-top:18px">Aktif / Bağlı Karakterler</h3>${active.length?`<div class="civ-grid">${active.map(c=>civCard(c,'reconnect')).join('')}</div>`:'<div class="cc-empty">Yeniden bağlanabilecek aktif karakter yok.</div>'}<div class="civ-note">Genel “oyuncu gelsin ve karakter oluştursun” daveti artık kullanılmıyor. Her davet belirli bir karaktere aittir. Yeniden bağlama bağlantısı tek kullanımlık ve 24 saat geçerlidir. Silme işlemi karakter kaydını kalıcı olarak kaldırır.</div>`;
     const head=main.querySelector('[data-ccr-hub-head]');head?head.insertAdjacentElement('afterend',section):main.insertBefore(section,main.firstChild);
   }catch(e){console.warn('CATLAK_INVITE_VISIBILITY',e);civToast('Davet paneli yüklenemedi: '+(e?.message||String(e)))}
 }
@@ -47,8 +47,8 @@ async function civMake(kind,id,name){
     const {data,error}=await CIV_S.rpc(fn,{p_character_id:id});if(error)throw error;
     const link=CIV_BASE+'?join='+encodeURIComponent(data);
     try{await navigator.clipboard.writeText(link)}catch{}
-    prompt(kind==='invite'?`${name} için oyuncu davet linki. Oyuncuya bunu gönder:`:`${name} için yeniden bağlama linki. Tek kullanımlık ve 24 saat geçerlidir:`,link);
-    civToast(kind==='invite'?'Oyuncu davet linki oluşturuldu ve panoya kopyalandı.':'Yeniden bağlama linki oluşturuldu ve panoya kopyalandı.');
+    prompt(kind==='invite'?`${name} için karakter davet linki. Bu bağlantıyı karakteri oynayacak kişiye gönder:`:`${name} için yeniden bağlama linki. Tek kullanımlık ve 24 saat geçerlidir:`,link);
+    civToast(kind==='invite'?`${name} için karakter daveti oluşturuldu ve panoya kopyalandı.`:'Yeniden bağlama linki oluşturuldu ve panoya kopyalandı.');
   }catch(e){civToast(e?.message||String(e))}finally{civBusy=false}
 }
 async function civDelete(id,name,mode){
