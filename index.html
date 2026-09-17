@@ -102,13 +102,15 @@
       await load('./gm-management-room-patch.js?v=management-v2-explicit-only','gm-management-room');
       await load('./seal-character-controls-patch.js?v=seal-controls-v2-safe-restore','seal-character-controls');
 
-      await load('./party-eeliot-runtime-hotfix.js?v=party-v5-gm-center','party-runtime');
+      // Parti Odası'nın tek sahibi yeni runtime'dır. Eski transition runtime tekrar yüklenmez.
+      await load('./party-eeliot-runtime-hotfix.js?v=party-v6-single-owner','party-runtime');
       await load('./gm-center-party-integration.js?v=gm-party-center-v2-top','gm-party-integration');
       await load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
 
       // Savaş kontrolü GM Merkezi'nde ayrı oda değildir; Canlı Oyun Masası altında yaşar.
-      // Loader, mevcut combat yönlendirmelerini Canlı Oyun'a bağlar ve savaş panelini ekler.
-      await load('./live-combat-center-loader.js?v=livecombat-loader-v2-safe-restore','live-combat-loader');
+      // Veri beklerken canlı masa yeniden çizilirse kopmuş anchor hatasını güvenle toparla.
+      await load('./live-combat-anchor-safety.js?v=livecombat-anchor-v1','live-combat-anchor-safety');
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v3-anchor-safe','live-combat-loader');
 
       try{
         window.__catlakGmHubV2Test?.chrome?.();
@@ -154,7 +156,6 @@
 
         // Temiz başlangıçta düşen ama birbirinden bağımsız çalışan koruma/fix modülleri.
         ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
-        ['./party-player-transition-fix.js?v=party-transition-v2-safe-restore','party-transition'],
         ['./session-log-delete-fix.js?v=session-log-v2-safe-restore','session-log-delete']
       ]);
 
