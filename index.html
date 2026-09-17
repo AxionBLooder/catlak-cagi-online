@@ -95,12 +95,24 @@
       await load('./quality-of-life-patch.js?v=recovery-gm-3','qol');
       await load('./gm-hub-v2-patch.js?v=recovery-gm-3','gm-hub');
       await load('./gm-center-router-core.js?v=recovery-gm-7-management-explicit','gm-router');
+
+      // GM Merkezi'nin sonradan eklenen kampanya odaları. Bunlar barı yeniden kurmaz;
+      // mevcut merkeze İtibar ve Mühür butonlarını ekler.
+      await load('./gm-campaign-state-patch.js?v=gmstate-v5-safe-restore','gm-campaign-state');
       await load('./gm-management-room-patch.js?v=management-v2-explicit-only','gm-management-room');
+      await load('./seal-character-controls-patch.js?v=seal-controls-v2-safe-restore','seal-character-controls');
+
       await load('./party-eeliot-runtime-hotfix.js?v=party-v5-gm-center','party-runtime');
       await load('./gm-center-party-integration.js?v=gm-party-center-v2-top','gm-party-integration');
       await load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
+
+      // Savaş kontrolü GM Merkezi'nde ayrı oda değildir; Canlı Oyun Masası altında yaşar.
+      // Loader, mevcut combat yönlendirmelerini Canlı Oyun'a bağlar ve savaş panelini ekler.
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v2-safe-restore','live-combat-loader');
+
       try{
         window.__catlakGmHubV2Test?.chrome?.();
+        window.__catlakCampaignStateTest?.maintain?.();
         window.__catlakGmCenterPartyIntegration?.ensure?.();
         window.__catlakGmCenterRouterCore?.ensureEntry?.();
         window.__catlakGmCenterRouterCore?.makeClickable?.();
@@ -138,12 +150,19 @@
         ['./player-sheet-equipment-abilities-patch.js?v=recovery-3','player-equip'],
         ['./player-live-actions-patch.js?v=recovery-3','player-actions'],
         ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
-        ['./stat-roll-patch.js?v=recovery-3','stat-roll']
+        ['./stat-roll-patch.js?v=recovery-3','stat-roll'],
+
+        // Temiz başlangıçta düşen ama birbirinden bağımsız çalışan koruma/fix modülleri.
+        ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
+        ['./party-player-transition-fix.js?v=party-transition-v2-safe-restore','party-transition'],
+        ['./session-log-delete-fix.js?v=session-log-v2-safe-restore','session-log-delete']
       ]);
 
       try{
+        window.__catlakCampaignStateTest?.maintain?.();
         window.__catlakGmCenterPartyIntegration?.ensure?.();
         window.__catlakGmCenterRouterCore?.makeClickable?.();
+        window.__catlakLiveCombatCenter?.render?.();
       }catch(_){ }
       reveal();
     }
