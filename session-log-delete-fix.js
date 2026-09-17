@@ -1,6 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakSessionLogDeleteFixV1)return;
+if(window.__catlakSessionLogDeleteFixV2)return;
+window.__catlakSessionLogDeleteFixV2=true;
 window.__catlakSessionLogDeleteFixV1=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
@@ -13,14 +14,21 @@ let busy=false,timer=0;
 if(!document.querySelector('#sldf-style')){const st=document.createElement('style');st.id='sldf-style';st.textContent=`
 #app .gmt-log{position:relative;padding-right:72px}.sldf-delete{position:absolute;right:0;top:8px}.sldf-busy{opacity:.55;pointer-events:none}
 `;document.head.appendChild(st)}
-function logsOpen(){const m=APP.querySelector('main');return isGM()&&(m?.dataset.gmtSub==='logs'||String(window.__catlakGmCenterSelectedRoute||'')==='logs')&&!!m?.querySelector('.gmt-log, [data-gmt-log-clear]')}
+function logsOpen(){const m=APP.querySelector('main');return isGM()&&(m?.dataset.gmtSub==='logs'||String(window.__catlakGmCleanRoute||'')==='logs')&&!!m?.querySelector('.gmt-log, [data-gmt-log-clear]')}
 async function rows(limit=120){const r=await S.from('catlak_session_log').select('id,kind,message,created_at').order('created_at',{ascending:false}).limit(limit);if(r.error)throw r.error;return r.data||[]}
 async function enhance(){
  if(!logsOpen()||busy)return;const nodes=[...APP.querySelectorAll('main .gmt-log')];if(!nodes.length||nodes.every(x=>x.querySelector('[data-sldf-delete]')))return;
  try{const data=await rows(Math.max(120,nodes.length));if(!logsOpen())return;nodes.forEach((n,i)=>{const r=data[i];if(!r||n.querySelector('[data-sldf-delete]'))return;n.dataset.sldfId=String(r.id);const b=document.createElement('button');b.type='button';b.className='danger small sldf-delete';b.dataset.sldfDelete=String(r.id);b.textContent='Sil';n.appendChild(b)})}catch(e){console.warn('SLDF enhance',e)}
 }
 function schedule(ms=60){clearTimeout(timer);timer=setTimeout(enhance,ms)}
-async function refresh(){try{await window.__catlakGmTools?.render?.(true)}catch(_){ }schedule(80)}
+async function refresh(){
+ try{
+  if(window.__catlakGmCleanRouter?.route){window.__catlakGmCleanRouter.route('logs');return}
+  if(window.__catlakGmTools?.open){window.__catlakGmTools.open('logs');return}
+  await window.__catlakGmTools?.render?.(true);
+ }catch(_){ }
+ schedule(80)
+}
 async function deleteOne(id){
  if(busy)return;busy=true;APP.querySelector('main')?.classList.add('sldf-busy');
  try{
