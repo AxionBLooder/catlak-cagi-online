@@ -1,8 +1,8 @@
 const GMCR_APP=document.getElementById('app');
 if(!GMCR_APP)throw new Error('GM Merkezi yönlendiricisi başlatılamadı.');
 
-// Savaş & Durumlar artık GM Merkezi rotası değildir; Canlı Oyun tarafından yönetilir.
-const GMCR_ROUTES=new Set(['ability','items','stats','races','builder','events','logs','creatures','characters']);
+// GM tarafındaki özel odalar tek merkezden yönetilir.
+const GMCR_ROUTES=new Set(['ability','items','stats','races','builder','events','logs','creatures','characters','party']);
 let gmcrLastRoute='';
 let gmcrLastAt=0;
 let gmcrToken=0;
@@ -30,15 +30,18 @@ function gmcrCenterOpen(){
   if(window.__catlakCreatureLibraryOpen===true)return true;
   if(window.__catlakCampaignStateRoom)return true;
   if(window.__catlakManagementRoomOpen===true)return true;
+  if(window.__catlakPartyEeliotHotfix?.isOpen?.())return true;
   if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return true;
   return false;
 }
 function gmcrSetCenterVisual(open){GMCR_APP.classList.toggle('gmcr-center-open',!!open)}
-function gmcrCloseForeignViews(){
-  try{window.__catlakManagementRoom?.close?.()}catch(_){ }
-  try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){ }
-  try{window.__catlakPartyManager?.close?.()}catch(_){ }
-  window.__catlakPartyRoomOwnsMain=false;
+function gmcrCloseForeignViews(skip=''){
+  if(skip!=='characters'){try{window.__catlakManagementRoom?.close?.()}catch(_){ }}
+  if(skip!=='party'){
+    try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){ }
+    try{window.__catlakPartyManager?.close?.()}catch(_){ }
+    window.__catlakPartyRoomOwnsMain=false;
+  }
   try{window.__catlakCampaignStateTest?.close?.()}catch(_){ }
   try{window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.()}catch(_){ }
 }
@@ -61,14 +64,15 @@ function gmcrEnsureEntry(){
 function gmcrMakeButtonsClickable(){
   gmcrEnsureEntry();
   window.__catlakGmHubV2Test?.chrome?.();
+  try{window.__catlakGmCenterPartyIntegration?.ensure?.()}catch(_){ }
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
   gmcrSetCenterVisual(gmcrCenterOpen());
   if(!bar)return;
   bar.querySelectorAll('[data-gm2-route="combat"]').forEach(b=>b.remove());
-  bar.style.pointerEvents='auto';
   bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
     b.disabled=false;b.removeAttribute('disabled');b.style.pointerEvents='auto';b.style.cursor='pointer';
   });
+  bar.style.pointerEvents='auto';
 }
 
 function gmcrSelect(route){
@@ -85,6 +89,7 @@ function gmcrSelect(route){
 function gmcrLogicalRoute(){
   if(window.__catlakCampaignStateRoom)return'campaign';
   if(window.__catlakManagementRoomOpen===true)return'characters';
+  if(window.__catlakPartyEeliotHotfix?.isOpen?.()&&gmcrIsGM())return'party';
   const forced=String(window.__catlakGmCenterSelectedRoute||'');
   if(GMCR_ROUTES.has(forced))return forced;
   if(window.__catlakCreatureLibraryOpen===true)return'creatures';
@@ -99,6 +104,8 @@ function gmcrLogicalRoute(){
 function gmcrLeaveCenter(){
   gmcrToken++;gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;window.__catlakGmCenterSelectedRoute='';
   try{window.__catlakManagementRoom?.close?.()}catch(_){ }
+  try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){ }
+  window.__catlakPartyRoomOwnsMain=false;
   gmcrSetCenterVisual(false);
   const hub=window.__catlakGmHubV2Test;
   if(typeof hub?.leave==='function')hub.leave();
@@ -111,32 +118,33 @@ function gmcrOpenManagement(token){
   if(typeof room?.open!=='function')return false;
   const opened=room.open(true);
   if(opened===false)return false;
-  requestAnimationFrame(()=>{
-    if(token!==gmcrToken)return;
-    gmcrMakeButtonsClickable();
-    gmcrSelect('characters');
-  });
+  requestAnimationFrame(()=>{if(token!==gmcrToken)return;gmcrMakeButtonsClickable();gmcrSelect('characters')});
+  return true;
+}
+function gmcrOpenParty(token){
+  if(token!==gmcrToken)return true;
+  const party=window.__catlakPartyEeliotHotfix;
+  if(typeof party?.open!=='function')return false;
+  const opened=party.open();
+  if(opened===false)return false;
+  window.__catlakGmCenterSelectedRoute='party';
+  gmcrSetCenterVisual(true);
+  requestAnimationFrame(()=>{if(token!==gmcrToken)return;gmcrMakeButtonsClickable();gmcrSelect('party')});
+  setTimeout(()=>{if(token===gmcrToken){gmcrMakeButtonsClickable();gmcrSelect('party')}},120);
   return true;
 }
 
 function gmcrGo(route){
   if(!gmcrIsGM()||!GMCR_ROUTES.has(route))return false;
-  gmcrCloseForeignViews();
+  gmcrCloseForeignViews(route);
   gmcrSelect(route);
   const token=++gmcrToken;
 
-  // Yönetim Odası artık gizli native "characters" sekmesine veya Hub wrapper'ına bağlı değil.
-  // Doğrudan kendi runtime'ı açılır; script birkaç ms geç geldiyse kısa süreli yeniden denenir.
   if(route==='characters'){
-    let tries=0;
-    const open=()=>{
-      if(token!==gmcrToken)return;
-      if(gmcrOpenManagement(token))return;
-      if(++tries<60){setTimeout(open,25);return}
-      gmcrToast('Yönetim Odası hazır değil. Sayfayı yenileyip tekrar dene.');
-    };
-    open();
-    return true;
+    let tries=0;const open=()=>{if(token!==gmcrToken)return;if(gmcrOpenManagement(token))return;if(++tries<60){setTimeout(open,25);return}gmcrToast('Yönetim Odası hazır değil. Sayfayı yenileyip tekrar dene.')};open();return true;
+  }
+  if(route==='party'){
+    let tries=0;const open=()=>{if(token!==gmcrToken)return;if(gmcrOpenParty(token))return;if(++tries<60){setTimeout(open,25);return}gmcrToast('Parti Odası hazır değil. Sayfayı yenileyip tekrar dene.')};open();return true;
   }
 
   const run=()=>{
@@ -149,44 +157,22 @@ function gmcrGo(route){
   };
   if(run())return true;
   let tries=0;
-  const retry=()=>{
-    if(token!==gmcrToken)return;
-    if(run())return;
-    if(++tries<30)setTimeout(retry,20);
-    else gmcrToast('GM Merkezi yönlendiricisi hazır değil. Sayfayı yenileyip tekrar dene.');
-  };
-  setTimeout(retry,0);
-  return true;
+  const retry=()=>{if(token!==gmcrToken)return;if(run())return;if(++tries<30)setTimeout(retry,20);else gmcrToast('GM Merkezi yönlendiricisi hazır değil. Sayfayı yenileyip tekrar dene.')};
+  setTimeout(retry,0);return true;
 }
 
 function gmcrConsume(e,route){
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation();
-  const now=performance.now();
-  if(route===gmcrLastRoute&&now-gmcrLastAt<120)return false;
-  gmcrLastRoute=route;gmcrLastAt=now;
-  return gmcrGo(route);
+  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  const now=performance.now();if(route===gmcrLastRoute&&now-gmcrLastAt<120)return false;
+  gmcrLastRoute=route;gmcrLastAt=now;return gmcrGo(route);
 }
 
 GMCR_APP.addEventListener('click',e=>{
-  const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
-  if(!entry||!gmcrIsGM())return;
-  setTimeout(()=>{
-    window.__catlakGmTools?.close?.();
-    window.__catlakGmCenterSelectedRoute='';
-    gmcrSetCenterVisual(true);
-    gmcrGo('ability');
-    gmcrMakeButtonsClickable();
-  },0);
+  const entry=e.target?.closest?.('#app .nav [data-gmt-open]');if(!entry||!gmcrIsGM())return;
+  setTimeout(()=>{window.__catlakGmTools?.close?.();window.__catlakGmCenterSelectedRoute='';gmcrSetCenterVisual(true);gmcrGo('ability');gmcrMakeButtonsClickable()},0);
 },false);
 
-new MutationObserver(()=>{
-  requestAnimationFrame(()=>{
-    gmcrEnsureEntry();
-    gmcrSetCenterVisual(gmcrCenterOpen());
-  });
-}).observe(GMCR_APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+new MutationObserver(()=>{requestAnimationFrame(()=>{gmcrEnsureEntry();gmcrSetCenterVisual(gmcrCenterOpen())})}).observe(GMCR_APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 
 window.addEventListener('pointerdown',e=>{
   if(e.button!=null&&e.button!==0)return;
@@ -202,43 +188,17 @@ window.addEventListener('pointerdown',e=>{
 window.addEventListener('click',e=>{
   const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
   if(entry&&gmcrIsGM()){
-    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-    window.__catlakGmTools?.close?.();
-    window.__catlakGmCenterSelectedRoute='';
-    gmcrSetCenterVisual(true);
-    gmcrGo('ability');
-    requestAnimationFrame(gmcrMakeButtonsClickable);
-    return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.__catlakGmTools?.close?.();window.__catlakGmCenterSelectedRoute='';gmcrSetCenterVisual(true);gmcrGo('ability');requestAnimationFrame(gmcrMakeButtonsClickable);return;
   }
-
   const button=gmcrButton(e.target);
   if(button&&gmcrIsGM()){
-    const route=String(button.dataset.gm2Route||'');
-    if(!GMCR_ROUTES.has(route))return;
-    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-    const now=performance.now();
-    if(route===gmcrPointerRoute&&now-gmcrPointerAt<900)return;
-    gmcrConsume(e,route);
-    return;
+    const route=String(button.dataset.gm2Route||'');if(!GMCR_ROUTES.has(route))return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const now=performance.now();if(route===gmcrPointerRoute&&now-gmcrPointerAt<900)return;gmcrConsume(e,route);return;
   }
-
   const nav=e.target?.closest?.('#app .nav button');
   if(e.isTrusted&&nav&&gmcrIsGM()&&!nav.matches('[data-gmt-open]'))gmcrLeaveCenter();
 },true);
-setTimeout(gmcrMakeButtonsClickable,0);
-setTimeout(gmcrEnsureEntry,250);
-setTimeout(gmcrEnsureEntry,1000);
+setTimeout(gmcrMakeButtonsClickable,0);setTimeout(gmcrEnsureEntry,250);setTimeout(gmcrEnsureEntry,1000);
 
 window.__catlakCampaignRouterStableV3=true;
-window.__catlakGmCenterRouterCore={
-  active:true,
-  route:gmcrGo,
-  current:gmcrLogicalRoute,
-  select:gmcrSelect,
-  makeClickable:gmcrMakeButtonsClickable,
-  centerOpen:gmcrCenterOpen,
-  leave:gmcrLeaveCenter,
-  reset:gmcrLeaveCenter,
-  ensureEntry:gmcrEnsureEntry,
-  openManagement:()=>gmcrGo('characters')
-};
+window.__catlakGmCenterRouterCore={active:true,route:gmcrGo,current:gmcrLogicalRoute,select:gmcrSelect,makeClickable:gmcrMakeButtonsClickable,centerOpen:gmcrCenterOpen,leave:gmcrLeaveCenter,reset:gmcrLeaveCenter,ensureEntry:gmcrEnsureEntry,openManagement:()=>gmcrGo('characters'),openParty:()=>gmcrGo('party')};
