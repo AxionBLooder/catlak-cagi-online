@@ -11,6 +11,9 @@
   <link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co">
   <style>
     html,body{margin:0;min-height:100%;background:#071019;color:#edf6ff;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
+    #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .14s ease}
+    #cc-start-cover.cc-done{opacity:0;pointer-events:none}
+    #cc-start-cover strong{font-size:clamp(2rem,7vw,4.6rem);letter-spacing:.04em;color:#edf6ff;text-shadow:0 8px 32px #000}
     #cc-safe-boot{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
     #cc-safe-boot>div{max-width:620px;text-align:center}
     #cc-safe-boot h1{margin:0 0 10px;font-size:clamp(2rem,6vw,4rem)}
@@ -19,6 +22,7 @@
   </style>
 </head>
 <body>
+  <div id="cc-start-cover" aria-hidden="true"><strong>Çatlak Çağı</strong></div>
   <div id="app">
     <main id="cc-safe-boot">
       <div>
@@ -33,9 +37,25 @@
   (function(){
     'use strict';
     var app=document.getElementById('app');
+    var cover=document.getElementById('cc-start-cover');
     var started=false;
     var addonsStarted=false;
+    var uiReady=false;
     var bootTimer=null;
+    var revealFallback=null;
+
+    function reveal(){
+      if(uiReady)return;
+      uiReady=true;
+      clearTimeout(revealFallback);
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          if(!cover)return;
+          cover.classList.add('cc-done');
+          setTimeout(function(){cover?.remove()},180);
+        });
+      });
+    }
 
     function clearLocalSession(){
       try{Object.keys(localStorage).forEach(function(k){if(/^sb-.*-auth-token$/i.test(k))localStorage.removeItem(k)})}catch(_){ }
@@ -43,7 +63,8 @@
     }
 
     function fail(title,detail){
-      clearTimeout(bootTimer);
+      clearTimeout(bootTimer);clearTimeout(revealFallback);
+      cover?.remove();uiReady=true;
       app.innerHTML='<main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><h2>'+title+'</h2><p>'+String(detail||'Uygulama başlatılamadı.').replace(/[<>]/g,'')+'</p><button id="cc-reload">Yeniden Yükle</button><button id="cc-reset">Oturumu Temizle</button></div></main>';
       document.getElementById('cc-reload').onclick=function(){location.replace(location.pathname+'?reload='+Date.now())};
       document.getElementById('cc-reset').onclick=function(){clearLocalSession();location.replace(location.pathname+'?recover='+Date.now())};
@@ -63,7 +84,7 @@
       });
     }
 
-    function loadParallel(list){list.forEach(function(x){load(x[0],x[1])})}
+    function loadParallel(list){return Promise.all(list.map(function(x){return load(x[0],x[1])}))}
 
     async function loadGmCore(){
       // GM Merkezi üst menüde kalır; Yönetim Odası merkezdedir, Parti Odası üst menüde ayrıdır.
@@ -74,7 +95,7 @@
       await load('./gm-management-room-patch.js?v=management-v1','gm-management-room');
       await load('./party-eeliot-runtime-hotfix.js?v=party-v5-gm-center','party-runtime');
       await load('./gm-center-party-integration.js?v=gm-party-center-v2-top','gm-party-integration');
-      load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
+      await load('./gm-nav-cleanup-patch.js?v=recovery-gm-3','gm-nav-cleanup');
       try{
         window.__catlakGmHubV2Test?.chrome?.();
         window.__catlakGmCenterPartyIntegration?.ensure?.();
@@ -83,37 +104,45 @@
       }catch(e){console.warn('CATLAK_GM_CORE_REFRESH',e)}
     }
 
-    function loadSafeAddons(){
+    async function waitForRuntime(){
+      for(var i=0;i<120;i++){
+        if(window.__catlakSupabase)return true;
+        await new Promise(function(r){setTimeout(r,50)});
+      }
+      return false;
+    }
+
+    async function loadSafeAddons(){
       if(addonsStarted)return;
       addonsStarted=true;
-      var tries=0;
-      (function waitCore(){
-        if(window.__catlakSupabase){
-          loadGmCore().then(function(){
-            loadParallel([
-              ['./class-bonus-patch.js?v=classbonus-v1','class-bonus'],
-              ['./visual-archive-map-flow-patch.js?v=visual-flow-v2-safe','visual-map-flow'],
-              ['./gm-controls-patch.js?v=recovery-3','gm-controls'],
-              ['./presence-patch.js?v=recovery-3','presence'],
-              ['./dice-ux-patch.js?v=recovery-3','dice'],
-              ['./item-system-patch.js?v=recovery-3','items'],
-              ['./event-rolls-patch.js?v=recovery-3','events'],
-              ['./room-guard-patch.js?v=recovery-3','room-guard'],
-              ['./room-system-patch.js?v=recovery-3','rooms'],
-              ['./party-roster-patch.js?v=recovery-3','party-roster'],
-              ['./invite-visibility-patch.js?v=recovery-3','invites'],
-              ['./player-sheet-patch.js?v=recovery-3','player-sheet'],
-              ['./player-sheet-equipment-abilities-patch.js?v=recovery-3','player-equip'],
-              ['./player-live-actions-patch.js?v=recovery-3','player-actions'],
-              ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
-              ['./stat-roll-patch.js?v=recovery-3','stat-roll']
-            ]);
-          });
-          return;
-        }
-        if(++tries<120)setTimeout(waitCore,50);
-        else console.warn('CATLAK_SAFE_ADDONS_SKIPPED');
-      })();
+      var runtimeReady=await waitForRuntime();
+      if(!runtimeReady){console.warn('CATLAK_SAFE_ADDONS_SKIPPED');reveal();return}
+
+      await loadGmCore();
+      await loadParallel([
+        ['./class-bonus-patch.js?v=classbonus-v1','class-bonus'],
+        ['./visual-archive-map-flow-patch.js?v=visual-flow-v2-safe','visual-map-flow'],
+        ['./gm-controls-patch.js?v=recovery-3','gm-controls'],
+        ['./presence-patch.js?v=recovery-3','presence'],
+        ['./dice-ux-patch.js?v=recovery-3','dice'],
+        ['./item-system-patch.js?v=recovery-3','items'],
+        ['./event-rolls-patch.js?v=recovery-3','events'],
+        ['./room-guard-patch.js?v=recovery-3','room-guard'],
+        ['./room-system-patch.js?v=recovery-3','rooms'],
+        ['./party-roster-patch.js?v=recovery-3','party-roster'],
+        ['./invite-visibility-patch.js?v=recovery-3','invites'],
+        ['./player-sheet-patch.js?v=recovery-3','player-sheet'],
+        ['./player-sheet-equipment-abilities-patch.js?v=recovery-3','player-equip'],
+        ['./player-live-actions-patch.js?v=recovery-3','player-actions'],
+        ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
+        ['./stat-roll-patch.js?v=recovery-3','stat-roll']
+      ]);
+
+      try{
+        window.__catlakGmCenterPartyIntegration?.ensure?.();
+        window.__catlakGmCenterRouterCore?.makeClickable?.();
+      }catch(_){ }
+      reveal();
     }
 
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
@@ -122,7 +151,12 @@
     var core=document.createElement('script');
     core.src='./browser-app.js?v=recovery-core-3';
     core.async=false;
-    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons()};
+    core.onload=function(){
+      started=true;clearTimeout(bootTimer);
+      loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);reveal()});
+      // Bir yardımcı dosya takılırsa ekran sonsuza kadar kapalı kalmasın.
+      revealFallback=setTimeout(reveal,5000);
+    };
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
 
