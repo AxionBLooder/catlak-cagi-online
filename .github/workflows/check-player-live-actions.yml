@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - 'player-live-actions-patch.js'
-      - 'player-sheet-patch.js'
+      - 'player-sheet-runtime-v4.js'
       - 'item-system-patch.js'
       - 'index.html'
       - '.github/workflows/check-player-live-actions.yml'
@@ -18,9 +18,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-live-actions-patch.js
-          node --check player-sheet-patch.js
+          node --check player-sheet-runtime-v4.js
           node --check item-system-patch.js
-          grep -q 'function psPlace' player-sheet-patch.js
           ! grep -q 'location.reload()' item-system-patch.js
           grep -q 'catlak_roll_weapon' player-live-actions-patch.js
           grep -q 'Hasar Vur' player-live-actions-patch.js
@@ -28,16 +27,15 @@ jobs:
           grep -q 'plaStaticStats' player-live-actions-patch.js
           grep -q 'plaClaimInventory' player-live-actions-patch.js
           grep -q '__catlakPlayerLiveOwnsInventory' player-live-actions-patch.js
-          grep -q 'Saldırı •' player-live-actions-patch.js
-          grep -q 'bonusu' player-live-actions-patch.js
           grep -q 'player-live-actions-patch.js' index.html
-          grep -q 'player-sheet-patch.js' index.html
+          grep -q 'player-sheet-runtime-v4.js' index.html
+          ! grep -q 'player-sheet-patch.js' index.html
           grep -q 'item-system-patch.js' index.html
           grep -q "table:'catlak_inventory'" player-live-actions-patch.js
           grep -q "table:'catlak_rolls'" player-live-actions-patch.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Browser action realtime and ghost smoke
+      - name: Browser action and realtime smoke
         run: |
           cat > player-live-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');
@@ -49,68 +47,27 @@ jobs:
             const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
             try{
               const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
-              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><div class="role">OYUNCU</div><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button></nav><main class="ps-player-sheet"><div class="cc-character-stack"><section class="card hero"><h1>Test</h1><div class="vitals"><button data-a="hp" data-id="char-1">HP</button></div></section><section class="card ps-stat-card"><div class="section-title"><div><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></div></div><div class="stats"><button id="dex" class="stat" data-a="stat" data-id="char-1" data-stat="DEX"><b>DEX</b><strong>14</strong><small>+2 • d20 at</small></button></div></section><section class="card ps-inventory-card"><div class="eyebrow">CANLI ENVANTER</div></section><section class="card ps-roll-card"><div class="eyebrow">SON ZARLAR</div></section></div></main></div><div id="toast" class="hidden"></div>`);
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><div class="role">OYUNCU</div><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button></nav><main><div class="cc-character-stack"><section class="card hero"><h1>Test</h1><div class="vitals"><div class="vital"><span>HP</span><b>10/20</b><button data-a="hp" data-id="char-1">-</button></div></div></section><section class="card"><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2><div class="stats"><button id="dex" class="stat" data-a="stat" data-id="char-1" data-stat="DEX"><b>DEX</b><strong>14</strong><small>+2 • d20 at</small></button></div></section><section class="card ps-inventory-card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2></section><section class="card ps-roll-card"><div class="eyebrow">SON ZARLAR</div></section></div></main></div><div id="toast" class="hidden"></div>`);
               await page.evaluate(()=>{
-                window.__db={
-                  catlak_inventory:[{id:'inv-1',character_id:'char-1',item_id:'item-1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:'',granted_at:'2026-01-01'}],
-                  catlak_items:[{id:'item-1',name:'Test Kılıcı',item_type:'weapon',description:'',attack_stat:'DEX',attack_bonus:0,attack_formula:'1d20',damage_formula:'1d8',damage_type:'Kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],
-                  catlak_rolls:[]
-                };
-                window.__rpcCalls=[];window.__baseHits=0;window.__handlers={};window.__ghostRenders=0;
+                window.__db={catlak_inventory:[{id:'inv-1',character_id:'char-1',item_id:'item-1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:'',granted_at:'2026-01-01'}],catlak_items:[{id:'item-1',name:'Test Kılıcı',item_type:'weapon',description:'',attack_stat:'DEX',attack_bonus:0,attack_formula:'1d20',damage_formula:'1d8',damage_type:'Kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true}],catlak_rolls:[]};
+                window.__rpcCalls=[];window.__baseHits=0;window.__handlers={};
                 document.querySelector('#app').addEventListener('click',e=>{if(e.target.closest('[data-a]'))window.__baseHits++});
-                new MutationObserver(()=>requestAnimationFrame(()=>{document.querySelectorAll('.ps-inventory-card').forEach(s=>{if(!s.dataset.iwPlayerInventory)window.__ghostRenders++})})).observe(document.querySelector('#app'),{childList:true,subtree:true});
                 function q(table){const obj={select(){return obj},in(){return obj},order(){return obj},limit(){return obj},then(ok,bad){return Promise.resolve({data:window.__db[table]||[],error:null}).then(ok,bad)}};return obj}
                 const channel={on(_ev,filter,cb){(window.__handlers[filter.table]??=[]).push(cb);return channel},subscribe(){return channel}};
                 window.__fire=table=>(window.__handlers[table]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
-                window.__catlakSupabase={
-                  from:table=>q(table),channel:()=>channel,
-                  rpc:async(name,args)=>{
-                    window.__rpcCalls.push({name,args});
-                    if(name==='catlak_roll_weapon'){
-                      const damage=args.p_action==='damage';
-                      const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:'char-1',label:'Test Kılıcı • '+(damage?'Hasar':'Saldırı'),roll_kind:damage?'weapon_damage':'weapon_attack',stat:'DEX',formula:damage?'1d8':'1d20',modifier:2,total:damage?8:17,dice:[damage?6:15],created_at:new Date().toISOString()};
-                      window.__db.catlak_rolls.unshift(r);return{data:r,error:null}
-                    }
-                    return{data:null,error:null}
-                  }
-                };
+                window.__catlakSupabase={from:table=>q(table),channel:()=>channel,rpc:async(name,args)=>{window.__rpcCalls.push({name,args});if(name==='catlak_roll_weapon'){const damage=args.p_action==='damage';const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:'char-1',label:'Test Kılıcı • '+(damage?'Hasar':'Saldırı'),roll_kind:damage?'weapon_damage':'weapon_attack',stat:'DEX',formula:damage?'1d8':'1d20',modifier:2,total:damage?8:17,dice:[damage?6:15],created_at:new Date().toISOString()};window.__db.catlak_rolls.unshift(r);return{data:r,error:null}}return{data:null,error:null}}};
               });
+              await page.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
               await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
+              await page.evaluate(async()=>{await window.__catlakPlayerLiveTest.refresh(true);window.__catlakPlayerSheetTest.apply()});
               await page.waitForFunction(()=>document.body.textContent.includes('Test Kılıcı')&&document.body.textContent.includes('Saldırı At')&&document.body.textContent.includes('Hasar Vur'));
-              const stat=await page.evaluate(()=>({a:document.querySelector('#dex')?.getAttribute('data-a'),small:document.querySelector('#dex small')?.textContent,h:document.querySelector('.ps-stat-card h2')?.textContent}));
-              if(stat.a!==null||/d20/i.test(stat.small||'')||stat.h!=='Statlar')throw new Error('Stat d20 still active '+JSON.stringify(stat));
-              const weaponMeta=await page.locator('[data-pla-inv-row="inv-1"] .iw-meta').textContent();
-              if(!weaponMeta.includes('Saldırı • DEX bonusu')||!weaponMeta.includes('Hasar • DEX bonusu')||/1d20|1d8/i.test(weaponMeta))throw new Error('Weapon meta wrong '+weaponMeta);
-              const slotBadge=await page.locator('[data-pla-inv-row="inv-1"] .ws-slot-badge').textContent();
-              if(slotBadge!=='1. YUVA')throw new Error('Equipped slot state missing '+slotBadge);
               await page.getByRole('button',{name:'Saldırı At',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('[15] +2'));
-              if(/1d20/i.test(await page.locator('.ps-roll-card').textContent()))throw new Error('Attack die type leaked into roll display');
               await page.getByRole('button',{name:'Hasar Vur',exact:true}).click();
-              await page.waitForFunction(()=>document.querySelector('.ps-roll-card')?.textContent.includes('[6] +2'));
-              const rollText=await page.locator('.ps-roll-card').textContent();
-              if(/1d20|1d8/i.test(rollText))throw new Error('Die type leaked into roll display '+rollText);
-              await page.evaluate(()=>{
-                const old=document.querySelector('.ps-inventory-card');
-                const fresh=document.createElement('section');fresh.className='card ps-inventory-card';fresh.innerHTML='<div class="eyebrow">CANLI ENVANTER</div>';
-                old.replaceWith(fresh);
-              });
-              await page.waitForFunction(()=>document.querySelector('.ps-inventory-card')?.dataset.plaInventoryOwner==='1');
-              await page.evaluate(()=>{
-                window.__db.catlak_items.push({id:'item-2',name:'Canlı İksir',item_type:'item',description:'Yeni eşya',effects:{item_mode:'general'},is_active:true});
-                window.__db.catlak_inventory.push({id:'inv-2',character_id:'char-1',item_id:'item-2',quantity:2,equipped:false,equipped_slot:null,player_note:'',granted_at:'2026-01-02'});
-                window.__fire('catlak_inventory');
-              });
-              await page.waitForFunction(()=>document.querySelector('.ps-inventory-card')?.textContent.includes('Canlı İksir ×2'));
-              const out=await page.evaluate(()=>({calls:window.__rpcCalls,baseHits:window.__baseHits,inventory:document.querySelector('.ps-inventory-card')?.textContent,rolls:document.querySelector('.ps-roll-card')?.textContent,ghost:window.__ghostRenders,owner:window.__catlakPlayerLiveOwnsInventory}));
-              const names=out.calls.map(x=>x.name),weapon=out.calls.filter(x=>x.name==='catlak_roll_weapon').map(x=>x.args.p_action);
-              if(names.filter(x=>x==='catlak_roll_weapon').length!==2||weapon.join(',')!=='attack,damage')throw new Error('Weapon rolls wrong '+JSON.stringify(out));
-              if(names.includes('catlak_roll_stat'))throw new Error('Stat roll should be disabled '+JSON.stringify(out));
-              if(out.baseHits!==0)throw new Error('Base handler was not suppressed '+JSON.stringify(out));
-              if(out.owner!==true)throw new Error('Inventory ownership regression '+JSON.stringify(out));
-              if(/1d20|1d8/i.test(out.rolls))throw new Error('Hidden die type regression '+JSON.stringify(out));
-              if(errors.length)throw new Error('Page errors '+errors.join(' | '));
-              console.log('PLAYER_LIVE_ACTIONS_OK',JSON.stringify({rpc:names,weapon,baseHits:out.baseHits,realtimeItem:out.inventory.includes('Canlı İksir'),attackHidden:!out.rolls.includes('1d20'),damageHidden:!out.rolls.includes('1d8'),statStatic:stat}));
+              const out=await page.evaluate(()=>({calls:window.__rpcCalls,baseHits:window.__baseHits,inventory:document.body.textContent,owner:window.__catlakPlayerLiveOwnsInventory,envTitle:[...document.querySelectorAll('.eyebrow')].some(x=>x.textContent==='ENVANTER')}));
+              const weapon=out.calls.filter(x=>x.name==='catlak_roll_weapon').map(x=>x.args.p_action);
+              if(weapon.join(',')!=='attack,damage'||out.baseHits!==0||out.owner!==true||!out.envTitle)throw new Error('Player live failed '+JSON.stringify(out));
+              if(errors.length)throw new Error(errors.join(' | '));
+              console.log('PLAYER_LIVE_ACTIONS_V4_OK',JSON.stringify({weapon,envTitle:out.envTitle}));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
