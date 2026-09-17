@@ -10,11 +10,11 @@ const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
-let open=false,busy=false,token=0,prepTimer=0;
+let open=false,busy=false,token=0,prepTimer=0,livePrepTimer=0;
 
 if(!document.querySelector('#pptf-style')){const st=document.createElement('style');st.id='pptf-style';st.textContent=`
 #app .pptf-shell{max-width:1540px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.pptf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.pptf-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#081522}.pptf-card.party{border-color:#6c5b35;box-shadow:inset 3px 0 #cba65a}.pptf-card.battle{box-shadow:inset -3px 0 #8a4651}.pptf-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.pptf-head h3{margin:3px 0}.pptf-flags,.pptf-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.pptf-flag{border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:.7rem;color:var(--muted)}.pptf-flag.on{color:#cce9aa;border-color:#55764c}.pptf-flag.war{color:#ffc0c8;border-color:#75424b}.pptf-loading{padding:34px;text-align:center;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
-html.pptf-player-prep #app main{visibility:hidden!important}html.pptf-player-prep #app{min-height:100vh}
+html.pptf-player-prep #app main,html.pptf-live-prep #app main{visibility:hidden!important}html.pptf-player-prep #app,html.pptf-live-prep #app{min-height:100vh}
 `;document.head.appendChild(st)}
 
 function claim(){
@@ -50,16 +50,25 @@ window.addEventListener('click',e=>{
 },true);
 
 function playerSheetRequested(){return !isGM()&&APP.querySelector('.nav button.on[data-tab="sheet"]')}
+function gmLiveRequested(){return isGM()&&APP.querySelector('.nav button.on[data-tab="gm"]')}
 function prepPlayer(){if(isGM())return;document.documentElement.classList.add('pptf-player-prep');clearTimeout(prepTimer);prepTimer=setTimeout(showPlayer,1600)}
 function showPlayer(){clearTimeout(prepTimer);document.documentElement.classList.remove('pptf-player-prep')}
-function checkPlayerReady(){
- if(!document.documentElement.classList.contains('pptf-player-prep'))return;const main=APP.querySelector('main');if(!main)return;
- const stacks=[...main.querySelectorAll('.cc-character-stack')],ready=main.classList.contains('ps-player-sheet')&&(stacks.length===0||stacks.every(x=>x.dataset.psSheet==='1'));
- if(ready||main.querySelector('.ps-sheet-empty'))requestAnimationFrame(()=>requestAnimationFrame(showPlayer));
+function prepGmLive(){if(!isGM())return;document.documentElement.classList.add('pptf-live-prep');clearTimeout(livePrepTimer);livePrepTimer=setTimeout(showGmLive,1400)}
+function showGmLive(){clearTimeout(livePrepTimer);document.documentElement.classList.remove('pptf-live-prep')}
+function checkTransitions(){
+ const main=APP.querySelector('main');if(!main)return;
+ if(document.documentElement.classList.contains('pptf-player-prep')){
+  const stacks=[...main.querySelectorAll('.cc-character-stack')],ready=main.classList.contains('ps-player-sheet')&&(stacks.length===0||stacks.every(x=>x.dataset.psSheet==='1'));
+  if(ready||main.querySelector('.ps-sheet-empty'))requestAnimationFrame(()=>requestAnimationFrame(showPlayer));
+ }
+ if(document.documentElement.classList.contains('pptf-live-prep')){
+  const ready=main.dataset.ccSimpleLive==='1'||!!main.querySelector('[data-lcc-board],.cc-live-two');
+  if(ready)requestAnimationFrame(()=>requestAnimationFrame(showGmLive));
+ }
 }
-window.addEventListener('pointerdown',e=>{const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');if(b&&!isGM())prepPlayer()},true);
-new MutationObserver(checkPlayerReady).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-ps-sheet']});
-if(playerSheetRequested()){prepPlayer();checkPlayerReady()}
+window.addEventListener('pointerdown',e=>{const sheet=e.target?.closest?.('#app .nav [data-tab="sheet"]'),live=e.target?.closest?.('#app .nav [data-tab="gm"]');if(sheet&&!isGM())prepPlayer();if(live&&isGM())prepGmLive()},true);
+new MutationObserver(checkTransitions).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-ps-sheet','data-cc-simple-live']});
+if(playerSheetRequested()){prepPlayer();checkTransitions()}if(gmLiveRequested()){prepGmLive();checkTransitions()}
 
 S.channel('pptf-party').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(open&&!busy)render()}).subscribe();
 window.__catlakPartyPlayerTransition={open:render,close:release};
