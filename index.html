@@ -89,14 +89,19 @@
     }
 
     async function loadGmCore(){
-      await load('./gm-tools-patch.js?v=clean-gm-tools-v1','gm-tools');
-      await load('./quality-of-life-patch.js?v=clean-qol-v1','qol');
-      await load('./gm-campaign-state-patch.js?v=clean-campaign-v1','gm-campaign-state');
-      await load('./seal-character-controls-patch.js?v=clean-seal-controls-v1','seal-character-controls');
-      await load('./party-room-stable-v2.js?v=party-room-clean-v3','party-room-clean');
-      await load('./gm-clean-router-v1.js?v=gm-clean-router-v1','gm-clean-router');
-      await load('./live-combat-anchor-safety.js?v=livecombat-anchor-v1','live-combat-anchor-safety');
-      await load('./live-combat-center-loader.js?v=livecombat-loader-v3-anchor-safe','live-combat-loader');
+      // Bağımsız GM modüllerini seri bekletme: ilk oda açılışını hızlandırmak için paralel indir.
+      await loadParallel([
+        ['./gm-tools-patch.js?v=clean-gm-tools-v2-fast','gm-tools'],
+        ['./quality-of-life-patch.js?v=clean-qol-v2-fast','qol'],
+        ['./gm-campaign-state-patch.js?v=clean-campaign-v2-fast','gm-campaign-state'],
+        ['./party-room-stable-v2.js?v=party-room-clean-v4-fast','party-room-clean']
+      ]);
+      await loadParallel([
+        ['./seal-character-controls-patch.js?v=clean-seal-controls-v2-fast','seal-character-controls'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v2-fast','gm-clean-router'],
+        ['./live-combat-anchor-safety.js?v=livecombat-anchor-v2-fast','live-combat-anchor-safety']
+      ]);
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v4-fast','live-combat-loader');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
