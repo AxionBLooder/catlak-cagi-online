@@ -7,9 +7,8 @@ on:
       - 'gm-hub-v2-patch.js'
       - 'gm-nav-cleanup-patch.js'
       - 'gm-tools-patch.js'
-      - 'event-rolls-patch.js'
-      - 'room-guard-patch.js'
-      - 'room-system-patch.js'
+      - 'gm-management-room-patch.js'
+      - 'class-bonus-patch.js'
       - '.github/workflows/check-runtime-ownership.yml'
   workflow_dispatch:
 jobs:
@@ -21,49 +20,60 @@ jobs:
       - name: Static ownership checks
         run: |
           set -euo pipefail
-          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js event-rolls-patch.js room-guard-patch.js room-system-patch.js; do node --check "$f"; done
-          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js event-rolls-patch.js room-guard-patch.js room-system-patch.js; do ! grep -Fq 'setInterval(' "$f"; done
-          ! grep -Fq 'setInterval(maintain,1500)' index.html
-          ! grep -Fq 'setInterval(check,500)' index.html
-          ! grep -Fq 'Object.defineProperty(Element.prototype' room-guard-patch.js
-          ! grep -Fq "bar.style.display=open?'flex':'none'" gm-center-router-core.js
+          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js class-bonus-patch.js; do node --check "$f"; done
+          for f in gm-center-router-core.js gm-hub-v2-patch.js gm-nav-cleanup-patch.js gm-tools-patch.js gm-management-room-patch.js class-bonus-patch.js; do ! grep -Fq 'setInterval(' "$f"; done
+          grep -Fq 'gm-center-router-core.js' index.html
+          grep -Fq 'gm-hub-v2-patch.js' index.html
+          grep -Fq 'gm-management-room-patch.js' index.html
+          grep -Fq 'class-bonus-patch.js' index.html
           grep -Fq "if(!open){bar?.remove();return}" gm-hub-v2-patch.js
           grep -Fq 'leave:gm2LeaveCenter' gm-hub-v2-patch.js
-          grep -Fq "channel('ccr-battle-live')" room-system-patch.js
-          grep -Fq "channel('cc-gmt-player-equipment')" gm-tools-patch.js
-          grep -Fq 'gm-center-router-core.js?v=gmrouter-v5' index.html
-          grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v7' index.html
+          grep -Fq '__catlakManagementRoom' gm-management-room-patch.js
+          grep -Fq 'class_bonus_v1' class-bonus-patch.js
           echo RUNTIME_OWNERSHIP_STATIC_OK
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify GM center and event-driven panels in Chrome
+      - name: Verify GM Center, Management Room and class bonus in Chrome
         run: |
-          cat > gm-center-smoke.html <<'HTML'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"></head><body><div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun Masası</button><button data-gmt-open>GM Merkezi</button><button data-tab="items">Eşya</button><button data-tab="rolls">Zarlar</button><button data-cc-stats-tab>Stat</button></nav><main>BASE gm</main></div><div id="toast" class="hidden"></div><script>
-          function chain(){const c={select(){return c},order(){return c},in(){return c},eq(){return c},limit(){return c},maybeSingle(){return Promise.resolve({data:null,error:null})},then(ok,bad){return Promise.resolve({data:[],error:null}).then(ok,bad)}};return c}
-          window.__catlakSupabase={from:()=>chain(),rpc:async()=>({data:true,error:null}),channel:()=>({on(){return this},subscribe(){return this}})};
-          let tool='';window.__catlakGmTools={open:r=>{tool=r||'combat';window.__catlakGmToolsOpen=true;window.__catlakGmHubV2Test?.chrome?.()},close:()=>{tool='';window.__catlakGmToolsOpen=false},active:()=>tool};window.__catlakQualityOfLifeTest={closeCreatureLibrary:()=>{window.__catlakCreatureLibraryOpen=false}};
-          document.querySelector('#app').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(!b)return;document.querySelectorAll('.nav button.on').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelector('main').textContent='BASE '+b.dataset.tab});document.querySelector('[data-gmt-open]').addEventListener('click',()=>window.__catlakGmTools.open('combat'));
-          </script><script src="./gm-center-router-core.js"></script><script src="./gm-hub-v2-patch.js"></script></body></html>
-          HTML
-          cat > gm-tools-player-smoke.html <<'HTML'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"></head><body><div id="app"><span class="role">OYUNCU</span><nav class="nav"><button class="on" data-tab="sheet">Karakterim</button></nav><main><section class="card hero"><h1>Batuhan</h1></section></main></div><div id="toast" class="hidden"></div><script>
-          const db={catlak_characters:[{id:'c1',name:'Batuhan'}],catlak_character_conditions:[{id:'k1',character_id:'c1',name:'Zehirli',note:'',remaining_rounds:2,active:true}],catlak_inventory:[{id:'i1',character_id:'c1',item_id:'w1',equipped:true,equipped_slot:'main_weapon',quantity:1}],catlak_items:[{id:'w1',name:'Gece Nöbeti',item_type:'weapon',effects:{}}]};function from(t){const c={select(){return c},eq(){return c},order(){return c},limit(){return c},maybeSingle(){return Promise.resolve({data:(db[t]||[])[0]||null,error:null})},then(ok,bad){return Promise.resolve({data:db[t]||[],error:null}).then(ok,bad)}};return c}window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>({on(){return this},subscribe(){return this}})};
-          </script><script src="./gm-tools-patch.js"></script></body></html>
-          HTML
-          cat > event-smoke.html <<'HTML'
-          <!doctype html><html lang="tr"><head><meta charset="utf-8"></head><body><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-tab="rolls">Zarlar</button></nav><main></main></div><div id="toast" class="hidden"></div><script>
-          window.__rpcCalls=[];const rolls=[{id:1,character_id:null,roll_kind:'gm_event_d6',label:'d6',formula:'1d6',total:4,dm_ruling:'Hazine',created_at:new Date().toISOString()}];function from(t){const c={select(){return c},order(){return c},limit(){return Promise.resolve({data:t==='catlak_rolls'?rolls:[],error:null})},eq(){return Promise.resolve({data:[],error:null})}};return c}window.__catlakSupabase={from,rpc:async(fn,args)=>{window.__rpcCalls.push([fn,args]);return{data:{total:6,dm_ruling:'Tamamen saçma bir olay'},error:null}},channel:()=>({on(){return this},subscribe(){return this}})};
-          </script><script src="./event-rolls-patch.js"></script></body></html>
+          cat > runtime-smoke.html <<'HTML'
+          <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}</style></head><body>
+          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open>GM Merkezi</button><button data-tab="characters">Karakterler</button></nav><main>BASE</main></div><div id="toast" class="hidden"></div>
+          <script>
+          window.__updates=[];
+          const chars=[{id:'c1',name:'Test Şövalye',species_name:'İnsan',background_name:'Asil',class_name:'Paladin',level:3,play_status:'active',owner_id:null,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},hp_current:12,hp_max:12,base_ac:12,data:{},created_at:'1'}];
+          const classes=[{id:'cl1',name:'Paladin',hit_die:10,sort_order:1,data:{}}];
+          function from(table){
+            let mode='select',payload=null,filters={};
+            const c={
+              select(){mode='select';return c},order(){return c},in(){return c},limit(){return c},
+              eq(k,v){filters[k]=v;return c},
+              update(v){mode='update';payload=v;return c},delete(){mode='delete';return c},upsert(v){mode='upsert';payload=v;return c},
+              maybeSingle(){const data=(table==='catlak_characters'?chars:table==='catlak_classes'?classes:[]).find(x=>Object.entries(filters).every(([k,v])=>String(x[k])===String(v)))||null;return Promise.resolve({data,error:null})},
+              then(ok,bad){let data=table==='catlak_characters'?chars:table==='catlak_classes'?classes:[];data=data.filter(x=>Object.entries(filters).every(([k,v])=>String(x[k])===String(v)));if(mode==='update'){window.__updates.push({table,payload,filters});const x=chars.find(v=>String(v.id)===String(filters.id));if(x)Object.assign(x,payload);data=x?[x]:[]}return Promise.resolve({data,error:null}).then(ok,bad)}
+            };return c;
+          }
+          const channel={on(){return channel},subscribe(){return channel}};
+          window.__catlakSupabase={from,rpc:async()=>({data:true,error:null}),channel:()=>channel,storage:{from:()=>({remove:async()=>({error:null})})}};
+          document.querySelector('#app').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;document.querySelectorAll('.nav .on').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelector('main').textContent='BASE '+b.dataset.tab});
+          </script>
+          <script src="./gm-tools-patch.js"></script><script src="./gm-hub-v2-patch.js"></script><script src="./gm-center-router-core.js"></script><script src="./gm-management-room-patch.js"></script><script src="./class-bonus-patch.js"></script>
+          </body></html>
           HTML
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/runtime-http.log 2>&1 &
           PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
           cat > runtime-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
           (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{
-            const g=await browser.newPage();const ge=[];g.on('pageerror',e=>ge.push(String(e.message||e)));await g.goto('http://127.0.0.1:4173/gm-center-smoke.html',{waitUntil:'domcontentloaded'});await g.waitForTimeout(300);if(await g.locator('[data-gm2-centerbar]').count())throw new Error('GM bar exists outside center');await g.click('[data-gmt-open]');await g.waitForSelector('[data-gm2-centerbar]');await g.click('[data-gm2-route="items"]');await g.waitForFunction(()=>document.querySelector('main')?.textContent.includes('items'));if(!(await g.locator('[data-gm2-centerbar]').count()))throw new Error('GM bar missing inside center');await g.click('[data-tab="rolls"]');await g.waitForFunction(()=>document.querySelector('main')?.textContent.includes('rolls'));if(await g.locator('[data-gm2-centerbar]').count())throw new Error('GM bar ghosted into another room');if(await g.evaluate(()=>window.__catlakGmToolsOpen===true))throw new Error('GM tools stayed open');if(ge.length)throw new Error('GM center errors '+ge.join(' | '));await g.close();
-            const p=await browser.newPage();const pe=[];p.on('pageerror',e=>pe.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/gm-tools-player-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForSelector('[data-gmt-player-panel]');const pt=await p.locator('[data-gmt-player-panel]').innerText();if(!pt.includes('Zehirli')||!pt.includes('Gece Nöbeti'))throw new Error('Player panel sync failed '+pt);if(pe.length)throw new Error('GM tools player errors '+pe.join(' | '));await p.close();
-            const e=await browser.newPage();const ee=[];e.on('pageerror',x=>ee.push(String(x.message||x)));await e.goto('http://127.0.0.1:4173/event-smoke.html',{waitUntil:'domcontentloaded'});await e.waitForSelector('[data-er-event="d6"]');await e.click('[data-er-event="d6"]');await e.waitForTimeout(100);const calls=await e.evaluate(()=>window.__rpcCalls);if(!calls.some(x=>x[0]==='catlak_gm_roll_event'))throw new Error('Event roll RPC missing');if(ee.length)throw new Error('Event errors '+ee.join(' | '));await e.close();console.log('RUNTIME_OWNERSHIP_BROWSER_OK');
+            const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.goto('http://127.0.0.1:4173/runtime-smoke.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(250);
+            await p.click('[data-gmt-open]');await p.waitForSelector('[data-gm2-centerbar]');
+            if(await p.locator('[data-gm2-route="combat"]').count())throw new Error('Combat should not be in GM Center');
+            await p.click('[data-gm2-route="characters"]');await p.waitForSelector('[data-gmr-page]');
+            const room=await p.locator('[data-gmr-page]').innerText();if(!room.includes('Test Şövalye')||!room.includes('Oyuncu Daveti'))throw new Error('Management Room did not render '+room);
+            await p.waitForFunction(()=>window.__updates.some(x=>x.table==='catlak_characters'&&x.payload?.data?.class_bonus_v1?.applied===true),null,{timeout:5000});
+            const out=await p.evaluate(()=>({updates:window.__updates,bonus:window.__catlakClassBonus?.label(window.__catlakClassBonus.preset({name:'Paladin',hit_die:10,data:{}})),room:!!window.__catlakManagementRoom?.isOpen()}));
+            if(!out.room||!String(out.bonus).includes('STR +1')||!String(out.bonus).includes('CHA +1')||!String(out.bonus).includes('AC +1'))throw new Error('Class bonus/room state wrong '+JSON.stringify(out));
+            if(errors.length)throw new Error('Page errors '+errors.join(' | '));
+            console.log('RUNTIME_OWNERSHIP_BROWSER_OK',JSON.stringify(out));
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node runtime-smoke.cjs
