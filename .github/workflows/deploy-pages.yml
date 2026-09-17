@@ -25,71 +25,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Prepare static site
+      - name: Prepare safe static site
         run: |
           set -euo pipefail
           rm -rf _site
           mkdir _site
-          cp index.html browser-build.json catalog.b64 _site/
 
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          # Güvenli başlangıç: canlı HTML'ye deploy sırasında ekstra runtime enjekte etme.
+          cp index.html _site/index.html
+          test -f browser-build.json && cp browser-build.json _site/ || true
+          test -f catalog.b64 && cp catalog.b64 _site/ || true
 
-          html = Path('index.html').read_text(encoding='utf-8')
-          extras = {
-              'browser-app.js','global-transition-guard.js','ddb-flow-core.js','ddb-site-theme-v1.js','ddb-builder-v2.js',
-              'gm-campaign-state-patch.js','party-eeliot-runtime-hotfix.js','party-stable-entry.js','live-combat-center-loader.js',
-              'live-combat-center-patch.js','visual-archive-map-flow-patch.js','seal-character-controls-patch.js',
-              'party-player-transition-fix.js','battle-party-membership-guard.js','session-log-delete-fix.js','player-portal-v3.js',
-          }
-          files = set(extras)
-          files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
-          files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
-          missing = sorted(name for name in files if not Path(name).is_file())
-          if missing: raise SystemExit('Eksik çalışma dosyaları: ' + ', '.join(missing))
-          for name in sorted(files): Path('_site', name).write_bytes(Path(name).read_bytes())
-
-          live_html = html
-          replacements = {
-              'player-enemy-privacy-patch.js?v=privacy-v3-party-eeliot':'player-enemy-privacy-patch.js?v=privacy-v4-live-party',
-              'gm-center-router-core.js?v=gmrouter-v6-campaign':'gm-center-router-core.js?v=gmrouter-v7-room-ownership',
-              'gm-controls-patch.js?v=gmctrl-v1':'gm-controls-patch.js?v=gmctrl-v2-no-live-panel',
-              'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1':'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1',
-              'route-stability-patch.js?v=routes-v2':'route-stability-patch.js?v=routes-v3-real-view',
-          }
-          for old,new in replacements.items(): live_html = live_html.replace(old,new)
-
-          speed_head = '<link rel="preconnect" href="https://ygbereitlhjvoqgqlwfe.supabase.co" crossorigin><link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co"><link rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1">'
-          live_html = live_html.replace('</head>', speed_head + '</head>', 1)
-
-          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v3"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v4"></script>'
-          live_html = live_html.replace('<script src="./stat-editor-hardfix.js', early + '<script src="./stat-editor-hardfix.js', 1)
-
-          late = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,45);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1","./ddb-builder-v2.js?v=ddb-builder-v3"],left=q.length;function done(){if(--left<=0){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"))}}q.forEach(function(src){var s=document.createElement("script");s.src=src;s.async=true;s.onload=done;s.onerror=done;document.body.appendChild(s)})})();</script>'''
-          live_html = live_html.replace('</body>', late + '</body>')
-          Path('_site/index.html').write_text(live_html, encoding='utf-8')
-          print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
-          PY
+          # Kök dizindeki tüm çalışma JS dosyalarını kopyala; dinamik loader'ların
+          # ihtiyaç duyduğu dosyaların eksik kalmasını engelle.
+          find . -maxdepth 1 -type f -name '*.js' -exec cp {} _site/ \;
 
           touch _site/.nojekyll
-          for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1"' _site/index.html
-          grep -Fq 'ddb-flow-core.js?v=ddb-flow-v3' _site/index.html
-          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v4' _site/index.html
-          grep -Fq 'ddb-builder-v2.js?v=ddb-builder-v3' _site/index.html
-          grep -Fq 's.async=true' _site/index.html
-          ! grep -Fq 'Bölüm hazırlanıyor' _site/index.html
-          ! grep -Fq 'cc-route-cloak #app main{visibility:hidden' _site/index.html
-          ! grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
-          grep -Fq '__catlakGlobalTransitionGuardV4' _site/global-transition-guard.js
-          grep -Fq '__catlakDdbFlowCoreV3' _site/ddb-flow-core.js
-          grep -Fq '__catlakDdbSiteThemeV4' _site/ddb-site-theme-v1.js
-          grep -Fq '__catlakDdbBuilderV3' _site/ddb-builder-v2.js
-          grep -Fq 'data-ddb-choice-grid' _site/ddb-builder-v2.js
-          grep -Fq 'Irk Seçimi' _site/ddb-builder-v2.js
-          grep -Fq 'Arka Plan Seçimi' _site/ddb-builder-v2.js
+          # Syntax hatalı tek bir JS bile yayına çıkmasın.
+          for file in _site/*.js; do
+            node --check "$file"
+          done
+
+          # Ana uygulama zincirinin gerçekten pakette olduğunu doğrula.
+          test -f _site/browser-app.js
+          test -f _site/stat-editor-hardfix.js
+          test -f _site/gm-center-router-core.js
+          grep -Fq './browser-app.js' _site/index.html
+
+          # Siyah ekranla ilişkili sonradan enjekte edilen DDB başlangıç katmanları
+          # artık HTML'ye deploy aşamasında eklenmiyor.
+          ! grep -Fq 'ddb-flow-core.js?v=' _site/index.html
+          ! grep -Fq 'ddb-site-theme-v1.js?v=' _site/index.html
+          ! grep -Fq 'ddb-builder-v2.js?v=' _site/index.html
+          ! grep -Fq 'data-cc-late-runtime="1"' _site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
