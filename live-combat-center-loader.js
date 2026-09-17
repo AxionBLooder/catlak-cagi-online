@@ -18,7 +18,7 @@ function start(){
   if(document.querySelector('script[data-live-combat-center-runtime]'))return;
   const s=document.createElement('script');
   s.dataset.liveCombatCenterRuntime='1';
-  s.src='./live-combat-center-patch.js?v=livecombat-v2-runtime';
+  s.src='./live-combat-center-patch.js?v=livecombat-v3-runtime';
   s.async=false;
   s.onerror=function(){console.error('Canlı savaş merkezi runtime dosyası yüklenemedi.');};
   document.body.appendChild(s);
