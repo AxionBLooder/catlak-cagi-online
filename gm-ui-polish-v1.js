@@ -1,93 +1,38 @@
 (function(){
 'use strict';
-if(window.__catlakGmUiPolishV1)return;
-window.__catlakGmUiPolishV1=true;
-const APP=document.getElementById('app');
+if(window.__catlakGmUiPolishV2)return;
+window.__catlakGmUiPolishV2=true;
+const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
-
-if(!document.getElementById('cc-gm-ui-polish-style')){
-  const s=document.createElement('style');
-  s.id='cc-gm-ui-polish-style';
-  s.textContent=`
-    /* Dışarıdaki eski Karakter Yönetimi düğmesini gizle; yerine Parti Odası yanında Yönetim Odası kullan. */
-    html body #app.gmc-gm .nav [data-tab="characters"]{display:none!important}
-    #app .nav [data-cc-management-room]{display:inline-flex!important}
-
-    /* Canlı masayı yatay şerit yerine daha kare/merkezi bir çalışma alanına çevir. */
-    html body #app main[data-cc-simple-live="1"]{max-width:1180px!important;margin-left:auto!important;margin-right:auto!important;padding:12px!important}
-    html body #app main[data-cc-simple-live="1"] .cc-live-two{max-width:980px!important;margin:0 auto 10px!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:10px!important;align-items:stretch!important}
-    html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{max-height:330px!important;min-height:250px!important;overflow:auto!important}
-    html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:1080px!important;margin:10px auto 0!important}
-    html body #app main[data-cc-simple-live="1"] .lcc-columns{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
-    html body #app main[data-cc-simple-live="1"] .lcc-conditions{grid-column:1/-1!important}
-    html body #app main[data-cc-simple-live="1"] .cc-simple-roll{grid-template-columns:30px minmax(0,1fr) 38px!important;min-height:28px!important;padding:3px 0!important}
-    html body #app main[data-cc-simple-live="1"] .cc-simple-player{padding:5px 0!important}
-
-    @media(max-width:900px){
-      html body #app main[data-cc-simple-live="1"]{max-width:none!important}
-      html body #app main[data-cc-simple-live="1"] .cc-live-two,
-      html body #app main[data-cc-simple-live="1"] .lcc-columns{grid-template-columns:1fr!important;max-width:none!important}
-      html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{min-height:0!important;max-height:280px!important}
-      html body #app main[data-cc-simple-live="1"] .lcc-conditions{grid-column:auto!important}
-    }
-  `;
-  document.head.appendChild(s);
-}
-
-function isGM(){return String(APP.querySelector('.role')?.textContent||'').trim()==='GM'}
-
-function removeLiveHeading(){
-  const main=APP.querySelector('main[data-cc-simple-live="1"]');
-  if(!main)return;
-  [...main.children].forEach(el=>{
-    if(!(el instanceof HTMLElement)||!el.matches('section.card'))return;
-    const eyebrow=String(el.querySelector(':scope > .eyebrow')?.textContent||'').trim();
-    const h1=String(el.querySelector(':scope > h1')?.textContent||'').trim();
-    if(eyebrow==='CANLI OYUN MASASI'&&h1==='Oyuncular & Zarlar')el.remove();
-  });
-}
-
-function ensureManagementRoom(){
-  if(!isGM())return;
-  const nav=APP.querySelector('.nav');
-  if(!nav)return;
-  let b=nav.querySelector('[data-cc-management-room]');
-  if(!b){
-    b=document.createElement('button');
-    b.type='button';
-    b.dataset.ccManagementRoom='1';
-    b.textContent='Yönetim Odası';
-  }
-  const party=nav.querySelector('[data-prh-manager]');
-  if(party){
-    if(b.previousElementSibling!==party)party.insertAdjacentElement('afterend',b);
-  }else if(!b.isConnected){
-    const gm=nav.querySelector('[data-gmc-open]');
-    gm?gm.insertAdjacentElement('afterend',b):nav.appendChild(b);
-  }
-  const native=nav.querySelector('[data-tab="characters"]');
-  b.classList.toggle('on',!!native?.classList.contains('on'));
-}
-
-function maintain(){
-  ensureManagementRoom();
-  removeLiveHeading();
-}
-
-window.addEventListener('click',e=>{
-  const b=e.target?.closest?.('[data-cc-management-room]');
-  if(!b||!isGM())return;
-  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-  window.__catlakPartyEeliotHotfix?.close?.();
-  const api=window.__catlakLiveGameEntryGuard;
-  if(api?.openManagement)api.openManagement();
-  else APP.querySelector('.nav [data-tab="characters"]')?.click();
-  requestAnimationFrame(maintain);
-},true);
-
-let queued=false;
-function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;maintain()})}
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-cc-simple-live']});
-setTimeout(maintain,0);setTimeout(maintain,300);setTimeout(maintain,900);
-window.__catlakGmUiPolish={maintain};
+const inviteLinks=new Map();
+let managerOpen=false,busy=false,renderToken=0,navQueued=false,realtimeStarted=false;
+const num=x=>Number.isFinite(Number(x))?Number(x):0;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isGM=()=>String(APP.querySelector('.role')?.textContent||'').trim()==='GM';
+const BASE=location.origin+location.pathname.replace(/[^/]*$/,'');
+function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)}
+const oldStyle=document.getElementById('cc-gm-ui-polish-style');if(oldStyle)oldStyle.remove();
+const s=document.createElement('style');s.id='cc-gm-ui-polish-style';s.textContent=`
+html body #app.gmc-gm .nav [data-tab="characters"],html body #app .nav [data-tab="characters"]{display:none!important}
+html body #app [data-gmc-centerbar] [data-gmc-route="characters"],html body #app [data-gm2-centerbar] [data-gm2-route="characters"]{display:none!important}
+#app .nav [data-cc-management-room]{display:inline-flex!important}
+#app main[data-cc-management-v2="1"]{max-width:1540px!important;margin:0 auto!important;padding:14px!important}
+#app .cc-mrv2-page{max-width:1500px;margin:0 auto}.cc-mrv2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.cc-mrv2-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#081522}.cc-mrv2-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.cc-mrv2-meta{font-size:.8rem;color:var(--muted);line-height:1.45}.cc-mrv2-pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:.68rem;white-space:nowrap}.cc-mrv2-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.cc-mrv2-actions button{padding:6px 8px;font-size:.72rem}.cc-mrv2-invite{margin-top:10px;padding:9px;border:1px solid #496781;border-radius:10px;background:#091827}.cc-mrv2-invite input{width:100%;margin-top:6px;box-sizing:border-box}.cc-mrv2-note textarea{min-height:66px}
+`;
+document.head.appendChild(s);
+function cleanupLegacy(){ROOT.classList.remove('cc-ext-management-pending');document.getElementById('glc-style-v2')?.remove();APP.querySelectorAll('[data-gmc-route="characters"],[data-gm2-route="characters"]').forEach(x=>x.style.display='none');const main=APP.querySelector('main');if(main&&!managerOpen){delete main.dataset.ccExternalManagement;delete main.dataset.ccManagementV2}}
+function ensureNav(){if(!isGM())return;const nav=APP.querySelector('.nav');if(!nav)return;let b=nav.querySelector('[data-cc-management-room]');nav.querySelectorAll('[data-cc-management-room]').forEach((x,i)=>{if(i)x.remove()});if(!b){b=document.createElement('button');b.type='button';b.dataset.ccManagementRoom='1';b.textContent='Yönetim Odası'}const party=nav.querySelector('[data-prh-manager]');if(party){if(party.nextElementSibling!==b)party.after(b)}else if(!b.isConnected){const gm=nav.querySelector('[data-gmc-open]');gm?gm.after(b):nav.prepend(b)}b.classList.toggle('on',managerOpen);const native=nav.querySelector('[data-tab="characters"]');if(native){native.hidden=true;native.setAttribute('aria-hidden','true');native.setAttribute('tabindex','-1')}cleanupLegacy()}
+function closeForeign(){try{window.__catlakGmCleanRouter?.close?.()}catch(_){}try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){}try{window.__catlakGmTools?.close?.()}catch(_){}try{window.__catlakCampaignStateTest?.close?.()}catch(_){}try{window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.()}catch(_){}window.__catlakPartyRoomOwnsMain=false;APP.querySelector('[data-gmc-centerbar]')?.remove()}
+function activateManagement(){if(!isGM())return false;closeForeign();managerOpen=true;window.__catlakPreparedOwner=true;const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));ensureNav();nav?.querySelector('[data-cc-management-room]')?.classList.add('on');return true}
+function closeManagement(){managerOpen=false;renderToken++;APP.querySelector('.nav [data-cc-management-room]')?.classList.remove('on');const main=APP.querySelector('main');if(main){delete main.dataset.ccManagementV2;delete main.dataset.ccExternalManagement}ROOT.classList.remove('cc-ext-management-pending')}
+function classBonus(c){const b=c?.data?.class_bonus_v1;if(!b?.applied)return'';const bits=Object.entries(b.stats||{}).filter(([,v])=>num(v)).map(([k,v])=>`${k} ${num(v)>0?'+':''}${num(v)}`);if(num(b.hp))bits.push(`HP +${num(b.hp)}`);if(num(b.ac))bits.push(`AC +${num(b.ac)}`);return bits.join(' • ')}
+function card(c){const active=String(c.play_status||'')==='active',bonus=classBonus(c),link=inviteLinks.get(String(c.id))||'';return `<article class="cc-mrv2-card" data-cc-mrv2-char="${esc(c.id)}"><div class="cc-mrv2-head"><div><div class="eyebrow">${active?'CANLI KARAKTER':'HAZIR KARAKTER'}</div><h3>${esc(c.name||'Adsız')}</h3><div class="cc-mrv2-meta">${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} • Seviye ${num(c.level)||1}<br>${esc(c.background_name||'-')} • HP ${num(c.hp_current)}/${num(c.hp_max)} • AC ${num(c.base_ac)}</div></div><span class="cc-mrv2-pill">${c.owner_id?'OYUNCUYA BAĞLI':active?'CANLI':'HAZIR'}</span></div>${bonus?`<div class="notice"><b>SINIF BONUSU</b><div>${esc(bonus)}</div></div>`:''}<div class="cc-mrv2-actions"><button type="button" data-cc-mrv2-action="level" data-id="${esc(c.id)}" data-d="-1">Lv −</button><button type="button" data-cc-mrv2-action="level" data-id="${esc(c.id)}" data-d="1">Lv +</button><button type="button" data-cc-mrv2-action="hp" data-id="${esc(c.id)}" data-d="-1">HP −</button><button type="button" data-cc-mrv2-action="hp" data-id="${esc(c.id)}" data-d="1">HP +</button><button type="button" class="primary" data-cc-mrv2-action="invite" data-id="${esc(c.id)}" data-name="${esc(c.name||'Karakter')}" data-owned="${c.owner_id?'1':'0'}">${c.owner_id?'Yeniden Bağlama Linki':'Oyuncu Daveti'}</button><button type="button" class="danger" data-cc-mrv2-action="delete" data-id="${esc(c.id)}" data-name="${esc(c.name||'Karakter')}">Sil</button></div>${link?`<div class="cc-mrv2-invite"><b>Bu karakterin bağlantısı</b><input readonly value="${esc(link)}"><div class="cc-mrv2-actions"><button type="button" data-cc-mrv2-action="copy" data-id="${esc(c.id)}">Linki Kopyala</button></div></div>`:''}<label class="cc-mrv2-note">Oyuncuya Özel Durum / GM Notu<textarea data-cc-mrv2-note="${esc(c.id)}">${esc(c?.data?.gm_note||'')}</textarea></label><button type="button" data-cc-mrv2-action="note" data-id="${esc(c.id)}">Notu Kaydet</button></article>`}
+async function renderManagement(force=true){if(!activateManagement())return false;const S=window.__catlakSupabase;if(!S){setTimeout(()=>{if(managerOpen)renderManagement(force)},100);return false}const token=++renderToken,main=APP.querySelector('main');if(!main)return false;main.dataset.ccManagementV2='1';delete main.dataset.ccExternalManagement;main.innerHTML='<div class="cc-mrv2-page"><section class="card"><div class="muted">Karakterler yükleniyor…</div></section></div>';try{const r=await S.from('catlak_characters').select('*').order('created_at',{ascending:true});if(r.error)throw r.error;if(!managerOpen||token!==renderToken)return false;const rows=r.data||[],active=rows.filter(x=>x.play_status==='active'),prepared=rows.filter(x=>x.play_status==='prepared'),ordered=[...active,...prepared,...rows.filter(x=>!['active','prepared'].includes(String(x.play_status||'')))];main.innerHTML=`<div class="cc-mrv2-page"><section class="card"><div class="eyebrow">GM • YÖNETİM ODASI</div><h1>Karakter Yönetimi</h1><p class="muted">Oluşturduğun bütün karakterler burada görünür. Hazır karakter için oyuncu daveti, bağlı karakter için yeniden bağlama linki oluşturabilirsin.</p><div class="cc-mrv2-actions"><button type="button" class="primary" data-cc-mrv2-action="builder">+ Yeni Karakter</button></div></section><section class="card"><div class="section-title"><div><div class="eyebrow">KARAKTERLER</div><h2>${rows.length} Karakter</h2></div></div>${ordered.length?`<div class="cc-mrv2-grid">${ordered.map(card).join('')}</div>`:'<div class="empty">Henüz karakter yok.</div>'}</section></div>`;ensureNav();return true}catch(e){if(managerOpen&&token===renderToken)main.innerHTML=`<section class="card"><h2>Yönetim Odası açılamadı</h2><p class="muted">${esc(e?.message||String(e))}</p></section>`;return false}}
+async function action(b){if(busy||!managerOpen)return;const S=window.__catlakSupabase;if(!S)return toast('Veri bağlantısı hazır değil.');busy=true;try{const type=b.dataset.ccMrv2Action||'',id=b.dataset.id;if(type==='builder'){closeManagement();const api=window.__catlakGmCleanRouter;if(api?.route)api.route('builder');else APP.querySelector('.nav [data-tab="builder"]')?.click();return}if(type==='level'){const q=await S.from('catlak_characters').select('id,level').eq('id',id).maybeSingle();if(q.error)throw q.error;const level=Math.max(1,Math.min(20,num(q.data?.level)+num(b.dataset.d))),r=await S.rpc('catlak_set_character_level',{p_character_id:id,p_level:level});if(r.error)throw r.error;toast(`Seviye ${level} oldu.`);await renderManagement(true);return}if(type==='hp'){const q=await S.from('catlak_characters').select('id,hp_current,hp_max').eq('id',id).maybeSingle();if(q.error)throw q.error;const hp=Math.max(0,Math.min(num(q.data?.hp_max),num(q.data?.hp_current)+num(b.dataset.d))),r=await S.from('catlak_characters').update({hp_current:hp}).eq('id',id);if(r.error)throw r.error;await renderManagement(true);return}if(type==='note'){const q=await S.from('catlak_characters').select('id,data').eq('id',id).maybeSingle();if(q.error)throw q.error;const note=APP.querySelector(`[data-cc-mrv2-note="${CSS.escape(String(id))}"]`)?.value||'',data={...(q.data?.data||{}),gm_note:note},r=await S.from('catlak_characters').update({data}).eq('id',id);if(r.error)throw r.error;toast('Karakter notu kaydedildi.');return}if(type==='delete'){if(!confirm(`${b.dataset.name||'Karakter'} kalıcı olarak silinsin mi?`))return;const r=await S.from('catlak_characters').delete().eq('id',id);if(r.error)throw r.error;inviteLinks.delete(String(id));toast('Karakter silindi.');await renderManagement(true);return}if(type==='invite'){const owned=b.dataset.owned==='1',fn=owned?'catlak_generate_character_reconnect':'catlak_generate_character_claim',r=await S.rpc(fn,{p_character_id:id});if(r.error)throw r.error;const raw=r.data?.token??r.data?.code??r.data?.invite??r.data;if(raw==null||String(raw).trim()==='')throw new Error('Davet anahtarı üretilemedi.');const link=BASE+'?join='+encodeURIComponent(String(raw));inviteLinks.set(String(id),link);try{await navigator.clipboard.writeText(link)}catch(_){}toast((owned?'Yeniden bağlama':'Karakter davet')+' linki oluşturuldu ve kopyalandı.');await renderManagement(true);return}if(type==='copy'){const link=inviteLinks.get(String(id));if(!link)throw new Error('Önce bağlantı oluştur.');try{await navigator.clipboard.writeText(link);toast('Link kopyalandı.')}catch(_){prompt('Bağlantı:',link)}}}catch(e){toast(e?.message||String(e))}finally{busy=false}}
+function scheduleNav(){if(navQueued)return;navQueued=true;requestAnimationFrame(()=>{navQueued=false;ensureNav()})}
+window.addEventListener('click',e=>{const room=e.target?.closest?.('[data-cc-management-room]');if(room&&isGM()){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();renderManagement(true);return}const a=e.target?.closest?.('[data-cc-mrv2-action]');if(a&&isGM()){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();action(a);return}const nav=e.target?.closest?.('#app .nav button');if(nav&&isGM()&&!nav.matches('[data-cc-management-room]')){if(managerOpen)closeManagement();ROOT.classList.remove('cc-ext-management-pending');setTimeout(scheduleNav,0);setTimeout(scheduleNav,120)}},true);
+new MutationObserver(rs=>{if(rs.some(r=>r.type==='childList'||r.type==='attributes'))scheduleNav()}).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+async function startRealtime(){if(realtimeStarted)return;for(let i=0;i<160&&!window.__catlakSupabase;i++)await new Promise(r=>setTimeout(r,50));const S=window.__catlakSupabase;if(!S||realtimeStarted)return;realtimeStarted=true;S.channel('cc-management-room-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(managerOpen&&!busy)renderManagement(false)}).subscribe()}
+setTimeout(scheduleNav,0);setTimeout(scheduleNav,300);setTimeout(scheduleNav,1000);startRealtime();
+window.__catlakGmUiPolish={maintain:scheduleNav,openManagement:()=>renderManagement(true),closeManagement,isManagementOpen:()=>managerOpen};
 })();
