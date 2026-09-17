@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmCenterPartyIntegrationV1)return;
-window.__catlakGmCenterPartyIntegrationV1=true;
+if(window.__catlakGmCenterPartyIntegrationV2)return;
+window.__catlakGmCenterPartyIntegrationV2=true;
 const APP=document.querySelector('#app');if(!APP)return;
 const txt=e=>String(e?.textContent||'').trim();
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
@@ -9,36 +9,39 @@ let queued=false;
 
 if(!document.querySelector('#gmpi-style')){
  const st=document.createElement('style');st.id='gmpi-style';st.textContent=`
- #app.gmpi-gm .nav [data-prh-manager],
- #app.gmpi-gm .nav [data-prh-party],
  #app.gmpi-gm .nav [data-gmr-open],
  #app.gmpi-gm .nav [data-tab="characters"]{display:none!important}
+ #app.gmpi-gm .nav [data-prh-manager]{display:inline-flex!important}
  `;document.head.appendChild(st)
 }
 
-function ensurePartyButton(){
+function ensureTopParty(){
  if(!isGM())return;
- const bar=APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
- let b=bar.querySelector('[data-gm2-route="party"]');
+ const nav=APP.querySelector('.nav');if(!nav)return;
+ let b=nav.querySelector('[data-prh-manager]');
  if(!b){
-   b=document.createElement('button');b.type='button';b.dataset.gm2Route='party';b.textContent='Parti Odası';
-   const chars=bar.querySelector('[data-gm2-route="characters"]');chars?chars.insertAdjacentElement('afterend',b):bar.appendChild(b);
+   b=document.createElement('button');b.type='button';b.dataset.prhManager='1';
  }
- const active=String(window.__catlakGmCenterSelectedRoute||'');
- bar.querySelectorAll('[data-gm2-route]').forEach(x=>{const on=String(x.dataset.gm2Route||'')===active;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on?'true':'false')});
+ b.textContent='Parti Odası';
+ b.title='Parti Odasını aç';
+ b.style.removeProperty('display');
+ const gm=nav.querySelector('[data-gmt-open]');
+ if(gm){if(gm.nextElementSibling!==b)gm.insertAdjacentElement('afterend',b)}
+ else if(b.parentElement!==nav)nav.appendChild(b);
 }
-function hideSeparateEntries(){
+function keepManagementInsideCenter(){
  if(!isGM()){APP.classList.remove('gmpi-gm');return}
  APP.classList.add('gmpi-gm');
  const nav=APP.querySelector('.nav');if(!nav)return;
  nav.querySelectorAll('button').forEach(b=>{
    const t=txt(b);
-   if((t==='Yönetim Odası'||t==='Parti Yönetimi'||t==='Parti Odası')&&!b.closest('[data-gm2-centerbar]'))b.style.display='none';
+   if(t==='Yönetim Odası'&&!b.closest('[data-gm2-centerbar]'))b.style.display='none';
  });
 }
-function ensure(){queued=false;hideSeparateEntries();ensurePartyButton()}
+function removePartyFromCenter(){APP.querySelectorAll('[data-gm2-centerbar] [data-gm2-route="party"]').forEach(x=>x.remove())}
+function ensure(){queued=false;keepManagementInsideCenter();removePartyFromCenter();ensureTopParty()}
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(ensure)}
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 setTimeout(ensure,0);setTimeout(ensure,250);setTimeout(ensure,1000);
-window.__catlakGmCenterPartyIntegration={ensure};
+window.__catlakGmCenterPartyIntegration={ensure,ensureTopParty,removePartyFromCenter};
 })();
