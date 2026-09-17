@@ -1,0 +1,63 @@
+name: Check GM Workshop Speed
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gm-clean-router-v1.js'
+      - 'index.html'
+      - '.github/workflows/check-gm-workshop-speed.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static speed and route checks
+        run: |
+          set -euo pipefail
+          node --check gm-clean-router-v1.js
+          grep -q '__catlakGmCleanRouterV2' gm-clean-router-v1.js
+          grep -q 'GMC_CACHE_MS=15000' gm-clean-router-v1.js
+          grep -q 'function openStatsDirect' gm-clean-router-v1.js
+          grep -q "if(r==='stats')return openStatsDirect()" gm-clean-router-v1.js
+          ! grep -Eq "openNative\('stats'\)|r==='stats'.*openNative" gm-clean-router-v1.js
+          grep -q 'loadAbility(false).catch' gm-clean-router-v1.js
+          grep -q 'loadCharacters(false).catch' gm-clean-router-v1.js
+          grep -q 'clean-gm-tools-v2-fast' index.html
+          grep -q 'gm-clean-router-v2-fast' index.html
+          grep -q 'loadParallel' index.html
+          grep -q 'player-speed-v2' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify direct Stat opening in Chrome
+        run: |
+          cat > gm-speed-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          (async()=>{
+            let exe='';
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            if(!exe)throw new Error('Chrome missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.setContent(`<!doctype html><meta charset="utf-8"><div id="app"><div class="role">GM</div><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button><button data-tab="items">Eşya</button><button data-cc-stats-tab>Stat Atölyesi</button><button data-tab="races">Irk</button><button data-tab="builder">Karakter Oluşturucu</button></nav><main><section class="card">GM</section></main></div><div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{
+                window.__fromCalls=0;window.__statCalls=0;window.__statWasOn=false;
+                const query={select(){return this},order(){return this},in(){return this},then(ok,bad){window.__fromCalls++;return Promise.resolve({data:[],error:null}).then(ok,bad)}};
+                const channel={on(){return this},subscribe(){return this}};
+                window.__catlakSupabase={from:()=>Object.create(query),channel:()=>channel,rpc:async()=>({data:null,error:null})};
+                window.__catlakRenderCompactStats=async()=>{window.__statCalls++;window.__statWasOn=document.querySelector('[data-cc-stats-tab]').classList.contains('on');document.querySelector('#app main').innerHTML='<section class="card cux-workshop"><h1>Hızlı Karakter Düzenleme</h1></section>';};
+              });
+              await page.addScriptTag({path:path.resolve('gm-clean-router-v1.js')});
+              await page.waitForFunction(()=>!!window.__catlakGmCleanRouter);
+              const result=await page.evaluate(async()=>{const ok=window.__catlakGmCleanRouter.route('stats');await new Promise(r=>setTimeout(r,80));return {ok,route:window.__catlakGmCleanRouter.current(),statCalls:window.__statCalls,statWasOn:window.__statWasOn,workshop:!!document.querySelector('.cux-workshop'),bar:!!document.querySelector('[data-gmc-centerbar]'),barStat:document.querySelector('[data-gmc-route="stats"]')?.classList.contains('on')};});
+              if(!result.ok||result.route!=='stats'||result.statCalls!==1||!result.statWasOn||!result.workshop||!result.bar||!result.barStat)throw new Error('Direct stat route failed '+JSON.stringify(result));
+              if(errors.length)throw new Error(errors.join(' | '));
+              console.log('GM_WORKSHOP_SPEED_OK',JSON.stringify(result));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node gm-speed-smoke.cjs
