@@ -8,3 +8,5 @@
   X-Catlak-Release: permanent-netlify
 /catalog.b64
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+/stat-editor-hardfix.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
