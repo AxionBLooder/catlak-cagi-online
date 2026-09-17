@@ -109,8 +109,8 @@ function gmcrLeaveCenter(){
 function gmcrOpenManagement(token){
   if(token!==gmcrToken)return true;
   const room=window.__catlakManagementRoom;
-  if(typeof room?.open!=='function')return false;
-  const opened=room.open(true);
+  if(typeof room?.openExplicit!=='function'&&typeof room?.open!=='function')return false;
+  const opened=typeof room.openExplicit==='function'?room.openExplicit():room.open({explicit:true});
   if(opened===false)return false;
   requestAnimationFrame(()=>{if(token!==gmcrToken)return;gmcrMakeButtonsClickable();gmcrSelect('characters')});
   return true;
