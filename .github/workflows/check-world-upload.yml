@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'simple-world-upload-patch.js'
+      - 'visual-archive-map-flow-patch.js'
       - 'browser-app.js'
       - 'index.html'
       - '.github/workflows/check-world-upload.yml'
@@ -17,13 +18,17 @@ jobs:
         run: |
           set -euo pipefail
           node --check simple-world-upload-patch.js
+          node --check visual-archive-map-flow-patch.js
           node --check browser-app.js
           grep -q 'catlak-world-media' simple-world-upload-patch.js
           grep -q 'type="file"' simple-world-upload-patch.js
           grep -q 'Partiye Yansıt' simple-world-upload-patch.js
+          grep -q '__catlakVisualArchiveMapFlowV1' visual-archive-map-flow-patch.js
+          grep -q 'data-vamf-places' visual-archive-map-flow-patch.js
           grep -q 'catlak-world-media' browser-app.js
           grep -q 'Partiye Yansıt' browser-app.js
           grep -q 'browser-app.js?v=recovery-core-3' index.html
+          grep -q 'visual-archive-map-flow-patch.js?v=visual-flow-v2-safe' index.html
           echo 'World upload bundled checks OK'
       - name: Wait for current Pages deployment and open in Chrome
         env:
@@ -33,20 +38,23 @@ jobs:
           ready=0
           for i in $(seq 1 45); do
             curl -fsSL --retry 2 "${LIVE_URL}?world-smoke=$(date +%s%N)" -o /tmp/index.html || true
-            if grep -q 'browser-app.js?v=recovery-core-3' /tmp/index.html 2>/dev/null && grep -q 'gm-management-room-patch.js?v=management-v1' /tmp/index.html 2>/dev/null && grep -q 'class-bonus-patch.js?v=classbonus-v1' /tmp/index.html 2>/dev/null; then ready=1; break; fi
+            if grep -q 'browser-app.js?v=recovery-core-3' /tmp/index.html 2>/dev/null && grep -q 'gm-management-room-patch.js?v=management-v1' /tmp/index.html 2>/dev/null && grep -q 'class-bonus-patch.js?v=classbonus-v1' /tmp/index.html 2>/dev/null && grep -q 'visual-archive-map-flow-patch.js?v=visual-flow-v2-safe' /tmp/index.html 2>/dev/null; then ready=1; break; fi
             sleep 2
           done
           test "$ready" = 1
           curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}browser-app.js?world-smoke=$(date +%s%N)" -o /tmp/app.js
           curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}gm-management-room-patch.js?world-smoke=$(date +%s%N)" -o /tmp/management.js
           curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}class-bonus-patch.js?world-smoke=$(date +%s%N)" -o /tmp/class-bonus.js
+          curl -fsSL --retry 5 --retry-delay 2 "${LIVE_URL}visual-archive-map-flow-patch.js?world-smoke=$(date +%s%N)" -o /tmp/visual-flow.js
           node --check /tmp/app.js
           node --check /tmp/management.js
           node --check /tmp/class-bonus.js
+          node --check /tmp/visual-flow.js
           grep -q 'catlak-world-media' /tmp/app.js
           grep -q 'Partiye Yansıt' /tmp/app.js
           grep -q '__catlakManagementRoom' /tmp/management.js
           grep -q 'class_bonus_v1' /tmp/class-bonus.js
+          grep -q '__catlakVisualArchiveMapFlowV1' /tmp/visual-flow.js
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "${LIVE_URL}?world-browser-smoke=$(date +%s%N)" >/tmp/live-dom.html 2>/tmp/live-chrome.log || true
