@@ -60,14 +60,12 @@ jobs:
           }
           for old,new in replacements.items(): live_html = live_html.replace(old,new)
 
-          # Ana JS ve Supabase bağlantısı mümkün olduğunca erken başlasın.
           speed_head = '<link rel="preconnect" href="https://ygbereitlhjvoqgqlwfe.supabase.co" crossorigin><link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co"><link rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1">'
           live_html = live_html.replace('</head>', speed_head + '</head>', 1)
 
-          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v2"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v3"></script>'
+          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v3"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v4"></script>'
           live_html = live_html.replace('<script src="./stat-editor-hardfix.js', early + '<script src="./stat-editor-hardfix.js', 1)
 
-          # Ek özellikler artık tek tek sırayla beklenmiyor; Supabase hazır olur olmaz paralel yüklenir.
           late = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,45);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1","./ddb-builder-v2.js?v=ddb-builder-v2"],left=q.length;function done(){if(--left<=0){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"))}}q.forEach(function(src){var s=document.createElement("script");s.src=src;s.async=true;s.onload=done;s.onerror=done;document.body.appendChild(s)})})();</script>'''
           live_html = live_html.replace('</body>', late + '</body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
@@ -78,15 +76,16 @@ jobs:
           for file in _site/*.js; do node --check "$file"; done
 
           grep -Fq 'rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1"' _site/index.html
-          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v3' _site/index.html
+          grep -Fq 'ddb-flow-core.js?v=ddb-flow-v3' _site/index.html
+          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v4' _site/index.html
           grep -Fq 'ddb-builder-v2.js?v=ddb-builder-v2' _site/index.html
           grep -Fq 's.async=true' _site/index.html
           ! grep -Fq 'Bölüm hazırlanıyor' _site/index.html
           ! grep -Fq 'cc-route-cloak #app main{visibility:hidden' _site/index.html
           ! grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
           grep -Fq '__catlakGlobalTransitionGuardV4' _site/global-transition-guard.js
-          grep -Fq '__catlakDdbFlowCoreV2' _site/ddb-flow-core.js
-          grep -Fq '__catlakDdbSiteThemeV3' _site/ddb-site-theme-v1.js
+          grep -Fq '__catlakDdbFlowCoreV3' _site/ddb-flow-core.js
+          grep -Fq '__catlakDdbSiteThemeV4' _site/ddb-site-theme-v1.js
           grep -Fq '__catlakDdbBuilderV2' _site/ddb-builder-v2.js
           grep -Fq 'Arka Plan' _site/ddb-builder-v2.js
           grep -Fq 'Kimlik' _site/ddb-builder-v2.js
