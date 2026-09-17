@@ -74,10 +74,8 @@ jobs:
               'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1',
               'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1'
           )
-          live_html = live_html.replace(
-              '</body>',
-              '<script src="./party-eeliot-runtime-hotfix.js?v=party-v3-room-owner"></script><script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script src="./visual-archive-map-flow-patch.js?v=visual-flow-v1"></script><script src="./seal-character-controls-patch.js?v=seal-controls-v1"></script><script src="./party-player-transition-fix.js?v=party-transition-v1"></script></body>'
-          )
+          late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./party-player-transition-fix.js?v=party-transition-v1"],i=0;function next(){if(i>=q.length)return;var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
+          live_html = live_html.replace('</body>', late_loader + '</body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
@@ -86,7 +84,8 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v3-room-owner' _site/index.html
+          grep -Fq 'data-cc-late-runtime="1"' _site/index.html
+          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v4-ready' _site/index.html
           grep -Fq 'party-stable-entry.js?v=partyentry-v4-room-owner' _site/index.html
           grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v1' _site/index.html
           grep -Fq 'visual-archive-map-flow-patch.js?v=visual-flow-v1' _site/index.html
