@@ -53,3 +53,13 @@ new MutationObserver(pepSchedule).observe(PEP_APP,{childList:true,subtree:true,c
 document.addEventListener('click',pepSchedule,true);
 setTimeout(pepSanitize,120);
 window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
+
+(function loadPartyRosterPatch(){
+  if(document.querySelector('script[data-cpr-loader]'))return;
+  const s=document.createElement('script');
+  s.dataset.cprLoader='1';
+  s.src='./party-roster-patch.js?v=party-roster-v1';
+  s.async=false;
+  s.onerror=function(){console.error('Parti Yönetimi katmanı yüklenemedi.');};
+  document.body.appendChild(s);
+})();
