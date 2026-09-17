@@ -60,31 +60,43 @@
     function loadParallel(list){return Promise.all(list.map(function(x){return load(x[0],x[1])}))}
     async function waitForRuntime(){for(var i=0;i<120;i++){if(window.__catlakSupabase)return true;await new Promise(function(r){setTimeout(r,50)})}return false}
     async function waitForRole(){for(var i=0;i<80;i++){var t=String(app.querySelector('.role')?.textContent||'').trim();if(t)return t;await new Promise(function(r){setTimeout(r,25)})}return String(app.querySelector('.role')?.textContent||'').trim()}
+    async function waitForPlayerSheet(){for(var i=0;i<60;i++){if(app.querySelector('main .cc-character-stack'))return true;await new Promise(function(r){setTimeout(r,25)})}return !!app.querySelector('main .cc-character-stack')}
 
     async function loadPlayerCritical(){
+      // Önce kağıdın iskeleti ve temel eşya altyapısı. Ağ istekleri birbirini beklemez.
       await loadParallel([
-        ['./player-sheet-patch.js?v=player-speed-v2','player-sheet'],
-        ['./player-sheet-equipment-abilities-patch.js?v=player-speed-v2','player-equip'],
-        ['./player-live-actions-patch.js?v=player-speed-v2','player-actions'],
-        ['./stat-roll-patch.js?v=player-speed-v2','stat-roll'],
-        ['./item-system-patch.js?v=player-speed-v2','items']
+        ['./player-sheet-patch.js?v=player-speed-v3-restore','player-sheet'],
+        ['./stat-roll-patch.js?v=player-speed-v3-restore','stat-roll'],
+        ['./item-system-patch.js?v=player-speed-v3-restore','items']
       ]);
+      await waitForPlayerSheet();
       try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
+
+      // GM araçlarını oyuncuya yüklemeden eski silah/zırh/aksesuar/durum panelini hafif runtime ile geri kur.
+      await load('./player-sheet-support-runtime.js?v=player-support-v1','player-support');
+      try{var ps=window.__catlakPlayerSheetSupport?.refresh?.(true);if(ps&&typeof ps.then==='function')await ps}catch(_){}
+
+      // Canlı envanter + yetenekler destek panelinden sonra bağlanır; böylece boş panel yarışı oluşmaz.
+      await loadParallel([
+        ['./player-live-actions-patch.js?v=player-speed-v3-restore','player-actions'],
+        ['./player-sheet-equipment-abilities-patch.js?v=player-speed-v3-restore','player-equip']
+      ]);
       var jobs=[];
       try{var p1=window.__catlakPlayerLiveTest?.refresh?.(true);if(p1&&typeof p1.then==='function')jobs.push(p1)}catch(_){}
       try{var p2=window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);if(p2&&typeof p2.then==='function')jobs.push(p2)}catch(_){}
       if(jobs.length)await Promise.allSettled(jobs);
+      try{window.__catlakPlayerSheetSupport?.refresh?.(false)}catch(_){}
       try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
     }
 
     async function loadPlayerBackground(){
       await loadParallel([
-        ['./presence-patch.js?v=player-bg-v1','presence'],
-        ['./dice-ux-patch.js?v=player-bg-v1','dice'],
-        ['./room-guard-patch.js?v=player-bg-v1','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v1','rooms'],
-        ['./party-roster-patch.js?v=player-bg-v1','party-roster'],
-        ['./battle-party-membership-guard.js?v=player-bg-v1','battle-party-guard']
+        ['./presence-patch.js?v=player-bg-v2','presence'],
+        ['./dice-ux-patch.js?v=player-bg-v2','dice'],
+        ['./room-guard-patch.js?v=player-bg-v2','room-guard'],
+        ['./room-system-patch.js?v=player-bg-v2','rooms'],
+        ['./party-roster-patch.js?v=player-bg-v2','party-roster'],
+        ['./battle-party-membership-guard.js?v=player-bg-v2','battle-party-guard']
       ]);
     }
 
@@ -136,7 +148,7 @@
         return;
       }
 
-      // Oyuncu: GM dosyaları hiç indirilmez. Kağıt verileri hazırlandıktan sonra tek seferde gösterilir.
+      // Oyuncu: GM araçları indirilmez; eski kağıt bilgileri hafif oyuncu runtime'larıyla korunur.
       await loadPlayerCritical();
       reveal();
       loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)});
