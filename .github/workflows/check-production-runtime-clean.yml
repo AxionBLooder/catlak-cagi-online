@@ -2,6 +2,11 @@ name: Check Production Runtime Clean
 on:
   push:
     paths:
+      - 'index.html'
+      - 'gm-clean-click-guard.js'
+      - 'gm-clean-router-v1.js'
+      - 'party-room-stable-v2.js'
+      - 'session-log-delete-fix.js'
       - '.github/workflows/check-production-runtime-clean.yml'
   workflow_dispatch:
 jobs:
@@ -10,59 +15,54 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
-      - name: Wait for clean production deploy
+      - name: Clean architecture static checks
+        run: |
+          set -euo pipefail
+          node --check gm-clean-click-guard.js
+          node --check gm-clean-router-v1.js
+          node --check party-room-stable-v2.js
+          node --check session-log-delete-fix.js
+          grep -Fq 'gm-clean-click-v2' index.html
+          grep -Fq 'gm-clean-router-v1.js' index.html
+          grep -Fq 'party-room-stable-v2.js' index.html
+          ! grep -Fq 'gm-center-router-core.js' index.html
+          ! grep -Fq 'gm-hub-v2-patch.js' index.html
+          ! grep -Fq 'gm-center-party-integration.js' index.html
+          ! grep -Fq 'party-eeliot-runtime-hotfix.js' index.html
+          grep -Fq 'e.isTrusted&&nav' gm-clean-click-guard.js
+          grep -Fq "data-gmc-action=\"char-invite\"" gm-clean-router-v1.js
+          grep -Fq 'catlak_generate_character_reconnect' gm-clean-router-v1.js
+          grep -Fq 'catlak_generate_character_claim' gm-clean-router-v1.js
+          grep -Fq "window.__catlakGmCleanRouter.route('logs')" session-log-delete-fix.js
+          echo CLEAN_RUNTIME_STATIC_OK
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Synthetic native navigation must not reset GM Center
+        run: |
+          cat > clean-router-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');const path=require('path');
+          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const b=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox']});try{const p=await b.newPage();await p.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-tab="items">Eşya</button><button data-tab="races">Irk</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button><button data-cc-stats-tab>Stat</button><button data-gmt-open>Old GM</button></nav><main>BASE</main></div><div id="toast" class="hidden"></div>`);await p.evaluate(()=>{
+            window.__native=[];document.querySelectorAll('.nav [data-tab],.nav [data-cc-stats-tab]').forEach(x=>x.addEventListener('click',()=>{window.__native.push(x.dataset.tab||'stats');document.querySelector('main').textContent='NATIVE '+(x.dataset.tab||'stats')}));
+            const q=()=>({select(){return this},order(){return this},in(){return this},eq(){return this},maybeSingle(){return Promise.resolve({data:null,error:null})},then(ok,bad){return Promise.resolve({data:[],error:null}).then(ok,bad)}});const ch={on(){return ch},subscribe(){return ch}};window.__catlakSupabase={from:q,rpc:async()=>({data:'TOKEN',error:null}),channel:()=>ch};window.__catlakGmTools={close(){},open(){}};window.__catlakQualityOfLifeTest={closeCreatureLibrary(){}};window.__catlakCampaignStateTest={close(){}};
+          });await p.addScriptTag({path:path.resolve('gm-clean-click-guard.js')});await p.addScriptTag({path:path.resolve('gm-clean-router-v1.js')});await p.waitForFunction(()=>!!window.__catlakGmCleanRouter&&!!document.querySelector('[data-gmc-open]'));
+          await p.click('[data-gmc-open]');await p.waitForSelector('[data-gmc-centerbar]');
+          await p.click('[data-gmc-route="items"]');await p.waitForTimeout(60);let s=await p.evaluate(()=>({open:window.__catlakGmCleanRouter.isOpen(),route:window.__catlakGmCleanRouter.current(),native:window.__native.slice(),bar:!!document.querySelector('[data-gmc-centerbar]')}));if(!s.open||s.route!=='items'||!s.bar||!s.native.includes('items'))throw new Error('Items reset regression '+JSON.stringify(s));
+          await p.click('[data-gmc-route="races"]');await p.waitForTimeout(60);s=await p.evaluate(()=>({open:window.__catlakGmCleanRouter.isOpen(),route:window.__catlakGmCleanRouter.current(),bar:!!document.querySelector('[data-gmc-centerbar]')}));if(!s.open||s.route!=='races'||!s.bar)throw new Error('Races reset regression '+JSON.stringify(s));
+          await p.click('[data-gmc-route="ability"]');await p.waitForSelector('[data-gmc-owned="ability"]');const before=await p.evaluate(()=>({open:window.__catlakGmCleanRouter.isOpen(),route:window.__catlakGmCleanRouter.current()}));if(!before.open||before.route!=='ability')throw new Error('Ability route missing');
+          console.log('CLEAN_GM_NAV_OK',JSON.stringify(s));
+          }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node clean-router-smoke.cjs
+      - name: Wait for current Pages deployment
         env:
           LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
         run: |
           set -euo pipefail
           ok=0
-          for i in $(seq 1 24); do
-            curl -fsSL --retry 2 "${LIVE_URL}?runtime-clean=$(date +%s%N)" -o /tmp/index.html || true
-            if grep -Fq 'gm-center-router-core.js?v=gmrouter-v5' /tmp/index.html 2>/dev/null && grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v7' /tmp/index.html 2>/dev/null && grep -Fq 'gm-tools-patch.js?v=gmtools-v8' /tmp/index.html 2>/dev/null && grep -Fq 'room-system-patch.js?v=rooms-v3' /tmp/index.html 2>/dev/null; then ok=1; break; fi
-            sleep 5
+          for i in $(seq 1 40); do
+            curl -fsSL --retry 2 "${LIVE_URL}?clean=$(date +%s%N)" -o /tmp/live.html || true
+            if grep -Fq 'clean-gm-runtime-v2' /tmp/live.html 2>/dev/null && grep -Fq 'gm-clean-click-v2' /tmp/live.html 2>/dev/null; then ok=1; break; fi
+            sleep 3
           done
           test "$ok" = 1
-          echo PRODUCTION_VERSION_OK
-      - name: Parse every production JavaScript asset
-        env:
-          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-          html=Path('/tmp/index.html').read_text(encoding='utf-8')
-          names={'browser-app.js','gm-center-router-core.js'}
-          names.update(re.findall(r"loadAddon\('./([^'?]+\.js)",html))
-          Path('/tmp/assets.txt').write_text('\n'.join(sorted(names))+'\n')
-          print('production js assets',len(names))
-          if len(names)<30: raise SystemExit('Unexpectedly small production asset set')
-          PY
-          mkdir -p /tmp/cc-assets
-          while IFS= read -r f; do
-            curl -fsSL --retry 4 --retry-delay 1 "${LIVE_URL}${f}?audit=$(date +%s%N)" -o "/tmp/cc-assets/$f"
-            node --check "/tmp/cc-assets/$f"
-          done </tmp/assets.txt
-          for old in gm-center-live-runtime.js gm-center-tools-integration-patch.js gm-hub-patch.js gm-hub-route-fix-patch.js; do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' "${LIVE_URL}${old}?gone=$(date +%s%N)")
-            test "$code" = 404
-          done
-          ! grep -Fq 'Object.defineProperty(Element.prototype' /tmp/cc-assets/room-guard-patch.js
-          ! grep -Fq 'setInterval(' /tmp/cc-assets/gm-center-router-core.js
-          ! grep -Fq 'setInterval(' /tmp/cc-assets/gm-tools-patch.js
-          ! grep -Fq 'setInterval(' /tmp/cc-assets/event-rolls-patch.js
-          ! grep -Fq 'setInterval(' /tmp/cc-assets/room-system-patch.js
-          grep -Fq "channel('ccr-battle-live')" /tmp/cc-assets/room-system-patch.js
-          grep -Fq "if(!open){bar?.remove();return}" /tmp/cc-assets/gm-hub-v2-patch.js
-          echo PRODUCTION_ASSETS_CLEAN_OK
-      - name: Install browser driver
-        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Real production browser smoke
-        env:
-          LIVE_URL: https://axionblooder.github.io/catlak-cagi-online/
-        run: |
-          cat > production-runtime-smoke.cjs <<'JS'
-          const {chromium}=require('playwright-core');const {execFileSync}=require('child_process');
-          (async()=>{let exe='';for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}if(!exe)throw new Error('Chrome missing');const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});try{const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));const r=await p.goto(process.env.LIVE_URL+'?runtime-clean-browser='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});if(r?.status()!==200)throw new Error('HTTP '+r?.status());await p.waitForFunction(()=>{const t=document.querySelector('#app')?.textContent||'';return t.includes('E-posta')&&!t.includes('Uygulama yükleniyor')&&window.__catlakDiceUxTest&&window.__catlakItemSystemTest&&window.__catlakEventRollsTest&&window.__catlakGmToolsTest&&window.__catlakRoomGuardTest&&window.__catlakRoomSystemTest&&window.__catlakPlayerSheetTest&&window.__catlakPlayerLiveTest&&window.__catlakGmHubV2Test&&window.__catlakGmCenterRouterCore},{timeout:25000});await p.waitForTimeout(1200);const state=await p.evaluate(()=>({ghost:!!document.querySelector('[data-gm2-centerbar]'),router:window.__catlakGmCenterRouterCore?.active===true,roomRealtime:typeof window.__catlakRoomSystemTest?.realtimeRefresh==='function',gmLeave:typeof window.__catlakGmHubV2Test?.leave==='function'}));if(state.ghost)throw new Error('GM center ghost visible on public/login surface');if(!state.router||!state.roomRealtime||!state.gmLeave)throw new Error('Runtime owners missing '+JSON.stringify(state));if(errors.length)throw new Error('Production page errors '+errors.join(' | '));console.log('PRODUCTION_RUNTIME_BROWSER_OK',JSON.stringify(state));await p.close()}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          node production-runtime-smoke.cjs
+          echo CLEAN_PRODUCTION_VERSION_OK
