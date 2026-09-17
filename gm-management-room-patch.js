@@ -6,7 +6,7 @@ const S=window.__catlakSupabase;
 if(!APP||!S)return;
 window.__catlakManagementRoomV1=true;
 let roomOpen=false,busy=false,wrapTimer=0,refreshTimer=0;
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=x=>Number(x||0);
 const isGM=()=>String(APP.querySelector('.role')?.textContent||'').trim()==='GM';
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
@@ -58,20 +58,30 @@ async function load(force=false){
   if(roomOpen)render(r.data||[]);
  }catch(e){toast('Yönetim Odası yüklenemedi: '+(e?.message||String(e)))}finally{busy=false}
 }
-function closeRoom(){roomOpen=false;window.__catlakManagementRoomOpen=false;if(APP.querySelector('main')?.dataset.gmrPage==='1')delete APP.querySelector('main').dataset.gmrPage;if(window.__catlakGmHubOwnsMain===true)window.__catlakGmHubOwnsMain=false}
-function openRoom(force=true){
- if(!isGM())return false;
+function closeRoom(){roomOpen=false;window.__catlakManagementRoomOpen=false;const main=APP.querySelector('main');if(main?.dataset.gmrPage==='1')delete main.dataset.gmrPage;if(window.__catlakGmHubOwnsMain===true)window.__catlakGmHubOwnsMain=false}
+function openRoom(options={}){
+ const explicit=options===true?false:options?.explicit===true;
+ if(!explicit||!isGM())return false;
  roomOpen=true;window.__catlakManagementRoomOpen=true;window.__catlakGmHubOwnsMain=true;
  const main=APP.querySelector('main');if(main){main.dataset.gm2Route='characters';main.innerHTML='<section class="card"><div class="eyebrow">GM • YÖNETİM ODASI</div><h2>Karakterler yükleniyor…</h2></section>'}
- load(force);return true;
+ load(true);return true;
 }
 function wrapHub(){
  const hub=window.__catlakGmHubV2Test;if(!hub||hub.__gmrWrapped)return false;
  const originalRoute=typeof hub.route==='function'?hub.route.bind(hub):null;
  const originalLeave=typeof hub.leave==='function'?hub.leave.bind(hub):null;
- hub.route=function(route){if(String(route||'')==='characters')return openRoom(true);closeRoom();return originalRoute?.(route)};
+ hub.route=function(route){
+   const r=String(route||'');
+   if(r==='characters'){
+     // Yönetim Odası yalnız GM Merkezi yönlendiricisinden açık kullanıcı isteğiyle açılır.
+     closeRoom();
+     return originalRoute?.(route);
+   }
+   closeRoom();
+   return originalRoute?.(route)
+ };
  hub.leave=function(){closeRoom();return originalLeave?.()};
- hub.__gmrWrapped=true;hub.openManagement=openRoom;hub.closeManagement=closeRoom;
+ hub.__gmrWrapped=true;hub.openManagement=opts=>openRoom(opts);hub.closeManagement=closeRoom;
  return true;
 }
 function ensureWrap(){if(wrapHub())return;clearTimeout(wrapTimer);wrapTimer=setTimeout(ensureWrap,40)}
@@ -91,6 +101,7 @@ window.addEventListener('click',e=>{
 },true);
 
 S.channel('gmr-characters').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(!roomOpen)return;clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>load(true),90)}).subscribe();
+closeRoom();
 ensureWrap();
-window.__catlakManagementRoom={open:openRoom,close:closeRoom,refresh:()=>load(true),isOpen:()=>roomOpen};
+window.__catlakManagementRoom={open:openRoom,openExplicit:()=>openRoom({explicit:true}),close:closeRoom,refresh:()=>load(true),isOpen:()=>roomOpen};
 })();
