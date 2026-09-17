@@ -49,13 +49,31 @@
     }
 
     function load(src,key){
-      if(document.querySelector('script[data-cc-addon="'+key+'"]'))return;
-      var s=document.createElement('script');
-      s.src=src;
-      s.async=true;
-      s.dataset.ccAddon=key;
-      s.onerror=function(){console.warn('CATLAK_ADDON_LOAD_FAILED',src)};
-      document.body.appendChild(s);
+      return new Promise(function(resolve){
+        var old=document.querySelector('script[data-cc-addon="'+key+'"]');
+        if(old){resolve(true);return}
+        var s=document.createElement('script');
+        s.src=src;
+        s.async=false;
+        s.dataset.ccAddon=key;
+        s.onload=function(){resolve(true)};
+        s.onerror=function(){console.warn('CATLAK_ADDON_LOAD_FAILED',src);resolve(false)};
+        document.body.appendChild(s);
+      });
+    }
+
+    function loadParallel(list){
+      list.forEach(function(x){load(x[0],x[1])});
+    }
+
+    async function loadGmCore(){
+      // GM Merkezi için sıra önemlidir: eski araçlar -> merkez motoru -> yönlendirici.
+      await load('./gm-tools-patch.js?v=recovery-gm-2','gm-tools');
+      await load('./quality-of-life-patch.js?v=recovery-gm-2','qol');
+      await load('./gm-hub-v2-patch.js?v=recovery-gm-2','gm-hub');
+      await load('./gm-center-router-core.js?v=recovery-gm-2','gm-router');
+      load('./gm-nav-cleanup-patch.js?v=recovery-gm-2','gm-nav-cleanup');
+      try{window.__catlakGmHubV2Test?.chrome?.();window.__catlakGmCenterRouterCore?.ensureEntry?.()}catch(e){console.warn('CATLAK_GM_CORE_REFRESH',e)}
     }
 
     function loadSafeAddons(){
@@ -64,25 +82,24 @@
       var tries=0;
       (function waitCore(){
         if(window.__catlakSupabase){
-          [
-            ['./gm-center-router-core.js?v=recovery-1','gm-router'],
-            ['./gm-controls-patch.js?v=recovery-1','gm-controls'],
-            ['./presence-patch.js?v=recovery-1','presence'],
-            ['./dice-ux-patch.js?v=recovery-1','dice'],
-            ['./item-system-patch.js?v=recovery-1','items'],
-            ['./event-rolls-patch.js?v=recovery-1','events'],
-            ['./gm-tools-patch.js?v=recovery-1','gm-tools'],
-            ['./room-guard-patch.js?v=recovery-1','room-guard'],
-            ['./room-system-patch.js?v=recovery-1','rooms'],
-            ['./party-roster-patch.js?v=recovery-1','party-roster'],
-            ['./invite-visibility-patch.js?v=recovery-1','invites'],
-            ['./player-sheet-patch.js?v=recovery-1','player-sheet'],
-            ['./player-sheet-equipment-abilities-patch.js?v=recovery-1','player-equip'],
-            ['./player-live-actions-patch.js?v=recovery-1','player-actions'],
-            ['./gm-item-slot-patch.js?v=recovery-1','gm-items'],
-            ['./stat-roll-patch.js?v=recovery-1','stat-roll'],
-            ['./quality-of-life-patch.js?v=recovery-1','qol']
-          ].forEach(function(x){load(x[0],x[1])});
+          loadGmCore().then(function(){
+            loadParallel([
+              ['./gm-controls-patch.js?v=recovery-2','gm-controls'],
+              ['./presence-patch.js?v=recovery-2','presence'],
+              ['./dice-ux-patch.js?v=recovery-2','dice'],
+              ['./item-system-patch.js?v=recovery-2','items'],
+              ['./event-rolls-patch.js?v=recovery-2','events'],
+              ['./room-guard-patch.js?v=recovery-2','room-guard'],
+              ['./room-system-patch.js?v=recovery-2','rooms'],
+              ['./party-roster-patch.js?v=recovery-2','party-roster'],
+              ['./invite-visibility-patch.js?v=recovery-2','invites'],
+              ['./player-sheet-patch.js?v=recovery-2','player-sheet'],
+              ['./player-sheet-equipment-abilities-patch.js?v=recovery-2','player-equip'],
+              ['./player-live-actions-patch.js?v=recovery-2','player-actions'],
+              ['./gm-item-slot-patch.js?v=recovery-2','gm-items'],
+              ['./stat-roll-patch.js?v=recovery-2','stat-roll']
+            ]);
+          });
           return;
         }
         if(++tries<120)setTimeout(waitCore,50);
@@ -98,7 +115,7 @@
     });
 
     var core=document.createElement('script');
-    core.src='./browser-app.js?v=recovery-core-1';
+    core.src='./browser-app.js?v=recovery-core-2';
     core.async=false;
     core.onload=function(){
       started=true;
