@@ -21,17 +21,25 @@ function rspKey(el){
 function rspRouteTarget(target){
   return target?.closest?.('#app [data-gmci-tool],#app [data-gm2-route],#app .nav button,#app .gmt-tabs [data-gmt-sub],#app [data-ccr-battle]')||null;
 }
-
+function rspMain(){return RSP_APP.querySelector('main')}
+function rspCustomOpen(){return !!(window.__catlakPartyRoomOwnsMain||window.__catlakCampaignStateRoom||window.__catlakCreatureLibraryOpen||window.__catlakGmCenterSelectedRoute||window.__catlakBattleRoomOpen)}
 function rspIsActive(el){
-  if(!el)return false;
-  if(el.classList?.contains('on'))return true;
-  if(el.matches?.('[data-gm2-route]')){
-    const active=RSP_APP.querySelector(`[data-gm2-route="${CSS.escape(String(el.dataset.gm2Route||''))}"].on`);
-    return active===el;
-  }
-  if(el.matches?.('[data-gmci-tool]')){
-    const active=RSP_APP.querySelector(`[data-gmci-tool="${CSS.escape(String(el.dataset.gmciTool||''))}"].on`);
-    return active===el;
+  if(!el)return false;const m=rspMain();
+  if(el.matches?.('[data-gm2-route]'))return String(window.__catlakGmCenterSelectedRoute||'')===String(el.dataset.gm2Route||'');
+  if(el.matches?.('[data-gmci-tool]'))return !!el.classList?.contains('on')&&!!m?.querySelector('[data-gmci-page], [data-gmci-panel]');
+  if(el.matches?.('[data-cc-map-tab]'))return m?.dataset.ccMapPage==='1';
+  if(el.matches?.('[data-cc-world-tab]'))return m?.dataset.swPage==='gallery';
+  if(el.matches?.('[data-cc-stats-tab]'))return m?.dataset.gm2Route==='stats'||!!m?.querySelector('.cux-workshop,[data-cux-editor]');
+  if(el.matches?.('[data-ccr-battle]'))return window.__catlakBattleRoomOpen===true||m?.dataset.ccrBattle==='1'||!!m?.querySelector('.ccr-battle-grid');
+  if(el.matches?.('[data-gmt-open]')){try{return !!window.__catlakGmCenterRouterCore?.centerOpen?.()}catch{return !!RSP_APP.querySelector('[data-gm2-centerbar]')}}
+  if(el.matches?.('[data-gmt-sub]'))return m?.dataset.gmtSub===String(el.dataset.gmtSub||'');
+  if(el.matches?.('button[data-tab]')){
+    if(!el.classList?.contains('on')||rspCustomOpen())return false;
+    const ons=[...RSP_APP.querySelectorAll('.nav button.on')].filter(x=>x.offsetParent!==null);
+    const tab=String(el.dataset.tab||'');
+    if(tab==='sheet')return ons.length===1&&(m?.classList.contains('ps-player-sheet')||!!m?.querySelector('.cc-character-stack,.ps-sheet-empty'));
+    if(tab==='gm')return ons.length===1&&(m?.dataset.ccSimpleLive==='1'||!!m?.querySelector('[data-lcc-board],.cc-live-two'));
+    return ons.length===1&&ons[0]===el;
   }
   return false;
 }
@@ -52,34 +60,32 @@ function rspDirectGmRoute(el,e){
 }
 
 window.addEventListener('click',e=>{
-  // Programatik click'ler uygulamanın kendi rota zinciridir; onları serbest bırak.
   if(!e.isTrusted)return;
   const el=rspRouteTarget(e.target);if(!el)return;
   const key=rspKey(el);if(!key)return;
   const now=performance.now();
 
-  // Zaten açık olan sekmeye tekrar basmak ikinci sorgu/render başlatmasın.
+  // Sadece gerçekten açık olan ekranı tekrar tıklamayı engelle.
+  // Eski/stale .on sınıfları artık geçişi kilitlemez.
   if(rspIsActive(el)){
     rspBlock(e);
     return;
   }
 
-  // Sadece AYNI hedefte çok hızlı çift tıklamayı tekleştir.
-  if(key===rspLastKey&&now-rspLastAt<380){
+  if(key===rspLastKey&&now-rspLastAt<260){
     rspBlock(e);
     return;
   }
 
-  // Farklı sekmeler arasında artık zaman kilidi yok: tıklama anında işlenir.
   rspLastKey=key;
   rspLastAt=now;
+  try{window.__catlakGlobalTransition?.begin?.(el)}catch(_){ }
 
-  // GM Merkezi ana rotaları tek resmi fonksiyondan geçsin.
-  // Yeni Savaş/Olay/Günlük düğmelerini kendi hızlı katmanı yönetir.
   if(el.matches?.('[data-gm2-route]'))rspDirectGmRoute(el,e);
 },true);
 
 window.__catlakRouteStability={
   key:rspKey,
+  active:rspIsActive,
   reset:()=>{rspLastKey='';rspLastAt=0}
 };
