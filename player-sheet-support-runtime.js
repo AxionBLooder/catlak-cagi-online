@@ -5,6 +5,7 @@ window.__catlakPlayerSheetSupportV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
 const txt=e=>String(e?.textContent||'').trim();
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isPlayer=()=>txt(APP.querySelector('.role'))!=='GM';
 const isSheet=()=>isPlayer()&&APP.querySelector('.nav button.on[data-tab]')?.dataset.tab==='sheet';
 const charId=stack=>stack?.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||'';
@@ -60,7 +61,11 @@ function paintStack(stack,data){
   const panel=ensurePanel(stack);if(!panel)return;
   const status=panel.querySelector('[data-gmt-status-list]');
   const conds=data.conditions.filter(x=>String(x.character_id)===String(cid));
-  if(status)status.innerHTML=conds.length?conds.map(x=>`<span class="pssr-status-pill"><b>${String(x.name||'Durum').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</b>${x.remaining_rounds==null?'':' • '+Number(x.remaining_rounds)+' round'}${x.note?' • '+String(x.note).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])):''}</span>`:'<p class="muted">Aktif durum etkisi yok.</p>';
+  if(status){
+    status.innerHTML=conds.length
+      ?conds.map(x=>`<span class="pssr-status-pill"><b>${esc(x.name||'Durum')}</b>${x.remaining_rounds==null?'':' • '+Number(x.remaining_rounds)+' round'}${x.note?' • '+esc(x.note):''}</span>`).join('')
+      :'<p class="muted">Aktif durum etkisi yok.</p>';
+  }
   const itemMap=new Map(data.items.map(i=>[String(i.id),i]));
   const rows=data.inventory.filter(x=>String(x.character_id)===String(cid)&&x.equipped);
   for(const key of slots){
