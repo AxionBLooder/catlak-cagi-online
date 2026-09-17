@@ -33,7 +33,7 @@ jobs:
         run: |
           cat > restored-smoke.html <<'HTML'
           <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}</style></head><body>
-          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open>GM Merkezi</button><button data-tab="items">Eşyalar</button><button data-tab="races">Irklar</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button></nav><main data-cc-simple-live="1"><div class="cc-live-two">Oyuncular & Zarlar</div></main></div><div id="toast" class="hidden"></div>
+          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open class="gm2-center-active">GM Merkezi</button><button data-tab="items">Eşyalar</button><button data-tab="races">Irklar</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button></nav><div class="gm2-centerbar" data-gm2-centerbar data-gm2-stable="1"><span class="gm2-label">GM MERKEZİ</span><button type="button" data-gm2-route="ability">Yetenek</button><button type="button" data-gm2-route="items">Eşya</button><button type="button" data-gm2-route="characters">Yönetim Odası</button></div><main data-cc-simple-live="1"><div class="cc-live-two">Oyuncular & Zarlar</div></main></div><div id="toast" class="hidden"></div>
           <script>
           const chars=[{id:'c1',name:'Test Karakter',species_name:'Vampir',level:3,data:{vampire_kp:3},play_status:'active',owner_id:'u1',created_at:'1',hp_current:10,hp_max:12,base_ac:12,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}];
           function rows(table){
@@ -50,13 +50,10 @@ jobs:
           window.__catlakGmTools={open(){},close(){},active(){return''}};
           window.__catlakQualityOfLifeTest={closeCreatureLibrary(){},openCreatureLibrary(){}};
           </script>
-          <script src="./gm-hub-v2-patch.js"></script>
           <script src="./gm-campaign-state-patch.js"></script>
           <script src="./seal-character-controls-patch.js"></script>
           <script src="./live-combat-center-patch.js"></script>
           <script>
-            document.querySelector('[data-gmt-open]').click();
-            window.__catlakGmHubV2Test?.chrome?.();
             window.__catlakCampaignStateTest?.maintain?.();
             window.__catlakLiveCombatCenter?.render?.();
           </script>
