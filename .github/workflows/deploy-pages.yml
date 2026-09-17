@@ -60,8 +60,20 @@ jobs:
               'player-enemy-privacy-patch.js?v=privacy-v4-live-party'
           )
           live_html = live_html.replace(
+              'gm-center-router-core.js?v=gmrouter-v6-campaign',
+              'gm-center-router-core.js?v=gmrouter-v7-room-ownership'
+          )
+          live_html = live_html.replace(
+              'gm-controls-patch.js?v=gmctrl-v1',
+              'gm-controls-patch.js?v=gmctrl-v2-no-live-panel'
+          )
+          live_html = live_html.replace(
+              'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1',
+              'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1'
+          )
+          live_html = live_html.replace(
               '</body>',
-              '<script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>'
+              '<script src="./party-eeliot-runtime-hotfix.js?v=party-v3-room-owner"></script><script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>'
           )
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
@@ -71,10 +83,14 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
+          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v3-room-owner' _site/index.html
+          grep -Fq 'party-stable-entry.js?v=partyentry-v4-room-owner' _site/index.html
           grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v1' _site/index.html
           ! grep -Fq '<script src="./live-combat-center-patch.js?v=livecombat-v1"></script>' _site/index.html
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
-          grep -Fq 'gm-center-router-core.js?v=gmrouter-v6-campaign' _site/index.html
+          grep -Fq 'gm-center-router-core.js?v=gmrouter-v7-room-ownership' _site/index.html
+          grep -Fq 'gm-controls-patch.js?v=gmctrl-v2-no-live-panel' _site/index.html
+          grep -Fq 'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1' _site/index.html
           grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v8-campaign' _site/index.html
           grep -Fq 'player-enemy-privacy-patch.js?v=privacy-v4-live-party' _site/index.html
           test -f _site/live-combat-center-loader.js
@@ -91,7 +107,8 @@ jobs:
           grep -Fq '__catlakPartyStableEntryV3=true' _site/party-stable-entry.js
           grep -Fq 'Parti Yönetimi' _site/party-stable-entry.js
           grep -Fq "live.textContent='Canlı Oyun'" _site/party-stable-entry.js
-          grep -Fq "title==='Oyuncular & Zarlar'" _site/party-stable-entry.js
+          grep -Fq '__catlakGmControlsLivePanelDisabled=true' _site/gm-controls-patch.js
+          grep -Fq 'cc-reading-columns' _site/site-stability-patch.js
           grep -Fq '__catlakGcsDeltaPointerV2=true' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignRoomStableV3=true' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakSealEditorStableV1=true' _site/gm-campaign-state-patch.js
@@ -104,7 +121,6 @@ jobs:
           grep -Fq 'stat-editor-hardfix.js?v=statfix-v4-character-switch' _site/index.html
           grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v6&stat-interaction-v1' _site/index.html
           grep -Fq 'stat-roll-patch.js?v=statroll-v3&no-reset-v1' _site/index.html
-          grep -Fq 'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1' _site/index.html
           grep -Fq 'browser-app.js?v=bootwatch-235-stat-interaction-v1' _site/index.html
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
           grep -Fq '__catlakCampaignStateTest' _site/gm-campaign-state-patch.js
@@ -123,8 +139,8 @@ jobs:
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
-        with:
-          path: _site
+          with:
+            path: _site
 
       - name: Deploy Pages
         id: deployment
