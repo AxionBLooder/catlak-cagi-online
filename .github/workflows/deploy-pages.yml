@@ -38,31 +38,17 @@ jobs:
 
           html = Path('index.html').read_text(encoding='utf-8')
           extras = {
-              'browser-app.js',
-              'global-transition-guard.js',
-              'ddb-flow-core.js',
-              'ddb-site-theme-v1.js',
-              'gm-campaign-state-patch.js',
-              'party-eeliot-runtime-hotfix.js',
-              'party-stable-entry.js',
-              'live-combat-center-loader.js',
-              'live-combat-center-patch.js',
-              'visual-archive-map-flow-patch.js',
-              'seal-character-controls-patch.js',
-              'party-player-transition-fix.js',
-              'battle-party-membership-guard.js',
-              'session-log-delete-fix.js',
-              'player-portal-v3.js',
+              'browser-app.js','global-transition-guard.js','ddb-flow-core.js','ddb-site-theme-v1.js','ddb-builder-v2.js',
+              'gm-campaign-state-patch.js','party-eeliot-runtime-hotfix.js','party-stable-entry.js','live-combat-center-loader.js',
+              'live-combat-center-patch.js','visual-archive-map-flow-patch.js','seal-character-controls-patch.js',
+              'party-player-transition-fix.js','battle-party-membership-guard.js','session-log-delete-fix.js','player-portal-v3.js',
           }
           files = set(extras)
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
-
           missing = sorted(name for name in files if not Path(name).is_file())
-          if missing:
-              raise SystemExit('Eksik çalışma dosyaları: ' + ', '.join(missing))
-          for name in sorted(files):
-              Path('_site', name).write_bytes(Path(name).read_bytes())
+          if missing: raise SystemExit('Eksik çalışma dosyaları: ' + ', '.join(missing))
+          for name in sorted(files): Path('_site', name).write_bytes(Path(name).read_bytes())
 
           live_html = html
           replacements = {
@@ -72,13 +58,17 @@ jobs:
               'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1':'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1',
               'route-stability-patch.js?v=routes-v2':'route-stability-patch.js?v=routes-v3-real-view',
           }
-          for old,new in replacements.items():
-              live_html = live_html.replace(old,new)
+          for old,new in replacements.items(): live_html = live_html.replace(old,new)
 
-          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v2"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v2"></script>'
+          # Ana JS ve Supabase bağlantısı mümkün olduğunca erken başlasın.
+          speed_head = '<link rel="preconnect" href="https://ygbereitlhjvoqgqlwfe.supabase.co" crossorigin><link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co"><link rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1">'
+          live_html = live_html.replace('</head>', speed_head + '</head>', 1)
+
+          early = '<script src="./global-transition-guard.js?v=global-transition-v4"></script><script src="./ddb-flow-core.js?v=ddb-flow-v2"></script><script src="./ddb-site-theme-v1.js?v=ddb-site-v3"></script>'
           live_html = live_html.replace('<script src="./stat-editor-hardfix.js', early + '<script src="./stat-editor-hardfix.js', 1)
 
-          late = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
+          # Ek özellikler artık tek tek sırayla beklenmiyor; Supabase hazır olur olmaz paralel yüklenir.
+          late = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,45);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1","./player-portal-v3.js?v=player-portal-v3-ddb1","./ddb-builder-v2.js?v=ddb-builder-v2"],left=q.length;function done(){if(--left<=0){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"))}}q.forEach(function(src){var s=document.createElement("script");s.src=src;s.async=true;s.onload=done;s.onerror=done;document.body.appendChild(s)})})();</script>'''
           live_html = live_html.replace('</body>', late + '</body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
@@ -87,18 +77,19 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
-          grep -Fq 'global-transition-guard.js?v=global-transition-v4' _site/index.html
-          grep -Fq 'ddb-flow-core.js?v=ddb-flow-v2' _site/index.html
-          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v2' _site/index.html
+          grep -Fq 'rel="preload" as="script" href="./browser-app.js?v=bootwatch-235-stat-interaction-v1"' _site/index.html
+          grep -Fq 'ddb-site-theme-v1.js?v=ddb-site-v3' _site/index.html
+          grep -Fq 'ddb-builder-v2.js?v=ddb-builder-v2' _site/index.html
+          grep -Fq 's.async=true' _site/index.html
           ! grep -Fq 'Bölüm hazırlanıyor' _site/index.html
           ! grep -Fq 'cc-route-cloak #app main{visibility:hidden' _site/index.html
           ! grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
           grep -Fq '__catlakGlobalTransitionGuardV4' _site/global-transition-guard.js
           grep -Fq '__catlakDdbFlowCoreV2' _site/ddb-flow-core.js
-          grep -Fq '__catlakDdbSiteThemeV2' _site/ddb-site-theme-v1.js
-          grep -Fq 'player-portal-v3.js?v=player-portal-v3-ddb1' _site/index.html
-          grep -Fq 'battle-party-membership-guard.js?v=battle-party-v1' _site/index.html
-          grep -Fq 'session-log-delete-fix.js?v=session-log-v1' _site/index.html
+          grep -Fq '__catlakDdbSiteThemeV3' _site/ddb-site-theme-v1.js
+          grep -Fq '__catlakDdbBuilderV2' _site/ddb-builder-v2.js
+          grep -Fq 'Arka Plan' _site/ddb-builder-v2.js
+          grep -Fq 'Kimlik' _site/ddb-builder-v2.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
