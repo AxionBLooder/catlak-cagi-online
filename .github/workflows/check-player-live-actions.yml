@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Static checks
         run: |
+          set -euo pipefail
           node --check player-live-actions-patch.js
           node --check player-sheet-patch.js
           node --check item-system-patch.js
@@ -31,8 +32,9 @@ jobs:
           grep -q '__catlakPlayerLiveOwnsInventory' player-live-actions-patch.js
           grep -q 'meta=`Saldırı •' player-live-actions-patch.js
           grep -q 'bonusu' player-live-actions-patch.js
-          grep -q 'playerlive-v5' index.html
-          grep -q 'preclaimPlayerInventory' index.html
+          grep -q 'player-live-actions-patch.js' index.html
+          grep -q 'player-sheet-patch.js' index.html
+          grep -q 'item-system-patch.js' index.html
           grep -q "table:'catlak_inventory'" player-live-actions-patch.js
           grep -q "table:'catlak_rolls'" player-live-actions-patch.js
       - name: Install browser driver
