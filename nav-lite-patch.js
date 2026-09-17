@@ -137,3 +137,4 @@ document.addEventListener('click',e=>{
 new MutationObserver(cnlSchedule).observe(CNL_APP,{childList:true,subtree:true});
 cnlEnsureNav();
 // build trigger: player gallery hidden; party visual presentation enlarged; GM Merkezi Stat direct route
+// build trigger: stat character switch bundle v2

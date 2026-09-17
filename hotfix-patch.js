@@ -160,3 +160,63 @@ CC_HOTFIX_S.channel('cc-hotfix-live')
 
 ccHLoadPlayerNotes(true);
 ccHSchedule();
+
+// ---------- Stat Atölyesi: bundle capture karakter seçimi ----------
+(function(){
+  if(window.__catlakBundleStatSwitchV2)return;
+  window.__catlakBundleStatSwitchV2=true;
+  let token=0;
+  const listSel='#app main .cux-character-list';
+  const buttonSel='#app main [data-cux-character]';
+  const editorId=()=>String(document.querySelector('#app main [data-cux-editor]')?.dataset?.cuxEditor||'');
+  const selectedId=()=>{try{return String(window.__catlakStatsTest?.selected?.()||'')}catch(_){return''}};
+  const open=()=>!!document.querySelector(listSel);
+  function fromPoint(x,y){
+    if(!Number.isFinite(x)||!Number.isFinite(y))return null;
+    const list=document.querySelector(listSel);if(!list)return null;
+    const lr=list.getBoundingClientRect();
+    if(x<lr.left||x>lr.right||y<lr.top||y>lr.bottom)return null;
+    for(const b of list.querySelectorAll('[data-cux-character]')){
+      const r=b.getBoundingClientRect();
+      if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return b;
+    }
+    return null;
+  }
+  function buttonFromEvent(e){return e.target?.closest?.(buttonSel)||fromPoint(Number(e.clientX),Number(e.clientY))}
+  function choose(id){
+    id=String(id||'');if(!id||!open())return false;
+    const mine=++token;
+    const tab=document.querySelector('#app .nav [data-cc-stats-tab]');
+    if(tab&&!tab.classList.contains('on'))tab.classList.add('on');
+    const run=async attempt=>{
+      if(mine!==token||!open())return;
+      const api=window.__catlakStatsTest;
+      if(!api||typeof api.select!=='function'){
+        if(attempt<12)setTimeout(()=>run(attempt+1),25);
+        return;
+      }
+      try{api.select(id)}catch(e){console.warn('BUNDLE_STAT_SELECT',e)}
+      await new Promise(r=>requestAnimationFrame(r));
+      if(mine!==token)return;
+      if(selectedId()===id&&editorId()===id)return;
+      if(typeof api.render==='function'){
+        try{await Promise.resolve(api.render(true))}catch(e){console.warn('BUNDLE_STAT_RENDER',e)}
+        if(mine!==token)return;
+        try{api.select(id)}catch(e){console.warn('BUNDLE_STAT_RESELECT',e)}
+      }
+      await new Promise(r=>requestAnimationFrame(r));
+      if((selectedId()!==id||editorId()!==id)&&attempt<4)setTimeout(()=>run(attempt+1),45);
+    };
+    run(0);return true;
+  }
+  function intercept(e){
+    if(e.button!=null&&e.button!==0)return;
+    const b=buttonFromEvent(e);if(!b)return;
+    const id=String(b.dataset.cuxCharacter||'');if(!id)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();choose(id);
+  }
+  window.addEventListener('pointerdown',intercept,true);
+  window.addEventListener('mousedown',intercept,true);
+  window.addEventListener('click',intercept,true);
+  window.__catlakBundleStatSwitch={choose,selected:selectedId,editor:editorId};
+})();
