@@ -65,17 +65,18 @@ jobs:
             if(!state.buttons.includes('İtibar Odası')||!state.buttons.includes('Mühür Odası')||!state.buttons.includes('Yönetim Odası'))throw new Error('GM room buttons missing '+JSON.stringify(state));
             if(!state.combat.includes('Savaşı Başlat')||!state.combat.includes('TUR SIRASI')||!state.combat.includes('DURUM ETKİLERİ'))throw new Error('Live combat panel missing '+JSON.stringify(state));
             if(!state.seal||!state.sealControls||!state.combatApi)throw new Error('Restored APIs missing '+JSON.stringify(state));
-            const detached=await p.evaluate(async()=>{
+            const detached=await p.evaluate(()=>{
               const old=document.querySelector('#live-anchor');
               document.querySelector('main').innerHTML='<div class="cc-live-two" id="fresh-anchor">Yeni Canlı Masa</div>';
               let threw='';try{old.insertAdjacentHTML('afterend','<section data-anchor-test>BOARD</section>')}catch(e){threw=e.message}
-              await new Promise(r=>setTimeout(r,30));
-              return {threw,placed:!!document.querySelector('#fresh-anchor + [data-anchor-test]')};
+              return {threw,placedImmediately:!!document.querySelector('#fresh-anchor + [data-anchor-test]')};
             });
-            if(detached.threw||!detached.placed)throw new Error('Detached live anchor regression '+JSON.stringify(detached));
+            if(detached.threw||!detached.placedImmediately)throw new Error('Detached live anchor regression '+JSON.stringify(detached));
             const retry=await p.evaluate(async()=>{
+              await new Promise(r=>setTimeout(r,40));
               let calls=0;window.__catlakLiveCombatCenter={render(){calls++}};
-              const a=document.querySelector('#fresh-anchor');a.remove();
+              document.querySelectorAll('.cc-live-two').forEach(x=>x.remove());
+              const a=document.createElement('div');a.className='cc-live-two';
               let threw='';try{a.insertAdjacentHTML('afterend','<section>MISS</section>')}catch(e){threw=e.message}
               await new Promise(r=>setTimeout(r,140));return {threw,calls};
             });
