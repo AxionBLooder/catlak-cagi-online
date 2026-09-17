@@ -1,0 +1,82 @@
+name: Check Live Game Entry Transition
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'live-game-entry-guard.js'
+      - '.github/workflows/check-live-entry-transition.yml'
+  workflow_dispatch:
+
+jobs:
+  transition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check live-game-entry-guard.js
+          grep -Fq 'live-game-entry-guard.js?v=live-entry-v1' index.html
+          grep -Fq 'cc-live-entry-pending' live-game-entry-guard.js
+          grep -Fq 'ccSimpleLive' live-game-entry-guard.js
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify old live page never becomes visible
+        run: |
+          cat > live-entry-smoke.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><style>html,body{background:#071019;color:white}</style></head><body>
+          <div id="app">
+            <span class="role">GM</span>
+            <nav class="nav"><button data-tab="home" class="on">Home</button><button data-tab="gm">Canlı Oyun Masası</button></nav>
+            <main><section>BAŞLANGIÇ</section></main>
+          </div>
+          <script src="./live-game-entry-guard.js"></script>
+          <script>
+          document.querySelector('#app').addEventListener('click',e=>{
+            const b=e.target.closest('[data-tab]');if(!b)return;
+            document.querySelectorAll('.nav .on').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+            const main=document.querySelector('main');
+            if(b.dataset.tab==='gm'){
+              main.removeAttribute('data-cc-simple-live');
+              main.innerHTML='<section id="legacy-live">GM CANLI MASA • ESKİ SAYFA</section>';
+              setTimeout(()=>{
+                if(!b.classList.contains('on'))return;
+                main.innerHTML='<section>CANLI OYUN MASASI</section><div class="cc-live-two">Oyuncular & Zarlar</div>';
+                main.dataset.ccSimpleLive='1';
+              },140);
+            }
+          });
+          </script>
+          </body></html>
+          HTML
+          python3 -m http.server 4174 --bind 127.0.0.1 >/tmp/live-entry-http.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          cat > live-entry-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          (async()=>{
+            let exe='';
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}}
+            if(!exe)throw new Error('Chrome missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const p=await browser.newPage();
+              const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));
+              await p.goto('http://127.0.0.1:4174/live-entry-smoke.html',{waitUntil:'domcontentloaded'});
+              await p.click('[data-tab="gm"]');
+              await p.waitForTimeout(40);
+              const legacy=await p.locator('main').evaluate(el=>({visibility:getComputedStyle(el).visibility,text:el.innerText}));
+              if(!legacy.text.includes('ESKİ SAYFA'))throw new Error('Legacy state was not simulated');
+              if(legacy.visibility!=='hidden')throw new Error('Legacy live page became visible: '+JSON.stringify(legacy));
+              await p.waitForSelector('main[data-cc-simple-live="1"] .cc-live-two');
+              await p.waitForTimeout(80);
+              const final=await p.locator('main').evaluate(el=>({visibility:getComputedStyle(el).visibility,text:el.innerText,pending:document.documentElement.classList.contains('cc-live-entry-pending')}));
+              if(final.visibility==='hidden'||final.pending)throw new Error('Final live page stayed hidden: '+JSON.stringify(final));
+              if(!final.text.includes('Oyuncular & Zarlar'))throw new Error('Final live page missing');
+              if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
+              console.log('LIVE_ENTRY_TRANSITION_OK',JSON.stringify(final));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node live-entry-smoke.cjs
