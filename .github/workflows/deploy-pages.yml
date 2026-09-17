@@ -69,7 +69,7 @@ jobs:
           grep -Fq '__catlakCampaignRouterStableV3=true' _site/gm-center-router-core.js
           grep -Fq "GCS_PLACEHOLDER_ROUTE='campaign'" _site/gm-campaign-state-patch.js
           grep -Fq 'player-equipment-lock-patch.js?v=player-equipment-lock-v2' _site/index.html
-          grep -Fq 'stat-editor-hardfix.js?v=statfix-v1' _site/index.html
+          grep -Fq 'stat-editor-hardfix.js?v=statfix-v4-character-switch' _site/index.html
           grep -Fq 'stat-workshop-route-fix.js?v=statsroute-v6&stat-interaction-v1' _site/index.html
           grep -Fq 'stat-roll-patch.js?v=statroll-v3&no-reset-v1' _site/index.html
           grep -Fq 'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1' _site/index.html
@@ -77,6 +77,7 @@ jobs:
           grep -Fq 'player-live-actions-patch.js?v=playerlive-v11&gm-equipment-only-v1' _site/index.html
           grep -Fq '__catlakCampaignStateTest' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakStatEditorHardfix' _site/stat-editor-hardfix.js
+          grep -Fq '__catlakBundleStatSwitchV2' _site/browser-app.js
           ! grep -Fq 'slot-sync-hotfix.js' _site/battle-ready-clean-patch.js
           ! grep -Fq 'player-sheet-final-patch.js' _site/player-sheet-final-loader.js
           ! grep -Fq 'data-a="equip"' _site/player-live-actions-patch.js
