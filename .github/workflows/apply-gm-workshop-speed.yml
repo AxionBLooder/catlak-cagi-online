@@ -1,0 +1,100 @@
+name: Apply GM Workshop Speed
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-gm-workshop-speed.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Optimize clean GM router
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('gm-clean-router-v1.js')
+          s=p.read_text(encoding='utf-8')
+
+          def rep(old,new,label):
+              global s
+              if old in s:
+                  s=s.replace(old,new,1)
+              elif new not in s:
+                  raise SystemExit('pattern missing: '+label)
+
+          rep("if(window.__catlakGmCleanRouterV1)return;\nwindow.__catlakGmCleanRouterV1=true;",
+              "if(window.__catlakGmCleanRouterV2)return;\nwindow.__catlakGmCleanRouterV2=true;\nwindow.__catlakGmCleanRouterV1=true;",
+              'router v2 guard')
+
+          rep("let ability={editId:'',cache:{abilities:[],chars:[],assignments:[]}};\nconst inviteLinks=new Map();",
+              "let ability={editId:'',cache:{abilities:[],chars:[],assignments:[]},cacheAt:0,loading:null};\nlet characterCache=[],characterCacheAt=0,characterLoading=null;\nconst GMC_CACHE_MS=15000;\nconst inviteLinks=new Map();",
+              'cache state')
+
+          old="function openNative(r){const t=nativeTarget(r);if(!t){toast('Bu bölümün yerel ekranı bulunamadı.');return false}const token=++renderToken;t.click();setTimeout(()=>{if(token!==renderToken||route!==r)return;setRoute(r);if(r==='stats'&&typeof window.__catlakRenderCompactStats==='function')Promise.resolve(window.__catlakRenderCompactStats(true)).catch(()=>{});ensureBar()},0);return true}"
+          new="function openNative(r){const t=nativeTarget(r);if(!t){toast('Bu bölümün yerel ekranı bulunamadı.');return false}const token=++renderToken;t.click();setTimeout(()=>{if(token!==renderToken||route!==r)return;setRoute(r);ensureBar()},0);return true}\nfunction openStatsDirect(){const t=nativeTarget('stats'),render=window.__catlakRenderCompactStats;if(!t||typeof render!=='function'){toast('Stat Atölyesi hazır değil.');return false}const main=APP.querySelector('main');if(main){delete main.dataset.gmtTools;delete main.dataset.gmtSub;delete main.dataset.qolCreatureLibrary;delete main.dataset.cuxPage}t.classList.add('on');Promise.resolve(render(true)).then(()=>{if(route!=='stats')return;t.classList.add('on');ensureBar()}).catch(e=>toast('Stat Atölyesi açılamadı: '+(e?.message||String(e))));return true}"
+          rep(old,new,'direct stat route')
+
+          old="async function loadAbility(){const[a,c,x]=await Promise.all([S.from('catlak_abilities').select('*').order('name',{ascending:true}),S.from('catlak_characters').select('id,name,play_status,created_at').in('play_status',['prepared','active']).order('created_at',{ascending:true}),S.from('catlak_character_abilities').select('id,character_id,ability_id,uses_per_combat,uses_remaining,created_at').order('created_at',{ascending:true})]);for(const r of[a,c,x])if(r.error)throw r.error;ability.cache={abilities:a.data||[],chars:c.data||[],assignments:x.data||[]};return ability.cache}"
+          new="async function loadAbility(force=false){if(!force&&ability.cacheAt&&Date.now()-ability.cacheAt<GMC_CACHE_MS)return ability.cache;if(ability.loading)return ability.loading;ability.loading=(async()=>{const[a,c,x]=await Promise.all([S.from('catlak_abilities').select('*').order('name',{ascending:true}),S.from('catlak_characters').select('id,name,play_status,created_at').in('play_status',['prepared','active']).order('created_at',{ascending:true}),S.from('catlak_character_abilities').select('id,character_id,ability_id,uses_per_combat,uses_remaining,created_at').order('created_at',{ascending:true})]);for(const r of[a,c,x])if(r.error)throw r.error;ability.cache={abilities:a.data||[],chars:c.data||[],assignments:x.data||[]};ability.cacheAt=Date.now();return ability.cache})();try{return await ability.loading}finally{ability.loading=null}}"
+          rep(old,new,'ability cache')
+
+          rep("async function renderAbility(){const token=++renderToken,set=APP.querySelector('main');if(!set)return;set.innerHTML='<div class=\"gmc-page\" data-gmc-owned=\"ability\"><section class=\"card\"><div class=\"muted\">Yetenekler yükleniyor…</div></section></div>';try{const d=await loadAbility();if(token!==renderToken||route!=='ability')return;set.innerHTML=abilityPage(d)}catch(e){if(token===renderToken)set.innerHTML=`<section class=\"card\"><h2>Yetenek Atölyesi açılamadı</h2><p class=\"muted\">${esc(e?.message||String(e))}</p></section>`}}",
+              "async function renderAbility(force=false){const token=++renderToken,set=APP.querySelector('main');if(!set)return;const cached=!force&&ability.cacheAt&&Date.now()-ability.cacheAt<GMC_CACHE_MS;if(cached){set.innerHTML=abilityPage(ability.cache);return}set.innerHTML='<div class=\"gmc-page\" data-gmc-owned=\"ability\"><section class=\"card\"><div class=\"muted\">Yetenekler yükleniyor…</div></section></div>';try{const d=await loadAbility(force);if(token!==renderToken||route!=='ability')return;set.innerHTML=abilityPage(d)}catch(e){if(token===renderToken)set.innerHTML=`<section class=\"card\"><h2>Yetenek Atölyesi açılamadı</h2><p class=\"muted\">${esc(e?.message||String(e))}</p></section>`}}",
+              'ability render cache')
+
+          old="async function loadCharacters(){const r=await S.from('catlak_characters').select('*').order('created_at',{ascending:true});if(r.error)throw r.error;return r.data||[]}"
+          new="async function loadCharacters(force=false){if(!force&&characterCacheAt&&Date.now()-characterCacheAt<GMC_CACHE_MS)return characterCache;if(characterLoading)return characterLoading;characterLoading=(async()=>{const r=await S.from('catlak_characters').select('*').order('created_at',{ascending:true});if(r.error)throw r.error;characterCache=r.data||[];characterCacheAt=Date.now();return characterCache})();try{return await characterLoading}finally{characterLoading=null}}"
+          rep(old,new,'character cache')
+
+          old="async function renderManagement(){const token=++renderToken,main=APP.querySelector('main');if(!main)return;main.innerHTML='<div class=\"gmc-page\" data-gmc-owned=\"characters\"><section class=\"card\"><div class=\"muted\">Karakterler yükleniyor…</div></section></div>';try{const rows=await loadCharacters();"
+          new="async function renderManagement(force=false){const token=++renderToken,main=APP.querySelector('main');if(!main)return;const cached=!force&&characterCacheAt&&Date.now()-characterCacheAt<GMC_CACHE_MS;if(!cached)main.innerHTML='<div class=\"gmc-page\" data-gmc-owned=\"characters\"><section class=\"card\"><div class=\"muted\">Karakterler yükleniyor…</div></section></div>';try{const rows=await loadCharacters(force);"
+          rep(old,new,'management cache')
+
+          # Mutations must refresh cache; navigation can use warm cache.
+          for old,new in [
+            ("toast('Yetenek silindi.');await renderAbility();return","toast('Yetenek silindi.');ability.cacheAt=0;await renderAbility(true);return"),
+            ("ability.editId='';await renderAbility();return}if(type==='ability-assign'","ability.editId='';ability.cacheAt=0;await renderAbility(true);return}if(type==='ability-assign'"),
+            ("toast('Yetenek karaktere verildi.');await renderAbility();return","toast('Yetenek karaktere verildi.');ability.cacheAt=0;await renderAbility(true);return"),
+            ("toast('Yetenek karakterden kaldırıldı.');await renderAbility();return","toast('Yetenek karakterden kaldırıldı.');ability.cacheAt=0;await renderAbility(true);return"),
+            ("toast(`Seviye ${level} oldu.`);await renderManagement();return","toast(`Seviye ${level} oldu.`);characterCacheAt=0;await renderManagement(true);return"),
+            ("await renderManagement();return}if(type==='char-note'","characterCacheAt=0;await renderManagement(true);return}if(type==='char-note'"),
+            ("toast('Karakter silindi.');await renderManagement();return","toast('Karakter silindi.');characterCacheAt=0;await renderManagement(true);return"),
+            ("toast((owned?'Yeniden bağlama':'Karakter davet')+' linki oluşturuldu.');await renderManagement();return","toast((owned?'Yeniden bağlama':'Karakter davet')+' linki oluşturuldu.');characterCacheAt=0;await renderManagement(true);return")
+          ]:
+              if old in s:s=s.replace(old,new,1)
+
+          old="if(r==='ability'){renderAbility();return true}if(r==='characters'){renderManagement();return true}if(['items','stats','races','builder'].includes(r))return openNative(r);"
+          new="if(r==='ability'){renderAbility(false);return true}if(r==='characters'){renderManagement(false);return true}if(r==='stats')return openStatsDirect();if(['items','races','builder'].includes(r))return openNative(r);"
+          rep(old,new,'route split')
+
+          old="S.channel('gmc-clean-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(open&&route==='characters')renderManagement()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{if(open&&route==='ability')renderAbility()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{if(open&&route==='ability')renderAbility()}).subscribe();\nsetTimeout(maintain,120);setTimeout(maintain,700);"
+          new="S.channel('gmc-clean-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{characterCacheAt=0;ability.cacheAt=0;if(open&&route==='characters')renderManagement(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).subscribe();\nsetTimeout(()=>{maintain();if(isGM()){loadAbility(false).catch(()=>{});loadCharacters(false).catch(()=>{})}},0);setTimeout(maintain,500);"
+          rep(old,new,'realtime cache invalidation and prefetch')
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Verify optimized router
+        run: |
+          set -euo pipefail
+          node --check gm-clean-router-v1.js
+          grep -q '__catlakGmCleanRouterV2' gm-clean-router-v1.js
+          grep -q 'function openStatsDirect' gm-clean-router-v1.js
+          grep -q "if(r==='stats')return openStatsDirect()" gm-clean-router-v1.js
+          grep -q 'GMC_CACHE_MS=15000' gm-clean-router-v1.js
+          grep -q 'loadAbility(false).catch' gm-clean-router-v1.js
+          grep -q 'loadCharacters(false).catch' gm-clean-router-v1.js
+      - name: Commit router optimization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gm-clean-router-v1.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "GM atölyelerini hızlandır ve Stat rotasını doğrudan aç"
+          git pull --rebase origin main
+          git push
