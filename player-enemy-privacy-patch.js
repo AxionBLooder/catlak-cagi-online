@@ -34,15 +34,12 @@ document.addEventListener('click',pepSchedule,true);
 setTimeout(pepSanitize,120);
 window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
 
-(function loadPartyRosterPatch(){
-  if(document.querySelector('script[data-cpr-loader]'))return;
-  const s=document.createElement('script');s.dataset.cprLoader='1';s.src='./party-roster-patch.js?v=party-roster-v1';s.async=false;s.onerror=function(){console.error('Parti Yönetimi katmanı yüklenemedi.');};document.body.appendChild(s);
-})();
-(function loadEeliotProfilePatch(){
-  if(document.querySelector('script[data-eep-loader]'))return;
-  const s=document.createElement('script');s.dataset.eepLoader='1';s.src='./eeliot-character-patch.js?v=eeliot-profile-v1';s.async=false;s.onerror=function(){console.error('Eeliot karakter profili yüklenemedi.');};document.body.appendChild(s);
-})();
 (function loadPartyEeliotRuntimeHotfix(){
   if(document.querySelector('script[data-prh-loader]'))return;
-  const s=document.createElement('script');s.dataset.prhLoader='1';s.src='./party-eeliot-runtime-hotfix.js?v=runtime-v1';s.async=false;s.onerror=function(){console.error('Parti/Eeliot runtime hotfix yüklenemedi.');};document.body.appendChild(s);
+  const s=document.createElement('script');
+  s.dataset.prhLoader='1';
+  s.src='./party-eeliot-runtime-hotfix.js?v=runtime-v2-stable';
+  s.async=false;
+  s.onerror=function(){console.error('Parti/Eeliot runtime katmanı yüklenemedi.');};
+  document.body.appendChild(s);
 })();
