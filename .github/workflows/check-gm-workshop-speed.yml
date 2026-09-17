@@ -61,3 +61,5 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node gm-speed-smoke.cjs
+      - name: Mark run
+        run: echo GM_WORKSHOP_SPEED_CHECK_V2
