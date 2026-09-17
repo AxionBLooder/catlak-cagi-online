@@ -47,6 +47,9 @@ jobs:
               'visual-archive-map-flow-patch.js',
               'seal-character-controls-patch.js',
               'party-player-transition-fix.js',
+              'global-transition-guard.js',
+              'battle-party-membership-guard.js',
+              'session-log-delete-fix.js',
           }
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
@@ -74,7 +77,17 @@ jobs:
               'site-stability-patch.js?v=stability-v5&equipment-thaw-v1&no-reset-v1',
               'site-stability-patch.js?v=stability-v6-columns&equipment-thaw-v1&no-reset-v1'
           )
-          late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./party-player-transition-fix.js?v=party-transition-v1"],i=0;function next(){if(i>=q.length)return;var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
+          live_html = live_html.replace(
+              'route-stability-patch.js?v=routes-v2',
+              'route-stability-patch.js?v=routes-v3-real-view'
+          )
+
+          boot_style = '''<style id="cc-global-transition-style">html.cc-global-boot-cloak #app{visibility:hidden!important}html.cc-route-cloak #app main{visibility:hidden!important}html.cc-global-boot-cloak body::before,html.cc-route-cloak body::before{content:'Çatlak Çağı hazırlanıyor…';position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:#071019;color:#d9e8f5;font:700 15px/1.4 system-ui,sans-serif;letter-spacing:.04em;pointer-events:none}html.cc-route-cloak body::before{content:'Bölüm hazırlanıyor…';inset:72px 0 0;background:#071019f2}</style>'''
+          live_html = live_html.replace('<html lang="tr">','<html lang="tr" class="cc-global-boot-cloak">',1)
+          live_html = live_html.replace('</head>',boot_style+'</head>',1)
+          live_html = live_html.replace('<script src="./stat-editor-hardfix.js','<script src="./global-transition-guard.js?v=global-transition-v1"></script><script src="./stat-editor-hardfix.js',1)
+
+          late_loader = '''<script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script data-cc-late-runtime="1">(function bootLate(){if(!window.__catlakSupabase){setTimeout(bootLate,60);return}var q=["./party-eeliot-runtime-hotfix.js?v=party-v4-ready","./visual-archive-map-flow-patch.js?v=visual-flow-v1","./seal-character-controls-patch.js?v=seal-controls-v1","./battle-party-membership-guard.js?v=battle-party-v1","./party-player-transition-fix.js?v=party-transition-v1","./session-log-delete-fix.js?v=session-log-v1"],i=0;function next(){if(i>=q.length){window.__catlakLateRuntimeReady=true;window.dispatchEvent(new Event("catlak:late-ready"));return}var s=document.createElement("script");s.src=q[i++];s.async=false;s.onload=next;s.onerror=next;document.body.appendChild(s)}next()})();</script>'''
           live_html = live_html.replace('</body>', late_loader + '</body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
@@ -84,13 +97,19 @@ jobs:
           touch _site/.nojekyll
           for file in _site/*.js; do node --check "$file"; done
 
+          grep -Fq 'class="cc-global-boot-cloak"' _site/index.html
+          grep -Fq 'global-transition-guard.js?v=global-transition-v1' _site/index.html
+          grep -Fq 'route-stability-patch.js?v=routes-v3-real-view' _site/index.html
+          grep -Fq 'window.__catlakLateRuntimeReady=true' _site/index.html
           grep -Fq 'data-cc-late-runtime="1"' _site/index.html
           grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v4-ready' _site/index.html
           grep -Fq 'party-stable-entry.js?v=partyentry-v4-room-owner' _site/index.html
           grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v1' _site/index.html
           grep -Fq 'visual-archive-map-flow-patch.js?v=visual-flow-v1' _site/index.html
           grep -Fq 'seal-character-controls-patch.js?v=seal-controls-v1' _site/index.html
+          grep -Fq 'battle-party-membership-guard.js?v=battle-party-v1' _site/index.html
           grep -Fq 'party-player-transition-fix.js?v=party-transition-v1' _site/index.html
+          grep -Fq 'session-log-delete-fix.js?v=session-log-v1' _site/index.html
           ! grep -Fq '<script src="./live-combat-center-patch.js?v=livecombat-v1"></script>' _site/index.html
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v7-room-ownership' _site/index.html
@@ -105,6 +124,12 @@ jobs:
           test -f _site/visual-archive-map-flow-patch.js
           test -f _site/seal-character-controls-patch.js
           test -f _site/party-player-transition-fix.js
+          test -f _site/global-transition-guard.js
+          test -f _site/battle-party-membership-guard.js
+          test -f _site/session-log-delete-fix.js
+          grep -Fq '__catlakGlobalTransitionGuardV1' _site/global-transition-guard.js
+          grep -Fq '__catlakBattlePartyGuardV1' _site/battle-party-membership-guard.js
+          grep -Fq '__catlakSessionLogDeleteFixV1' _site/session-log-delete-fix.js
           grep -Fq '__catlakLiveCombatCenterLoaderV1' _site/live-combat-center-loader.js
           grep -Fq 'livecombat-v2-runtime' _site/live-combat-center-loader.js
           grep -Fq '__catlakLiveCombatCenterV1' _site/live-combat-center-patch.js
