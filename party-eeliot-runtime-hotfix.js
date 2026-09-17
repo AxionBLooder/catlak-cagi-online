@@ -7,7 +7,7 @@ const S=window.__catlakSupabase;
 if(!APP||!S)return;
 
 const PKEY='cc_party_member',BKEY='cc_battle_member';
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const txt=e=>String(e?.textContent||'').trim();
 const norm=x=>String(x||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i');
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
@@ -106,6 +106,22 @@ function ensureNav(){
  }
 }
 
+function closeViews(){managerOpen=false;partyOpen=false;window.__catlakPartyRoomOwnsMain=false;ensureNav()}
+function claimManager(){
+ if(!isGM())return false;
+ // Parti Yönetimi açılırken GM Merkezi ve diğer özel odaların sahipliğini bırak.
+ window.__catlakGmCenterSelectedRoute='';
+ window.__catlakGmHubV2Test?.release?.();
+ window.__catlakGmTools?.close?.();
+ window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();
+ window.__catlakCampaignStateTest?.close?.();
+ window.__catlakBattleRoomOpen=false;
+ managerOpen=true;partyOpen=false;window.__catlakPartyRoomOwnsMain=true;
+ const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));
+ ensureNav();return true;
+}
+function openManager(){if(!claimManager())return false;renderManager();return true}
+
 function card(c){
  const d=c.data||{},p=d[PKEY]===true,b=d[BKEY]===true,e=norm(c.name)==='eeliot';
  return `<article class="prh-card ${p?'party':''} ${b?'battle':''} ${e?'prh-eeliot':''}" data-prh-char="${esc(c.id)}"><div class="prh-head"><div><div class="eyebrow">${e?'OYNANABİLİR YARDIMCI':c.owner_id?'OYUNCUYA BAĞLI':'HAZIR KARAKTER'}</div><h2>${esc(c.name)}</h2><div class="muted">${esc(c.species_name||'')} • ${esc(d.cc_role||c.class_name||'')} • Seviye ${Number(c.level||1)}</div></div><span class="prh-status">${c.play_status==='active'?'CANLI':'HAZIR'}</span></div><div class="prh-flags"><span class="prh-flag ${p?'on':''}">${p?'✓ PARTİDE':'PARTİ DIŞI'}</span><span class="prh-flag ${b?'war':''}">${b?'⚔ SAVAŞ ODASINDA':'SAVAŞ DIŞI'}</span></div><div class="muted">HP ${Number(c.hp_current||0)}/${Number(c.hp_max||0)} • AC ${Number(c.base_ac||0)} • Hız ${Number(c.base_speed||0)}</div>${e?`<div class="prh-note"><b>Çatlak Dikişçisi</b><br>${esc(PROFILE.summary)}<br><br><b>Yetenekler:</b> ${PROFILE.traits.map(esc).join(' • ')}</div>`:''}<div class="prh-actions"><button type="button" class="${p?'danger':'primary'}" data-prh-set-party="${esc(c.id)}" data-v="${p?'0':'1'}">${p?'Partiden Çıkar':'Partiye Al'}</button><button type="button" class="${b?'danger':'primary'}" data-prh-set-battle="${esc(c.id)}" data-v="${b?'0':'1'}">${b?'Savaştan Çıkar':'Savaş Odasına Al'}</button>${!c.owner_id?`<button type="button" data-prh-invite="${esc(c.id)}" data-name="${esc(c.name)}">Oyuncuya Davet</button>`:''}</div></article>`;
@@ -131,6 +147,8 @@ async function renderParty(){
 }
 
 async function setFlag(id,key,value){
+ // İşlem boyunca Parti Yönetimi ana ekranın sahibi olarak kalır.
+ if(isGM()&&!managerOpen)claimManager();
  const q=await S.from('catlak_characters').select('id,name,data').eq('id',id).maybeSingle();if(q.error)throw q.error;if(!q.data)throw new Error('Karakter bulunamadı');
  await patchData(q.data,{[key]:value});
  if(key===BKEY){
@@ -144,18 +162,20 @@ async function setFlag(id,key,value){
   }catch(e){console.warn('PRH combat sync',e)}
  }
  toast(value?(key===PKEY?'Karakter partiye alındı.':'Karakter savaş odasına alındı.'):(key===PKEY?'Karakter partiden çıkarıldı.':'Karakter savaş odasından çıkarıldı.'));
- await renderManager();
+ if(managerOpen)await renderManager();
 }
 async function invite(id,name){const r=await S.rpc('catlak_generate_character_claim',{p_character_id:id});if(r.error)throw r.error;const link='https://axionblooder.github.io/catlak-cagi-online/?join='+encodeURIComponent(r.data);try{await navigator.clipboard.writeText(link)}catch(_){}prompt(`${name||'Karakter'} için oyuncu davet linki:`,link)}
 
 APP.addEventListener('click',e=>{
- const mgr=e.target.closest?.('[data-prh-manager]');if(mgr){e.preventDefault();e.stopImmediatePropagation();managerOpen=true;partyOpen=false;window.__catlakBattleRoomOpen=false;renderManager();return}
- const room=e.target.closest?.('[data-prh-party]');if(room){e.preventDefault();e.stopImmediatePropagation();partyOpen=true;managerOpen=false;renderParty();return}
- const other=e.target.closest?.('.nav button:not([data-prh-manager]):not([data-prh-party])');if(other){managerOpen=false;partyOpen=false;return}
- const p=e.target.closest?.('[data-prh-set-party]');if(p){e.preventDefault();e.stopImmediatePropagation();setFlag(p.dataset.prhSetParty,PKEY,p.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
- const b=e.target.closest?.('[data-prh-set-battle]');if(b){e.preventDefault();e.stopImmediatePropagation();setFlag(b.dataset.prhSetBattle,BKEY,b.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
- const i=e.target.closest?.('[data-prh-invite]');if(i){e.preventDefault();e.stopImmediatePropagation();invite(i.dataset.prhInvite,i.dataset.name).catch(x=>toast(x.message||String(x)));return}
- if(e.target.closest?.('[data-prh-ensure-eeliot]')){e.preventDefault();e.stopImmediatePropagation();eeliotReady=false;ensureEeliot(true).then(()=>renderManager());}
+ const mgr=e.target.closest?.('[data-prh-manager]');if(mgr){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openManager();return}
+ const room=e.target.closest?.('[data-prh-party]');if(room){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();partyOpen=true;managerOpen=false;window.__catlakPartyRoomOwnsMain=true;renderParty();return}
+ // GM Merkezi iç rotaları veya başka üst menü odaları açılırken Parti Yönetimi sahipliğini bırak.
+ const foreign=e.target.closest?.('[data-gm2-route],[data-gmt-open],[data-gmt-sub],.nav button:not([data-prh-manager]):not([data-prh-party])');
+ if(foreign){closeViews();return}
+ const p=e.target.closest?.('[data-prh-set-party]');if(p){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setFlag(p.dataset.prhSetParty,PKEY,p.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
+ const b=e.target.closest?.('[data-prh-set-battle]');if(b){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setFlag(b.dataset.prhSetBattle,BKEY,b.dataset.v==='1').catch(x=>toast(x.message||String(x)));return}
+ const i=e.target.closest?.('[data-prh-invite]');if(i){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();invite(i.dataset.prhInvite,i.dataset.name).catch(x=>toast(x.message||String(x)));return}
+ if(e.target.closest?.('[data-prh-ensure-eeliot]')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();eeliotReady=false;ensureEeliot(true).then(()=>renderManager());}
 },true);
 
 function maintain(){
@@ -172,5 +192,5 @@ new MutationObserver(records=>{
 }).observe(APP,{childList:true,subtree:true});
 
 setTimeout(maintain,350);setTimeout(maintain,1400);
-window.__catlakPartyEeliotHotfix={render:renderManager,renderParty,ensureEeliot,ensureNav,statSafe:true};
+window.__catlakPartyEeliotHotfix={render:renderManager,renderParty,ensureEeliot,ensureNav,open:openManager,close:closeViews,isOpen:()=>managerOpen||partyOpen,statSafe:true};
 })();
