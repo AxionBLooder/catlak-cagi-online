@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPartyStableEntryV3)return;
-window.__catlakPartyStableEntryV3=true;
+if(window.__catlakPartyStableEntryV4)return;
+window.__catlakPartyStableEntryV4=true;
 const APP=document.querySelector('#app');
 if(!APP)return;
 const txt=e=>String(e?.textContent||'').trim();
@@ -30,12 +30,11 @@ function ensureTop(){
  else if(b.parentElement!==nav)nav.appendChild(b);
  return b;
 }
-function ensureCenter(){
- if(!isGM())return;
- const bar=APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
- let b=bar.querySelector('[data-ps-party-center]');
- if(!b){b=document.createElement('button');b.type='button';b.dataset.psPartyCenter='1';b.textContent='Parti Yönetimi';bar.appendChild(b)}
- b.classList.toggle('on',!!APP.querySelector('main [data-prh-page]'));
+function cleanCenter(){
+ APP.querySelectorAll('[data-gm2-centerbar] [data-ps-party-center]').forEach(x=>x.remove());
+}
+function cleanPartyManager(){
+ APP.querySelectorAll('main [data-prh-page] > .prh-top').forEach(x=>x.remove());
 }
 function cleanLiveChrome(){
  if(!isGM())return;
@@ -48,7 +47,7 @@ function cleanLiveChrome(){
   if((eyebrow==='CANLI OYUN MASASI'||eyebrow==='CANLI OYUN')&&title==='Oyuncular & Zarlar')sec.remove();
  });
 }
-function maintain(){queued=false;ensureTop();ensureCenter();cleanLiveChrome()}
+function maintain(){queued=false;ensureTop();cleanCenter();cleanPartyManager();cleanLiveChrome()}
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(maintain)}
 function openPartyManager(){
  if(!isGM())return;
@@ -56,7 +55,7 @@ function openPartyManager(){
   const b=ensureTop();
   if(window.__catlakPartyEeliotHotfix&&b){
    b.click();
-   setTimeout(()=>{if(!APP.querySelector('main [data-prh-page]')&&n<8)run(n+1)},90);
+   setTimeout(()=>{cleanPartyManager();if(!APP.querySelector('main [data-prh-page]')&&n<8)run(n+1)},90);
    return;
   }
   if(n<25)setTimeout(()=>run(n+1),60);
@@ -64,12 +63,7 @@ function openPartyManager(){
  };
  run();
 }
-window.addEventListener('click',e=>{
- const b=e.target.closest?.('#app [data-ps-party-center]');
- if(!b)return;
- e.preventDefault();e.stopImmediatePropagation();openPartyManager();
-},true);
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,characterData:true});
 setTimeout(maintain,80);setTimeout(maintain,400);setTimeout(maintain,1200);
-window.__catlakPartyStableEntry={maintain,open:openPartyManager,cleanLiveChrome};
+window.__catlakPartyStableEntry={maintain,open:openPartyManager,cleanLiveChrome,cleanPartyManager,cleanCenter};
 })();
