@@ -10,6 +10,7 @@ on:
       - 'gm-management-room-patch.js'
       - 'gm-nav-cleanup-patch.js'
       - 'class-bonus-patch.js'
+      - 'visual-archive-map-flow-patch.js'
       - 'room-guard-patch.js'
       - 'room-system-patch.js'
       - 'player-sheet-patch.js'
@@ -26,7 +27,7 @@ jobs:
       - name: Check active JavaScript syntax
         run: |
           set -euo pipefail
-          for f in browser-app.js gm-tools-patch.js gm-hub-v2-patch.js gm-center-router-core.js gm-management-room-patch.js gm-nav-cleanup-patch.js class-bonus-patch.js room-guard-patch.js room-system-patch.js player-sheet-patch.js player-live-actions-patch.js stat-roll-patch.js; do node --check "$f"; done
+          for f in browser-app.js gm-tools-patch.js gm-hub-v2-patch.js gm-center-router-core.js gm-management-room-patch.js gm-nav-cleanup-patch.js class-bonus-patch.js visual-archive-map-flow-patch.js room-guard-patch.js room-system-patch.js player-sheet-patch.js player-live-actions-patch.js stat-roll-patch.js; do node --check "$f"; done
       - name: Check current runtime wiring
         run: |
           python3 - <<'PY'
@@ -34,7 +35,7 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           required=[
             'browser-app.js','gm-tools-patch.js','gm-hub-v2-patch.js','gm-center-router-core.js',
-            'gm-management-room-patch.js','gm-nav-cleanup-patch.js','class-bonus-patch.js',
+            'gm-management-room-patch.js','gm-nav-cleanup-patch.js','class-bonus-patch.js','visual-archive-map-flow-patch.js',
             'room-guard-patch.js','room-system-patch.js','player-sheet-patch.js',
             'player-live-actions-patch.js','stat-roll-patch.js'
           ]
@@ -66,5 +67,9 @@ jobs:
           for marker in ['class_bonus_v1','base_stats','hp_max','base_ac']:
               if marker not in bonus:
                   raise SystemExit('Sınıf bonusu işareti eksik: '+marker)
+          visual=Path('visual-archive-map-flow-patch.js').read_text(encoding='utf-8')
+          for marker in ['__catlakVisualArchiveMapFlowV1','data-vamf-places','Partiye Yansıt']:
+              if marker not in visual:
+                  raise SystemExit('Görsel/Harita akışı işareti eksik: '+marker)
           print('SOURCE_SANITY_CURRENT_OK')
           PY
