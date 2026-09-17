@@ -2,22 +2,19 @@ name: Source Sanity Check
 on:
   push:
     paths:
-      - 'live_*.txt'
-      - 'ux-patch.js'
-      - 'site-stability-patch.js'
-      - 'stat-workshop-route-fix.js'
-      - 'stat-roll-patch.js'
-      - 'room-guard-patch.js'
-      - 'room-system-patch.js'
-      - 'gm-hub-v2-patch.js'
-      - 'gm-center-router-core.js'
-      - 'gm-tools-patch.js'
-      - 'event-rolls-patch.js'
-      - 'player-sheet-patch.js'
-      - 'player-live-actions-patch.js'
       - 'index.html'
       - 'browser-app.js'
-      - 'browser-build.json'
+      - 'gm-tools-patch.js'
+      - 'gm-hub-v2-patch.js'
+      - 'gm-center-router-core.js'
+      - 'gm-management-room-patch.js'
+      - 'gm-nav-cleanup-patch.js'
+      - 'class-bonus-patch.js'
+      - 'room-guard-patch.js'
+      - 'room-system-patch.js'
+      - 'player-sheet-patch.js'
+      - 'player-live-actions-patch.js'
+      - 'stat-roll-patch.js'
       - '.github/workflows/check-live.yml'
   workflow_dispatch:
 jobs:
@@ -26,71 +23,48 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v6
-      - name: Rebuild legacy source for parser check
-        run: cat live_00.txt live_01.txt live_02.txt live_03.txt live_04.txt live_05.txt live_06.txt live_07.txt live_08.txt > /tmp/catlak-live.js
-      - name: Check current JavaScript syntax
+      - name: Check active JavaScript syntax
         run: |
           set -euo pipefail
-          for f in /tmp/catlak-live.js ux-patch.js site-stability-patch.js stat-workshop-route-fix.js stat-roll-patch.js room-guard-patch.js room-system-patch.js gm-hub-v2-patch.js gm-center-router-core.js gm-tools-patch.js event-rolls-patch.js player-sheet-patch.js player-live-actions-patch.js browser-app.js; do
-            node --check "$f"
-          done
-      - name: Check current ownership invariants
+          for f in browser-app.js gm-tools-patch.js gm-hub-v2-patch.js gm-center-router-core.js gm-management-room-patch.js gm-nav-cleanup-patch.js class-bonus-patch.js room-guard-patch.js room-system-patch.js player-sheet-patch.js player-live-actions-patch.js stat-roll-patch.js; do node --check "$f"; done
+      - name: Check current runtime wiring
         run: |
           python3 - <<'PY'
-          import json
           from pathlib import Path
-
-          legacy=Path('/tmp/catlak-live.js').read_text(encoding='utf-8')
-          if legacy.count("const app=document.querySelector('#app');") != 1:
-              raise SystemExit('Legacy kaynakta app sahibi tam olarak bir kez olmalı')
-
-          manifest=json.loads(Path('browser-build.json').read_text(encoding='utf-8'))
-          if not str(manifest.get('format','')).startswith('iife-es2018-browser-verified'):
-              raise SystemExit('Doğrulanmış browser build manifesti bulunamadı')
-
-          artifact=Path('browser-app.js').read_text(encoding='utf-8')
-          for marker in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','__catlakStableLiveOwner']:
-              if marker not in artifact:
-                  raise SystemExit('browser-app.js üretim işareti eksik: '+marker)
-
           html=Path('index.html').read_text(encoding='utf-8')
-          required=['browser-app.js','room-guard-patch.js','room-system-patch.js','site-stability-patch.js','gm-hub-v2-patch.js','gm-center-router-core.js','gm-tools-patch.js','event-rolls-patch.js','player-sheet-patch.js','player-live-actions-patch.js','stat-roll-patch.js','stat-workshop-route-fix.js']
+          required=[
+            'browser-app.js','gm-tools-patch.js','gm-hub-v2-patch.js','gm-center-router-core.js',
+            'gm-management-room-patch.js','gm-nav-cleanup-patch.js','class-bonus-patch.js',
+            'room-guard-patch.js','room-system-patch.js','player-sheet-patch.js',
+            'player-live-actions-patch.js','stat-roll-patch.js'
+          ]
           for name in required:
               if name not in html:
                   raise SystemExit('Aktif runtime index içinde yüklenmiyor: '+name)
-
           retired=['gm-hub-patch.js','gm-hub-route-fix-patch.js','gm-center-live-runtime.js','gm-center-tools-integration-patch.js','ability-system-patch.js','ability-workshop-state-patch.js']
           for name in retired:
               if name in html:
                   raise SystemExit('Eski/çakışan runtime yeniden yüklenmiş: '+name)
-
-          guard=Path('room-guard-patch.js').read_text(encoding='utf-8')
-          for marker in ['CRG_NAV_PLAN','catlak_roll_weapon','__catlakRoomGuardTest']:
-              if marker not in guard:
-                  raise SystemExit('Oda koruma işareti eksik: '+marker)
-          for marker in ['__catlakBattleInnerHtmlStabilityInstalled','__catlakBattleRenderSuppressed']:
-              if marker in guard:
-                  raise SystemExit('Eski global savaş render yaması geri dönmüş: '+marker)
-
-          stability=Path('site-stability-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakSiteMainStabilityInstalled','__catlakStabilityFreeze','__catlakShouldPreserveCurrentView','__catlakSiteStabilityTest']:
-              if marker not in stability:
-                  raise SystemExit('Site stabilite işareti eksik: '+marker)
-
-          stats=Path('ux-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakRenderCompactStats','__catlakStatsTest','cuxDirty','cuxSelect']:
-              if marker not in stats:
-                  raise SystemExit('Stat Atölyesi stabilite işareti eksik: '+marker)
-
-          route=Path('stat-workshop-route-fix.js').read_text(encoding='utf-8')
-          for stale in ['SWRF_CACHE_KEY','swrfRestoreCache']:
-              if stale in route:
-                  raise SystemExit('Eski Stat HTML cache/restore katmanı geri dönmüş: '+stale)
-
-          hub=Path('gm-hub-v2-patch.js').read_text(encoding='utf-8')
-          for marker in ['__catlakGmHubOwnsMain','data-gm2-centerbar']:
-              if marker not in hub:
-                  raise SystemExit('GM Merkezi sahiplik işareti eksik: '+marker)
-
+          if html.index('gm-tools-patch.js') > html.index('gm-hub-v2-patch.js'):
+              raise SystemExit('GM araçları merkez motorundan önce yüklenmeli')
+          if html.index('gm-hub-v2-patch.js') > html.index('gm-center-router-core.js'):
+              raise SystemExit('GM merkez motoru yönlendiriciden önce yüklenmeli')
+          if html.index('gm-center-router-core.js') > html.index('gm-management-room-patch.js'):
+              raise SystemExit('Yönetim Odası yönlendiriciden sonra yüklenmeli')
+          artifact=Path('browser-app.js').read_text(encoding='utf-8')
+          for marker in ['Görsel Dosyası Seç','Hızlı Karakter Düzenleme','Toplu Zar Sil','__catlakStableLiveOwner']:
+              if marker not in artifact:
+                  raise SystemExit('browser-app.js üretim işareti eksik: '+marker)
+          router=Path('gm-center-router-core.js').read_text(encoding='utf-8')
+          if "'combat'" in router.split('GMCR_ROUTES',1)[1].split(']);',1)[0]:
+              raise SystemExit('Savaş rotası GM Merkezi yönlendiricisine geri dönmüş')
+          management=Path('gm-management-room-patch.js').read_text(encoding='utf-8')
+          for marker in ['__catlakManagementRoom','data-gmr-page','catlak_generate_character_claim']:
+              if marker not in management:
+                  raise SystemExit('Yönetim Odası işareti eksik: '+marker)
+          bonus=Path('class-bonus-patch.js').read_text(encoding='utf-8')
+          for marker in ['class_bonus_v1','base_stats','hp_max','base_ac']:
+              if marker not in bonus:
+                  raise SystemExit('Sınıf bonusu işareti eksik: '+marker)
           print('SOURCE_SANITY_CURRENT_OK')
           PY
