@@ -6,44 +6,42 @@ on:
       - 'gm-hub-v2-patch.js'
       - 'gm-campaign-state-patch.js'
       - 'seal-character-controls-patch.js'
+      - 'live-combat-anchor-safety.js'
       - 'live-combat-center-loader.js'
       - 'live-combat-center-patch.js'
+      - 'party-eeliot-runtime-hotfix.js'
       - '.github/workflows/check-restored-gm-rooms.yml'
   workflow_dispatch:
 
 jobs:
   restored-rooms:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v6
       - name: Static checks
         run: |
           set -euo pipefail
-          for f in gm-hub-v2-patch.js gm-campaign-state-patch.js seal-character-controls-patch.js live-combat-center-loader.js live-combat-center-patch.js; do node --check "$f"; done
+          for f in gm-hub-v2-patch.js gm-campaign-state-patch.js seal-character-controls-patch.js live-combat-anchor-safety.js live-combat-center-loader.js live-combat-center-patch.js party-eeliot-runtime-hotfix.js; do node --check "$f"; done
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v5-safe-restore' index.html
           grep -Fq 'seal-character-controls-patch.js?v=seal-controls-v2-safe-restore' index.html
-          grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v2-safe-restore' index.html
+          grep -Fq 'live-combat-anchor-safety.js?v=livecombat-anchor-v1' index.html
+          grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v3-anchor-safe' index.html
+          grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v6-single-owner' index.html
+          ! grep -Fq 'party-player-transition-fix.js' index.html
           grep -Fq "['reputation','İtibar Odası']" gm-campaign-state-patch.js
           grep -Fq "['seals','Mühür Odası']" gm-campaign-state-patch.js
           grep -Fq 'Savaşı Başlat' live-combat-center-patch.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Browser restored-room smoke
+      - name: Browser restored-room and detached-anchor smoke
         run: |
           cat > restored-smoke.html <<'HTML'
           <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>.hidden{display:none}</style></head><body>
-          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open class="gm2-center-active">GM Merkezi</button><button data-tab="items">Eşyalar</button><button data-tab="races">Irklar</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button></nav><div class="gm2-centerbar" data-gm2-centerbar data-gm2-stable="1"><span class="gm2-label">GM MERKEZİ</span><button type="button" data-gm2-route="ability">Yetenek</button><button type="button" data-gm2-route="items">Eşya</button><button type="button" data-gm2-route="characters">Yönetim Odası</button></div><main data-cc-simple-live="1"><div class="cc-live-two">Oyuncular & Zarlar</div></main></div><div id="toast" class="hidden"></div>
+          <div id="app"><span class="role">GM</span><nav class="nav"><button data-tab="gm" class="on">Canlı Oyun</button><button data-gmt-open class="gm2-center-active">GM Merkezi</button><button data-tab="items">Eşyalar</button><button data-tab="races">Irklar</button><button data-tab="builder">Builder</button><button data-tab="characters">Karakterler</button></nav><div class="gm2-centerbar" data-gm2-centerbar data-gm2-stable="1"><span class="gm2-label">GM MERKEZİ</span><button type="button" data-gm2-route="ability">Yetenek</button><button type="button" data-gm2-route="items">Eşya</button><button type="button" data-gm2-route="characters">Yönetim Odası</button></div><main data-cc-simple-live="1"><div class="cc-live-two" id="live-anchor">Oyuncular & Zarlar</div></main></div><div id="toast" class="hidden"></div>
           <script>
           const chars=[{id:'c1',name:'Test Karakter',species_name:'Vampir',level:3,data:{vampire_kp:3},play_status:'active',owner_id:'u1',created_at:'1',hp_current:10,hp_max:12,base_ac:12,base_stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}];
-          function rows(table){
-            if(table==='catlak_combat_state')return [{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null}];
-            if(table==='catlak_combatants')return [];
-            if(table==='catlak_characters')return chars;
-            if(table==='catlak_character_conditions')return [];
-            if(table==='catlak_abilities'||table==='catlak_character_abilities')return [];
-            return [];
-          }
+          function rows(table){if(table==='catlak_combat_state')return [{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null}];if(table==='catlak_combatants')return [];if(table==='catlak_characters')return chars;if(table==='catlak_character_conditions')return [];if(table==='catlak_abilities'||table==='catlak_character_abilities')return [];return []}
           function from(table){let filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},in(){return q},order(){return q},limit(){return q},maybeSingle(){let a=rows(table).filter(x=>filters.every(([k,v])=>String(x[k])===String(v)));return Promise.resolve({data:a[0]||null,error:null})},then(ok,bad){let a=rows(table).filter(x=>filters.every(([k,v])=>String(x[k])===String(v)));return Promise.resolve({data:a,error:null}).then(ok,bad)}};return q}
           const channel={on(){return channel},subscribe(){return channel}};
           window.__catlakSupabase={from,channel:()=>channel,rpc:async()=>({data:true,error:null})};
@@ -52,11 +50,9 @@ jobs:
           </script>
           <script src="./gm-campaign-state-patch.js"></script>
           <script src="./seal-character-controls-patch.js"></script>
+          <script src="./live-combat-anchor-safety.js"></script>
           <script src="./live-combat-center-patch.js"></script>
-          <script>
-            window.__catlakCampaignStateTest?.maintain?.();
-            window.__catlakLiveCombatCenter?.render?.();
-          </script>
+          <script>window.__catlakCampaignStateTest?.maintain?.();window.__catlakLiveCombatCenter?.render?.();</script>
           </body></html>
           HTML
           python3 -m http.server 4175 --bind 127.0.0.1 >/tmp/restored-http.log 2>&1 &
@@ -69,8 +65,23 @@ jobs:
             if(!state.buttons.includes('İtibar Odası')||!state.buttons.includes('Mühür Odası')||!state.buttons.includes('Yönetim Odası'))throw new Error('GM room buttons missing '+JSON.stringify(state));
             if(!state.combat.includes('Savaşı Başlat')||!state.combat.includes('TUR SIRASI')||!state.combat.includes('DURUM ETKİLERİ'))throw new Error('Live combat panel missing '+JSON.stringify(state));
             if(!state.seal||!state.sealControls||!state.combatApi)throw new Error('Restored APIs missing '+JSON.stringify(state));
+            const detached=await p.evaluate(async()=>{
+              const old=document.querySelector('#live-anchor');
+              document.querySelector('main').innerHTML='<div class="cc-live-two" id="fresh-anchor">Yeni Canlı Masa</div>';
+              let threw='';try{old.insertAdjacentHTML('afterend','<section data-anchor-test>BOARD</section>')}catch(e){threw=e.message}
+              await new Promise(r=>setTimeout(r,30));
+              return {threw,placed:!!document.querySelector('#fresh-anchor + [data-anchor-test]')};
+            });
+            if(detached.threw||!detached.placed)throw new Error('Detached live anchor regression '+JSON.stringify(detached));
+            const retry=await p.evaluate(async()=>{
+              let calls=0;window.__catlakLiveCombatCenter={render(){calls++}};
+              const a=document.querySelector('#fresh-anchor');a.remove();
+              let threw='';try{a.insertAdjacentHTML('afterend','<section>MISS</section>')}catch(e){threw=e.message}
+              await new Promise(r=>setTimeout(r,140));return {threw,calls};
+            });
+            if(retry.threw||retry.calls<1)throw new Error('Missing-anchor retry regression '+JSON.stringify(retry));
             if(errors.length)throw new Error('Page errors '+errors.join(' | '));
-            console.log('RESTORED_GM_ROOMS_OK',JSON.stringify(state));
+            console.log('RESTORED_GM_ROOMS_OK',JSON.stringify({state,detached,retry}));
           }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node restored-smoke.cjs
