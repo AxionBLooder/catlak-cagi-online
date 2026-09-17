@@ -60,6 +60,20 @@
     function loadParallel(list){return Promise.all(list.map(function(x){return load(x[0],x[1])}))}
     async function waitForRuntime(){for(var i=0;i<120;i++){if(window.__catlakSupabase)return true;await new Promise(function(r){setTimeout(r,50)})}return false}
 
+    async function loadPlayerCritical(){
+      await loadParallel([
+        ['./player-sheet-patch.js?v=player-speed-v1','player-sheet'],
+        ['./player-sheet-equipment-abilities-patch.js?v=player-speed-v1','player-equip'],
+        ['./player-live-actions-patch.js?v=player-speed-v1','player-actions'],
+        ['./stat-roll-patch.js?v=player-speed-v1','stat-roll']
+      ]);
+      try{
+        window.__catlakPlayerSheetTest?.apply?.();
+        window.__catlakPlayerLiveTest?.schedule?.(true,0);
+        window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);
+      }catch(e){console.warn('CATLAK_PLAYER_FAST_START',e)}
+    }
+
     async function loadGmCore(){
       await load('./gm-tools-patch.js?v=clean-gm-tools-v1','gm-tools');
       await load('./quality-of-life-patch.js?v=clean-qol-v1','qol');
@@ -75,7 +89,12 @@
     async function loadSafeAddons(){
       if(addonsStarted)return;addonsStarted=true;
       var runtimeReady=await waitForRuntime();if(!runtimeReady){console.warn('CATLAK_SAFE_ADDONS_SKIPPED');reveal();return}
-      await loadGmCore();
+
+      // Oyuncu kağıdı GM zincirini beklemez. Kritik oyuncu dosyaları hemen ve paralel başlar.
+      var playerCritical=loadPlayerCritical();
+      var gmCore=loadGmCore();
+      await playerCritical;
+
       await loadParallel([
         ['./class-bonus-patch.js?v=classbonus-v1','class-bonus'],
         ['./visual-archive-map-flow-patch.js?v=visual-flow-v2-safe','visual-map-flow'],
@@ -87,15 +106,19 @@
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
         ['./room-system-patch.js?v=recovery-3','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./player-sheet-patch.js?v=recovery-3','player-sheet'],
-        ['./player-sheet-equipment-abilities-patch.js?v=recovery-3','player-equip'],
-        ['./player-live-actions-patch.js?v=recovery-3','player-actions'],
         ['./gm-item-slot-patch.js?v=recovery-3','gm-items'],
-        ['./stat-roll-patch.js?v=recovery-3','stat-roll'],
         ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
-      try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakLiveCombatCenter?.render?.()}catch(_){}
+
+      await gmCore;
+      try{
+        window.__catlakPlayerSheetTest?.apply?.();
+        window.__catlakPlayerLiveTest?.schedule?.(true,0);
+        window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);
+        window.__catlakGmCleanRouter?.ensure?.();
+        window.__catlakLiveCombatCenter?.render?.();
+      }catch(_){}
       reveal();
     }
 
