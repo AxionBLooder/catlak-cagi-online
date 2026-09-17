@@ -21,34 +21,14 @@ function pepStripHpText(text){
 function pepSanitize(){
   if(!pepIsPlayer()||window.__catlakBattleRoomOpen!==true)return;
   const main=PEP_APP.querySelector('main');if(!main)return;
-
-  // Oyuncu yaratık kartında yalnız AC'yi bilir. HP, inisiyatif,
-  // saldırı/silah adı, saldırı zarı ve hasar formülü GM bilgisi olarak kalır.
   main.querySelectorAll('[data-br3-creatures] .br3-card').forEach(card=>{
-    card.querySelectorAll('.br3-pill').forEach(p=>{
-      if(!/^AC\s+/i.test(pepTxt(p)))p.remove();
-    });
+    card.querySelectorAll('.br3-pill').forEach(p=>{if(!/^AC\s+/i.test(pepTxt(p)))p.remove();});
     card.querySelectorAll(':scope > .mini,:scope > .br3-note').forEach(x=>x.remove());
   });
-
-  // Büyü/yetenek hedef seçiminde yaratık HP'si sızmasın.
-  main.querySelectorAll('[data-br3-ability-target] option').forEach(o=>{
-    const clean=pepStripHpText(o.textContent);
-    if(clean!==o.textContent)o.textContent=clean;
-  });
-
-  // Son aksiyon sonucunda hedefin kalan HP'si gösterilmez.
-  main.querySelectorAll('.br3-result').forEach(box=>{
-    box.querySelectorAll('div').forEach(d=>{
-      if(/HP\s*\d+\s*\/\s*\d+/i.test(d.textContent||''))d.textContent=pepStripHpText(d.textContent);
-    });
-  });
+  main.querySelectorAll('[data-br3-ability-target] option').forEach(o=>{const clean=pepStripHpText(o.textContent);if(clean!==o.textContent)o.textContent=clean;});
+  main.querySelectorAll('.br3-result').forEach(box=>{box.querySelectorAll('div').forEach(d=>{if(/HP\s*\d+\s*\/\s*\d+/i.test(d.textContent||''))d.textContent=pepStripHpText(d.textContent);});});
 }
-function pepSchedule(){
-  if(pepScheduled)return;pepScheduled=true;
-  requestAnimationFrame(()=>{pepScheduled=false;pepSanitize()});
-}
-
+function pepSchedule(){if(pepScheduled)return;pepScheduled=true;requestAnimationFrame(()=>{pepScheduled=false;pepSanitize()});}
 new MutationObserver(pepSchedule).observe(PEP_APP,{childList:true,subtree:true,characterData:true});
 document.addEventListener('click',pepSchedule,true);
 setTimeout(pepSanitize,120);
@@ -56,20 +36,13 @@ window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
 
 (function loadPartyRosterPatch(){
   if(document.querySelector('script[data-cpr-loader]'))return;
-  const s=document.createElement('script');
-  s.dataset.cprLoader='1';
-  s.src='./party-roster-patch.js?v=party-roster-v1';
-  s.async=false;
-  s.onerror=function(){console.error('Parti Yönetimi katmanı yüklenemedi.');};
-  document.body.appendChild(s);
+  const s=document.createElement('script');s.dataset.cprLoader='1';s.src='./party-roster-patch.js?v=party-roster-v1';s.async=false;s.onerror=function(){console.error('Parti Yönetimi katmanı yüklenemedi.');};document.body.appendChild(s);
 })();
-
 (function loadEeliotProfilePatch(){
   if(document.querySelector('script[data-eep-loader]'))return;
-  const s=document.createElement('script');
-  s.dataset.eepLoader='1';
-  s.src='./eeliot-character-patch.js?v=eeliot-profile-v1';
-  s.async=false;
-  s.onerror=function(){console.error('Eeliot karakter profili yüklenemedi.');};
-  document.body.appendChild(s);
+  const s=document.createElement('script');s.dataset.eepLoader='1';s.src='./eeliot-character-patch.js?v=eeliot-profile-v1';s.async=false;s.onerror=function(){console.error('Eeliot karakter profili yüklenemedi.');};document.body.appendChild(s);
+})();
+(function loadPartyEeliotRuntimeHotfix(){
+  if(document.querySelector('script[data-prh-loader]'))return;
+  const s=document.createElement('script');s.dataset.prhLoader='1';s.src='./party-eeliot-runtime-hotfix.js?v=runtime-v1';s.async=false;s.onerror=function(){console.error('Parti/Eeliot runtime hotfix yüklenemedi.');};document.body.appendChild(s);
 })();
