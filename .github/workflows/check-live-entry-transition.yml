@@ -33,6 +33,7 @@ jobs:
           </div>
           <script src="./live-game-entry-guard.js"></script>
           <script>
+          window.__legacyPaintState=null;
           document.querySelector('#app').addEventListener('click',e=>{
             const b=e.target.closest('[data-tab]');if(!b)return;
             document.querySelectorAll('.nav .on').forEach(x=>x.classList.remove('on'));b.classList.add('on');
@@ -40,11 +41,12 @@ jobs:
             if(b.dataset.tab==='gm'){
               main.removeAttribute('data-cc-simple-live');
               main.innerHTML='<section id="legacy-live">GM CANLI MASA • ESKİ SAYFA</section>';
+              window.__legacyPaintState={visibility:getComputedStyle(main).visibility,pending:document.documentElement.classList.contains('cc-live-entry-pending'),text:main.innerText};
               setTimeout(()=>{
                 if(!b.classList.contains('on'))return;
                 main.innerHTML='<section>CANLI OYUN MASASI</section><div class="cc-live-two">Oyuncular & Zarlar</div>';
                 main.dataset.ccSimpleLive='1';
-              },140);
+              },180);
             }
           });
           </script>
@@ -65,17 +67,16 @@ jobs:
               const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));
               await p.goto('http://127.0.0.1:4174/live-entry-smoke.html',{waitUntil:'domcontentloaded'});
               await p.click('[data-tab="gm"]');
-              await p.waitForTimeout(40);
-              const legacy=await p.locator('main').evaluate(el=>({visibility:getComputedStyle(el).visibility,text:el.innerText}));
-              if(!legacy.text.includes('ESKİ SAYFA'))throw new Error('Legacy state was not simulated');
-              if(legacy.visibility!=='hidden')throw new Error('Legacy live page became visible: '+JSON.stringify(legacy));
+              const legacy=await p.evaluate(()=>window.__legacyPaintState);
+              if(!legacy||!legacy.text.includes('ESKİ SAYFA'))throw new Error('Legacy state was not simulated: '+JSON.stringify(legacy));
+              if(legacy.visibility!=='hidden'||!legacy.pending)throw new Error('Legacy live page became visible at render time: '+JSON.stringify(legacy));
               await p.waitForSelector('main[data-cc-simple-live="1"] .cc-live-two');
               await p.waitForTimeout(80);
               const final=await p.locator('main').evaluate(el=>({visibility:getComputedStyle(el).visibility,text:el.innerText,pending:document.documentElement.classList.contains('cc-live-entry-pending')}));
               if(final.visibility==='hidden'||final.pending)throw new Error('Final live page stayed hidden: '+JSON.stringify(final));
               if(!final.text.includes('Oyuncular & Zarlar'))throw new Error('Final live page missing');
               if(errors.length)throw new Error('Page errors: '+errors.join(' | '));
-              console.log('LIVE_ENTRY_TRANSITION_OK',JSON.stringify(final));
+              console.log('LIVE_ENTRY_TRANSITION_OK',JSON.stringify({legacy,final}));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
