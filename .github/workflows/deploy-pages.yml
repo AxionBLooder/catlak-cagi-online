@@ -44,6 +44,9 @@ jobs:
               'party-stable-entry.js',
               'live-combat-center-loader.js',
               'live-combat-center-patch.js',
+              'visual-archive-map-flow-patch.js',
+              'seal-character-controls-patch.js',
+              'party-player-transition-fix.js',
           }
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
@@ -73,7 +76,7 @@ jobs:
           )
           live_html = live_html.replace(
               '</body>',
-              '<script src="./party-eeliot-runtime-hotfix.js?v=party-v3-room-owner"></script><script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>'
+              '<script src="./party-eeliot-runtime-hotfix.js?v=party-v3-room-owner"></script><script src="./party-stable-entry.js?v=partyentry-v4-room-owner"></script><script src="./live-combat-center-loader.js?v=livecombat-loader-v1"></script><script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script><script src="./visual-archive-map-flow-patch.js?v=visual-flow-v1"></script><script src="./seal-character-controls-patch.js?v=seal-controls-v1"></script><script src="./party-player-transition-fix.js?v=party-transition-v1"></script></body>'
           )
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
@@ -86,6 +89,9 @@ jobs:
           grep -Fq 'party-eeliot-runtime-hotfix.js?v=party-v3-room-owner' _site/index.html
           grep -Fq 'party-stable-entry.js?v=partyentry-v4-room-owner' _site/index.html
           grep -Fq 'live-combat-center-loader.js?v=livecombat-loader-v1' _site/index.html
+          grep -Fq 'visual-archive-map-flow-patch.js?v=visual-flow-v1' _site/index.html
+          grep -Fq 'seal-character-controls-patch.js?v=seal-controls-v1' _site/index.html
+          grep -Fq 'party-player-transition-fix.js?v=party-transition-v1' _site/index.html
           ! grep -Fq '<script src="./live-combat-center-patch.js?v=livecombat-v1"></script>' _site/index.html
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v7-room-ownership' _site/index.html
@@ -97,6 +103,9 @@ jobs:
           test -f _site/live-combat-center-patch.js
           test -f _site/party-eeliot-runtime-hotfix.js
           test -f _site/party-stable-entry.js
+          test -f _site/visual-archive-map-flow-patch.js
+          test -f _site/seal-character-controls-patch.js
+          test -f _site/party-player-transition-fix.js
           grep -Fq '__catlakLiveCombatCenterLoaderV1' _site/live-combat-center-loader.js
           grep -Fq 'livecombat-v2-runtime' _site/live-combat-center-loader.js
           grep -Fq '__catlakLiveCombatCenterV1' _site/live-combat-center-patch.js
@@ -105,6 +114,9 @@ jobs:
           grep -Fq 'DURUM ETKİLERİ' _site/live-combat-center-patch.js
           grep -Fq '__catlakPartyRuntimeStableV2=true' _site/party-eeliot-runtime-hotfix.js
           grep -Fq '__catlakPartyStableEntryV3=true' _site/party-stable-entry.js
+          grep -Fq '__catlakVisualArchiveMapFlowV1=true' _site/visual-archive-map-flow-patch.js
+          grep -Fq '__catlakSealCharacterControlsV1=true' _site/seal-character-controls-patch.js
+          grep -Fq '__catlakPartyPlayerTransitionV1=true' _site/party-player-transition-fix.js
           grep -Fq 'Parti Yönetimi' _site/party-stable-entry.js
           grep -Fq "live.textContent='Canlı Oyun'" _site/party-stable-entry.js
           grep -Fq '__catlakGmControlsLivePanelDisabled=true' _site/gm-controls-patch.js
