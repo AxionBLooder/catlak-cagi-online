@@ -9,6 +9,16 @@ let gmcrToken=0;
 let gmcrPointerRoute='';
 let gmcrPointerAt=0;
 
+if(!document.getElementById('gmcr-visual-style')){
+  const s=document.createElement('style');
+  s.id='gmcr-visual-style';
+  s.textContent=`
+  #app.gmcr-center-open .nav button.on:not([data-gmt-open]){background:transparent!important;color:var(--muted)!important;border-color:transparent!important;box-shadow:none!important}
+  #app.gmcr-center-open .nav [data-gmt-open]{background:#101e33!important;color:var(--text)!important;border-color:var(--line)!important;box-shadow:inset 0 0 0 1px #d6ad5b33!important}
+  `;
+  document.head.appendChild(s);
+}
+
 function gmcrRole(){return String(GMCR_APP.querySelector('.role')?.textContent||'').trim()}
 function gmcrIsGM(){return gmcrRole()==='GM'}
 function gmcrButton(target){return target?.closest?.('#app [data-gm2-route]')||null}
@@ -22,6 +32,7 @@ function gmcrCenterOpen(){
   if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return true;
   return false;
 }
+function gmcrSetCenterVisual(open){GMCR_APP.classList.toggle('gmcr-center-open',!!open)}
 
 function gmcrEnsureEntry(){
   if(!gmcrIsGM())return;
@@ -44,6 +55,7 @@ function gmcrMakeButtonsClickable(){
   gmcrEnsureEntry();
   window.__catlakGmHubV2Test?.chrome?.();
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
+  gmcrSetCenterVisual(gmcrCenterOpen());
   if(!bar)return;
   // Eski merkez savaş girişini hub yeniden üretse bile merkezden kaldır.
   bar.querySelectorAll('[data-gm2-route="combat"]').forEach(b=>b.remove());
@@ -56,6 +68,7 @@ function gmcrMakeButtonsClickable(){
 function gmcrSelect(route){
   if(!GMCR_ROUTES.has(route))return;
   window.__catlakGmCenterSelectedRoute=route;
+  gmcrSetCenterVisual(true);
   GMCR_APP.querySelectorAll('[data-gm2-centerbar] [data-gm2-route]').forEach(b=>{
     const on=String(b.dataset.gm2Route||'')===route;
     b.classList.toggle('on',on);
@@ -78,6 +91,7 @@ function gmcrLogicalRoute(){
 
 function gmcrLeaveCenter(){
   gmcrToken++;gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;window.__catlakGmCenterSelectedRoute='';
+  gmcrSetCenterVisual(false);
   const hub=window.__catlakGmHubV2Test;
   if(typeof hub?.leave==='function')hub.leave();
   else{window.__catlakCampaignStateTest?.close?.();hub?.release?.();window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GMCR_APP.querySelector('[data-gm2-centerbar]')?.remove();GMCR_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active')}
@@ -126,8 +140,8 @@ GMCR_APP.addEventListener('click',e=>{
   setTimeout(()=>{
     window.__catlakGmTools?.close?.();
     window.__catlakGmCenterSelectedRoute='';
-    if(!gmcrCenterOpen())gmcrGo('ability');
-    else gmcrGo('ability');
+    gmcrSetCenterVisual(true);
+    gmcrGo('ability');
     gmcrMakeButtonsClickable();
   },0);
 },false);
@@ -153,6 +167,7 @@ window.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
     window.__catlakGmTools?.close?.();
     window.__catlakGmCenterSelectedRoute='';
+    gmcrSetCenterVisual(true);
     gmcrGo('ability');
     requestAnimationFrame(gmcrMakeButtonsClickable);
     return;
