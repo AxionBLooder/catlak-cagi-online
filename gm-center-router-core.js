@@ -13,8 +13,8 @@ if(!document.getElementById('gmcr-visual-style')){
   const s=document.createElement('style');
   s.id='gmcr-visual-style';
   s.textContent=`
-  #app.gmcr-center-open .nav button.on:not([data-gmt-open]){background:transparent!important;color:var(--muted)!important;border-color:transparent!important;box-shadow:none!important}
-  #app.gmcr-center-open .nav [data-gmt-open]{background:#101e33!important;color:var(--text)!important;border-color:var(--line)!important;box-shadow:inset 0 0 0 1px #d6ad5b33!important}
+  #app.gmcr-center-open .nav button.on:not([data-gmt-open]){background:transparent!important;color:var(--muted)!important;border-color:transparent!important;box-shadow:none!important;outline:none!important}
+  #app.gmcr-center-open .nav [data-gmt-open]{background:#101e33!important;color:var(--text)!important;border-color:var(--line)!important;box-shadow:inset 0 0 0 1px #d6ad5b33!important;outline:none!important}
   `;
   document.head.appendChild(s);
 }
@@ -33,6 +33,13 @@ function gmcrCenterOpen(){
   return false;
 }
 function gmcrSetCenterVisual(open){GMCR_APP.classList.toggle('gmcr-center-open',!!open)}
+function gmcrCloseForeignViews(){
+  try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){ }
+  try{window.__catlakPartyManager?.close?.()}catch(_){ }
+  window.__catlakPartyRoomOwnsMain=false;
+  try{window.__catlakCampaignStateTest?.close?.()}catch(_){ }
+  try{window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.()}catch(_){ }
+}
 
 function gmcrEnsureEntry(){
   if(!gmcrIsGM())return;
@@ -49,15 +56,12 @@ function gmcrEnsureEntry(){
   }else if(String(entry.textContent||'').trim()!=='GM Merkezi')entry.textContent='GM Merkezi';
 }
 
-// Chrome ownership belongs to gm-hub-v2. This controller only makes an existing
-// center bar interactive; it never creates, hides or resurrects the bar itself.
 function gmcrMakeButtonsClickable(){
   gmcrEnsureEntry();
   window.__catlakGmHubV2Test?.chrome?.();
   const bar=GMCR_APP.querySelector('[data-gm2-centerbar]');
   gmcrSetCenterVisual(gmcrCenterOpen());
   if(!bar)return;
-  // Eski merkez savaş girişini hub yeniden üretse bile merkezden kaldır.
   bar.querySelectorAll('[data-gm2-route="combat"]').forEach(b=>b.remove());
   bar.style.pointerEvents='auto';
   bar.querySelectorAll('[data-gm2-route]').forEach(b=>{
@@ -99,7 +103,7 @@ function gmcrLeaveCenter(){
 
 function gmcrGo(route){
   if(!gmcrIsGM()||!GMCR_ROUTES.has(route))return false;
-  window.__catlakCampaignStateTest?.close?.();
+  gmcrCloseForeignViews();
   gmcrSelect(route);
   const token=++gmcrToken;
   const run=()=>{
@@ -132,8 +136,6 @@ function gmcrConsume(e,route){
   return gmcrGo(route);
 }
 
-// Bubble fallback. Normal kullanıcı tıklaması aşağıdaki window-capture korumasında
-// ele alınır; böylece eski gm-tools document-capture handler'ı combat açamaz.
 GMCR_APP.addEventListener('click',e=>{
   const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
   if(!entry||!gmcrIsGM())return;
@@ -146,7 +148,12 @@ GMCR_APP.addEventListener('click',e=>{
   },0);
 },false);
 
-new MutationObserver(()=>{requestAnimationFrame(gmcrEnsureEntry)}).observe(GMCR_APP,{childList:true,subtree:true});
+new MutationObserver(()=>{
+  requestAnimationFrame(()=>{
+    gmcrEnsureEntry();
+    gmcrSetCenterVisual(gmcrCenterOpen());
+  });
+}).observe(GMCR_APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 
 window.addEventListener('pointerdown',e=>{
   if(e.button!=null&&e.button!==0)return;
@@ -160,8 +167,6 @@ window.addEventListener('pointerdown',e=>{
 },true);
 
 window.addEventListener('click',e=>{
-  // GM Merkezi tıklamasını document seviyesindeki eski GM Araçları handler'ından
-  // önce yakala. Merkez açılışında savaş ekranı artık hiçbir zaman varsayılan olmaz.
   const entry=e.target?.closest?.('#app .nav [data-gmt-open]');
   if(entry&&gmcrIsGM()){
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
