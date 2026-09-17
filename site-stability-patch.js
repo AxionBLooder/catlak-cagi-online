@@ -4,6 +4,7 @@ if(!SSP_APP)throw new Error('Site stabilite katmanı başlatılamadı.');
 const sspTxt=e=>String(e?.textContent||'').trim();
 const sspRole=()=>sspTxt(SSP_APP.querySelector('.role'))||'anon';
 let sspSuppressed=0,sspFreezeUntil=Number(window.__catlakUiFreezeUntil)||0,sspFreezeY=null,sspFreezeReason='';
+let sspLayoutQueued=false;
 
 function sspViewKey(){
   const role=sspRole();
@@ -18,7 +19,7 @@ function sspViewKey(){
   const bits=[nav.dataset.tab,nav.dataset.gmtOpen?'gm-center':'',nav.dataset.ccrBattle?'battle':'',nav.dataset.ccrHub?'hub':'',nav.dataset.ccMapTab?'map':'',nav.dataset.ccWorldTab?'world':'',nav.dataset.ccStatsTab?'stats':''].filter(Boolean);
   return role+':'+(bits.join(':')||sspTxt(nav)||'view');
 }
-function sspCustomOwnsView(){return window.__catlakBattleRoomOpen===true||window.__catlakGmToolsOpen===true||window.__catlakGmHubOwnsMain===true}
+function sspCustomOwnsView(){return window.__catlakBattleRoomOpen===true||window.__catlakGmToolsOpen===true||window.__catlakGmHubOwnsMain===true||window.__catlakPartyRoomOwnsMain===true}
 function sspManagedView(){
   const main=SSP_APP.querySelector('main');if(!main||main.classList.contains('auth')||main.hasAttribute('data-cc-auth-loading')||main.hasAttribute('data-cc-refresh-error'))return false;
   if(sspCustomOwnsView()||window.__catlakCreatureLibraryOpen===true)return true;
@@ -41,7 +42,32 @@ window.__catlakStabilityFreeze=sspFreeze;
 window.__catlakStabilityThaw=sspThaw;
 window.__catlakShouldPreserveCurrentView=sspManagedView;
 
-SSP_APP.addEventListener('pointerdown',e=>{if(e.target?.closest?.('.nav button'))sspThaw()},true);
+function sspLayoutIsSpecial(main){
+  if(!main||main.classList.contains('auth'))return true;
+  return !!main.querySelector('.builder,.cux-workshop,.ps-player-sheet,.gmt-shell,.er-wrap,.ccr-battle-grid,[data-iw-editor],[data-gm2-ability-page],[data-cex-gm-panel],[data-qol-creature-page],[data-prh-page],[data-prh-party-page],.gcs-shell,[data-lcc-board],.pm3-shell');
+}
+function sspApplyReadingColumns(){
+  const main=SSP_APP.querySelector('main');if(!main)return;
+  const cards=[...main.children].filter(x=>x.matches?.('section.card,article.card,.card'));
+  const use=!sspLayoutIsSpecial(main)&&cards.length>=2;
+  main.classList.toggle('cc-reading-columns',use);
+  main.classList.remove('cc-reading-columns-3');
+  cards.forEach(x=>x.classList.remove('cc-reading-wide'));
+  if(!use)return;
+  let narrow=0;
+  cards.forEach((card,index)=>{
+    const wide=index===0||card.classList.contains('hero')||!!card.querySelector(':scope > h1')||!!card.querySelector(':scope > .hero')||card.matches('[data-cc-full-width]');
+    card.classList.toggle('cc-reading-wide',wide);
+    if(!wide)narrow++;
+  });
+  if(narrow>=6)main.classList.add('cc-reading-columns-3');
+}
+function sspScheduleReadingColumns(){
+  if(sspLayoutQueued)return;sspLayoutQueued=true;
+  requestAnimationFrame(()=>{sspLayoutQueued=false;sspApplyReadingColumns()});
+}
+
+SSP_APP.addEventListener('pointerdown',e=>{if(e.target?.closest?.('.nav button')){sspThaw();setTimeout(sspScheduleReadingColumns,0)}},true);
 SSP_APP.addEventListener('submit',e=>{if(!e.target?.matches?.('[data-allow-native-submit]'))e.preventDefault()},true);
 
 if(!window.__catlakSiteMainStabilityInstalled){
@@ -57,12 +83,12 @@ if(!window.__catlakSiteMainStabilityInstalled){
           const auth=sspIsAuthHtml(value),freeze=Math.max(sspFreezeUntil,Number(window.__catlakUiFreezeUntil)||0)>now;
           if(this.childElementCount>0&&!auth&&(sspCustomOwnsView()||freeze)){sspSuppress();if(freeze)sspRestoreY(sspFreezeY??window.__catlakUiFreezeScrollY);return}
           if(this.childElementCount>0&&lastAppByView.get(key)===value){sspSuppress();return}
-          const y=window.scrollY,out=desc.set.call(this,value);lastAppByView.set(key,value);if(!auth)sspRestoreY(y);return out;
+          const y=window.scrollY,out=desc.set.call(this,value);lastAppByView.set(key,value);if(!auth)sspRestoreY(y);sspScheduleReadingColumns();return out;
         }
         if(this===main){
           const sameView=this.dataset.sspStableView===key,sameBase=lastMainByView.get(key)===value;
           if(sameView&&sameBase&&this.childElementCount>0){sspSuppress();return}
-          const y=window.scrollY,out=desc.set.call(this,value);this.dataset.sspStableView=key;lastMainByView.set(key,value);sspRestoreY(y);return out;
+          const y=window.scrollY,out=desc.set.call(this,value);this.dataset.sspStableView=key;lastMainByView.set(key,value);sspRestoreY(y);sspScheduleReadingColumns();return out;
         }
         return desc.set.call(this,value);
       }
@@ -76,7 +102,21 @@ if(!document.querySelector('#ssp-stability-style')){
     #app main .br3-card,#app main .ccr-weapon,#app main .gmt-combatant,#app main .gmt-slot,#app main .roll,#app main .iw-player-item,#app main [data-gfs-live-turn]{animation:none!important}
     #app main[data-ssp-stable-view]{overflow-anchor:auto}
     #app .cc-character-stack,#app main .gmt-shell,#app main .er-wrap{isolation:isolate}
+    @media(min-width:1050px){
+      #app main.cc-reading-columns{width:min(1540px,calc(100% - 32px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+      #app main.cc-reading-columns>section.card,#app main.cc-reading-columns>article.card,#app main.cc-reading-columns>.card{margin-bottom:0;min-width:0;height:100%}
+      #app main.cc-reading-columns>.cc-reading-wide{grid-column:1/-1;height:auto}
+      #app main.cc-reading-columns .grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    }
+    @media(min-width:1500px){
+      #app main.cc-reading-columns.cc-reading-columns-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+      #app main.cc-reading-columns.cc-reading-columns-3>.cc-reading-wide{grid-column:1/-1}
+    }
+    @media(max-width:1049px){#app main.cc-reading-columns{display:block!important;width:min(1220px,calc(100% - 24px))}}
   `;document.head.appendChild(s)
 }
 
-window.__catlakSiteStabilityTest={viewKey:sspViewKey,managed:sspManagedView,suppressed:()=>window.__catlakSiteRenderSuppressed||0,freeze:sspFreeze,thaw:sspThaw,freezeReason:()=>window.__catlakUiFreezeReason||''};
+new MutationObserver(sspScheduleReadingColumns).observe(SSP_APP,{childList:true,subtree:true});
+setTimeout(sspApplyReadingColumns,80);setTimeout(sspApplyReadingColumns,500);
+
+window.__catlakSiteStabilityTest={viewKey:sspViewKey,managed:sspManagedView,suppressed:()=>window.__catlakSiteRenderSuppressed||0,freeze:sspFreeze,thaw:sspThaw,freezeReason:()=>window.__catlakUiFreezeReason||'',columns:sspApplyReadingColumns};
