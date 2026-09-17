@@ -1,6 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakDdbSiteThemeV2)return;
+if(window.__catlakDdbSiteThemeV3)return;
+window.__catlakDdbSiteThemeV3=true;
 window.__catlakDdbSiteThemeV2=true;
 window.__catlakDdbSiteThemeV1=true;
 const APP=document.getElementById('app');
@@ -9,14 +10,14 @@ const HTML=document.documentElement;
 const txt=e=>String(e?.textContent||'').trim();
 const role=()=>txt(APP.querySelector('.role'));
 const isGM=()=>role()==='GM';
-let scheduled=false;
+let scheduled=false,routeKillerRuns=0;
 
 if(!document.getElementById('ddb-site-theme-style')){
  const s=document.createElement('style');s.id='ddb-site-theme-style';s.textContent=`
-/* Tüm eski geçiş gizleme/perde katmanlarını etkisizleştir. */
 html.cc-route-cloak #app main,html.pptf-player-prep #app main,html.pptf-live-prep #app main{visibility:visible!important}
 html.cc-route-cloak body::before{content:none!important;display:none!important}
 html.fup-battle-prep #app main .ccr-battle-grid,html.bra-battle-prep #app main .ccr-battle-grid{visibility:visible!important}
+#app .cux-route-loading{display:none!important}
 html.ddb-site body{background:#111417!important}
 html.ddb-site #app>.top{background:#1d2226!important;border-bottom:1px solid #3a4045!important;box-shadow:0 2px 12px #0005!important;backdrop-filter:none!important}
 html.ddb-site #app>.top .mark{border-radius:6px!important;border-color:#9f3438!important;color:#d55358!important;background:#131719!important}
@@ -47,46 +48,24 @@ html.ddb-player #app main.ps-player-sheet{margin-top:14px!important}
  `;document.head.appendChild(s)
 }
 
-const meta={
- gm:['KAMPANYA','Kampanya Merkezi','Canlı oyun, parti, harita ve GM yönetimini tek merkezden kontrol et.'],
- characters:['KARAKTERLER','Karakterler','Karakterleri GM hazırlar, düzenler ve oyunculara karaktere özel davet bağlantısıyla gönderir.'],
- builder:['KARAKTER OLUŞTURUCU','Yeni Karakter','Irk, sınıf, statlar, yetenekler ve ekipmanı adım adım kur.'],
- races:['OYUN İÇERİĞİ','Oyun İçeriği','Irklar, sınıflar, yetenekler ve dünya kurallarını yönet.'],
- items:['EŞYALAR','Eşya Kütüphanesi','Silah, zırh ve diğer eşyaları tek kütüphaneden yönet.'],
- rolls:['OYUN GÜNLÜĞÜ','Oyun Günlüğü','Oturum hareketleri ve zar sonuçlarını incele.'],
- rules:['KURALLAR','Kurallar','Masa kuralları ve oyun sistemini düzenle.'],
- account:['HESAP','Hesap','GM hesabı ve oturum işlemleri.']
-};
+const meta={gm:['KAMPANYA','Kampanya Merkezi','Canlı oyun, parti, harita ve GM yönetimini tek merkezden kontrol et.'],characters:['KARAKTERLER','Karakterler','Karakterleri GM hazırlar, düzenler ve oyunculara karaktere özel davet bağlantısıyla gönderir.'],builder:['KARAKTER OLUŞTURUCU','Yeni Karakter','Kimlik, ırk, arka plan, sınıf ve statları adım adım kur.'],races:['OYUN İÇERİĞİ','Oyun İçeriği','Irklar, sınıflar, yetenekler ve dünya kurallarını yönet.'],items:['EŞYALAR','Eşya Kütüphanesi','Silah, zırh ve diğer eşyaları tek kütüphaneden yönet.'],rolls:['OYUN GÜNLÜĞÜ','Oyun Günlüğü','Oturum hareketleri ve zar sonuçlarını incele.'],rules:['KURALLAR','Kurallar','Masa kuralları ve oyun sistemini düzenle.'],account:['HESAP','Hesap','GM hesabı ve oturum işlemleri.']};
 function activeTab(){return APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||''}
-function ensureWorkspace(){
- if(!isGM()){APP.querySelector('[data-ddb-workspace]')?.remove();return}
- const nav=APP.querySelector('.nav'),main=APP.querySelector('main');if(!nav||!main||main.classList.contains('auth'))return;
- const tab=activeTab(),m=meta[tab]||['GM','GM Yönetimi','Çatlak Çağı yönetim araçları.'];
- let bar=APP.querySelector('[data-ddb-workspace]');
- if(!bar){bar=document.createElement('section');bar.className='ddb-workspace';bar.dataset.ddbWorkspace='1';nav.insertAdjacentElement('afterend',bar)}
- const action=tab==='characters'?'<button type="button" class="primary" data-ddb-open-builder>+ Yeni Karakter</button>':tab==='builder'?'<button type="button" data-ddb-open-characters>← Karakterlere Dön</button>':'';
- const sig=[tab,m[0],m[1],action].join('|');if(bar.dataset.sig===sig)return;bar.dataset.sig=sig;
- bar.innerHTML=`<div><div class="eyebrow">${m[0]}</div><h1>${m[1]}</h1><p>${m[2]}</p></div><div class="ddb-workspace-actions">${action}</div>`
+function ensureWorkspace(){if(!isGM()){APP.querySelector('[data-ddb-workspace]')?.remove();return}const nav=APP.querySelector('.nav'),main=APP.querySelector('main');if(!nav||!main||main.classList.contains('auth'))return;const tab=activeTab(),m=meta[tab]||['GM','GM Yönetimi','Çatlak Çağı yönetim araçları.'];let bar=APP.querySelector('[data-ddb-workspace]');if(!bar){bar=document.createElement('section');bar.className='ddb-workspace';bar.dataset.ddbWorkspace='1';nav.insertAdjacentElement('afterend',bar)}const action=tab==='characters'?'<button type="button" class="primary" data-ddb-open-builder>+ Yeni Karakter</button>':tab==='builder'?'<button type="button" data-ddb-open-characters>← Karakterlere Dön</button>':'';const sig=[tab,m[0],m[1],action].join('|');if(bar.dataset.sig===sig)return;bar.dataset.sig=sig;bar.innerHTML=`<div><div class="eyebrow">${m[0]}</div><h1>${m[1]}</h1><p>${m[2]}</p></div><div class="ddb-workspace-actions">${action}</div>`}
+function markView(){const main=APP.querySelector('main');if(!main)return;main.classList.remove('ddb-builder-view','ddb-character-view');const tab=activeTab();if(tab==='builder')main.classList.add('ddb-builder-view');if(tab==='characters')main.classList.add('ddb-character-view')}
+function renameNav(){if(!isGM())return;const map={gm:'Kampanya',characters:'Karakterler',builder:'Karakter Oluştur',races:'Oyun İçeriği',items:'Eşyalar',rolls:'Oyun Günlüğü',rules:'Kurallar',account:'Hesap'};APP.querySelectorAll('.nav button[data-tab]').forEach(b=>{const n=map[b.dataset.tab];if(n&&txt(b)!==n)b.textContent=n})}
+function clearLegacyPrep(){HTML.classList.remove('cc-route-cloak','pptf-player-prep','pptf-live-prep','fup-battle-prep','bra-battle-prep');APP.querySelectorAll('.cux-route-loading').forEach(x=>x.remove())}
+function killLegacyRouteLoader(){
+ clearLegacyPrep();
+ const current=window.__catlakRouteLoading;
+ if(typeof current==='function'&&!current.__ddbInstant){const noop=function(){clearLegacyPrep()};noop.__ddbInstant=true;window.__catlakRouteLoading=noop}
+ if(++routeKillerRuns<30)setTimeout(killLegacyRouteLoader,180)
 }
-function markView(){
- const main=APP.querySelector('main');if(!main)return;main.classList.remove('ddb-builder-view','ddb-character-view');
- const tab=activeTab();if(tab==='builder')main.classList.add('ddb-builder-view');if(tab==='characters')main.classList.add('ddb-character-view')
-}
-function renameNav(){
- if(!isGM())return;const map={gm:'Kampanya',characters:'Karakterler',builder:'Karakter Oluştur',races:'Oyun İçeriği',items:'Eşyalar',rolls:'Oyun Günlüğü',rules:'Kurallar',account:'Hesap'};
- APP.querySelectorAll('.nav button[data-tab]').forEach(b=>{const n=map[b.dataset.tab];if(n&&txt(b)!==n)b.textContent=n})
-}
-function clearLegacyPrep(){HTML.classList.remove('cc-route-cloak','pptf-player-prep','pptf-live-prep','fup-battle-prep','bra-battle-prep')}
 function apply(){scheduled=false;clearLegacyPrep();HTML.classList.add('ddb-site');HTML.classList.toggle('ddb-gm',isGM());renameNav();ensureWorkspace();markView()}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply)}
-APP.addEventListener('click',e=>{
- clearLegacyPrep();
- const b=e.target.closest('[data-ddb-open-builder]');if(b){e.preventDefault();APP.querySelector('.nav [data-tab="builder"]')?.click();return}
- const c=e.target.closest('[data-ddb-open-characters]');if(c){e.preventDefault();APP.querySelector('.nav [data-tab="characters"]')?.click()}
-},true);
+APP.addEventListener('click',e=>{clearLegacyPrep();const b=e.target.closest('[data-ddb-open-builder]');if(b){e.preventDefault();APP.querySelector('.nav [data-tab="builder"]')?.click();return}const c=e.target.closest('[data-ddb-open-characters]');if(c){e.preventDefault();APP.querySelector('.nav [data-tab="characters"]')?.click()}},true);
 window.addEventListener('pointerdown',clearLegacyPrep,true);
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 new MutationObserver(clearLegacyPrep).observe(HTML,{attributes:true,attributeFilter:['class']});
-setTimeout(schedule,0);setTimeout(schedule,200);setTimeout(schedule,700);
-window.__catlakDdbSiteTheme={apply,clearLegacyPrep};
+setTimeout(schedule,0);setTimeout(schedule,200);setTimeout(schedule,700);setTimeout(killLegacyRouteLoader,0);
+window.__catlakDdbSiteTheme={apply,clearLegacyPrep,killLegacyRouteLoader};
 })();
