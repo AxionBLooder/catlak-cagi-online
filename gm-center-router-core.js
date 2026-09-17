@@ -29,11 +29,13 @@ function gmcrCenterOpen(){
   if(window.__catlakGmToolsOpen===true)return true;
   if(window.__catlakCreatureLibraryOpen===true)return true;
   if(window.__catlakCampaignStateRoom)return true;
+  if(window.__catlakManagementRoomOpen===true)return true;
   if(GMCR_APP.querySelector('[data-gm2-ability-page]'))return true;
   return false;
 }
 function gmcrSetCenterVisual(open){GMCR_APP.classList.toggle('gmcr-center-open',!!open)}
 function gmcrCloseForeignViews(){
+  try{window.__catlakManagementRoom?.close?.()}catch(_){ }
   try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){ }
   try{window.__catlakPartyManager?.close?.()}catch(_){ }
   window.__catlakPartyRoomOwnsMain=false;
@@ -82,6 +84,7 @@ function gmcrSelect(route){
 
 function gmcrLogicalRoute(){
   if(window.__catlakCampaignStateRoom)return'campaign';
+  if(window.__catlakManagementRoomOpen===true)return'characters';
   const forced=String(window.__catlakGmCenterSelectedRoute||'');
   if(GMCR_ROUTES.has(forced))return forced;
   if(window.__catlakCreatureLibraryOpen===true)return'creatures';
@@ -95,10 +98,25 @@ function gmcrLogicalRoute(){
 
 function gmcrLeaveCenter(){
   gmcrToken++;gmcrLastRoute='';gmcrLastAt=0;gmcrPointerRoute='';gmcrPointerAt=0;window.__catlakGmCenterSelectedRoute='';
+  try{window.__catlakManagementRoom?.close?.()}catch(_){ }
   gmcrSetCenterVisual(false);
   const hub=window.__catlakGmHubV2Test;
   if(typeof hub?.leave==='function')hub.leave();
   else{window.__catlakCampaignStateTest?.close?.();hub?.release?.();window.__catlakGmTools?.close?.();window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();GMCR_APP.querySelector('[data-gm2-centerbar]')?.remove();GMCR_APP.querySelector('.nav [data-gmt-open]')?.classList.remove('gm2-center-active')}
+}
+
+function gmcrOpenManagement(token){
+  if(token!==gmcrToken)return true;
+  const room=window.__catlakManagementRoom;
+  if(typeof room?.open!=='function')return false;
+  const opened=room.open(true);
+  if(opened===false)return false;
+  requestAnimationFrame(()=>{
+    if(token!==gmcrToken)return;
+    gmcrMakeButtonsClickable();
+    gmcrSelect('characters');
+  });
+  return true;
 }
 
 function gmcrGo(route){
@@ -106,6 +124,21 @@ function gmcrGo(route){
   gmcrCloseForeignViews();
   gmcrSelect(route);
   const token=++gmcrToken;
+
+  // Yönetim Odası artık gizli native "characters" sekmesine veya Hub wrapper'ına bağlı değil.
+  // Doğrudan kendi runtime'ı açılır; script birkaç ms geç geldiyse kısa süreli yeniden denenir.
+  if(route==='characters'){
+    let tries=0;
+    const open=()=>{
+      if(token!==gmcrToken)return;
+      if(gmcrOpenManagement(token))return;
+      if(++tries<60){setTimeout(open,25);return}
+      gmcrToast('Yönetim Odası hazır değil. Sayfayı yenileyip tekrar dene.');
+    };
+    open();
+    return true;
+  }
+
   const run=()=>{
     if(token!==gmcrToken)return true;
     const go=window.__catlakGmHubV2Test?.route;
@@ -206,5 +239,6 @@ window.__catlakGmCenterRouterCore={
   centerOpen:gmcrCenterOpen,
   leave:gmcrLeaveCenter,
   reset:gmcrLeaveCenter,
-  ensureEntry:gmcrEnsureEntry
+  ensureEntry:gmcrEnsureEntry,
+  openManagement:()=>gmcrGo('characters')
 };
