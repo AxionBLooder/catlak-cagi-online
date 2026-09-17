@@ -37,7 +37,12 @@ jobs:
           import re
 
           html = Path('index.html').read_text(encoding='utf-8')
-          files = {'browser-app.js', 'gm-campaign-state-patch.js'}
+          files = {
+              'browser-app.js',
+              'gm-campaign-state-patch.js',
+              'party-eeliot-runtime-hotfix.js',
+              'party-stable-entry.js',
+          }
           files.update(re.findall(r'<script[^>]+src=["\']\./([^"\'?]+\.js)', html))
           files.update(re.findall(r'loadAddon\(["\']\./([^"\'?]+\.js)', html))
 
@@ -48,7 +53,11 @@ jobs:
           for name in sorted(files):
               Path('_site', name).write_bytes(Path(name).read_bytes())
 
-          live_html = html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>')
+          live_html = html.replace(
+              'player-enemy-privacy-patch.js?v=privacy-v3-party-eeliot',
+              'player-enemy-privacy-patch.js?v=privacy-v4-live-party'
+          )
+          live_html = live_html.replace('</body>', '<script src="./gm-campaign-state-patch.js?v=gmstate-v4-seal-editor"></script></body>')
           Path('_site/index.html').write_text(live_html, encoding='utf-8')
 
           print(f'{len(files)} çalışma dosyası dağıtıma alındı.')
@@ -60,6 +69,14 @@ jobs:
           grep -Fq 'gm-campaign-state-patch.js?v=gmstate-v4-seal-editor' _site/index.html
           grep -Fq 'gm-center-router-core.js?v=gmrouter-v6-campaign' _site/index.html
           grep -Fq 'gm-hub-v2-patch.js?v=gmhub-v8-campaign' _site/index.html
+          grep -Fq 'player-enemy-privacy-patch.js?v=privacy-v4-live-party' _site/index.html
+          test -f _site/party-eeliot-runtime-hotfix.js
+          test -f _site/party-stable-entry.js
+          grep -Fq '__catlakPartyRuntimeStableV2=true' _site/party-eeliot-runtime-hotfix.js
+          grep -Fq '__catlakPartyStableEntryV3=true' _site/party-stable-entry.js
+          grep -Fq 'Parti Yönetimi' _site/party-stable-entry.js
+          grep -Fq "live.textContent='Canlı Oyun'" _site/party-stable-entry.js
+          grep -Fq "title==='Oyuncular & Zarlar'" _site/party-stable-entry.js
           grep -Fq '__catlakGcsDeltaPointerV2=true' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakCampaignRoomStableV3=true' _site/gm-campaign-state-patch.js
           grep -Fq '__catlakSealEditorStableV1=true' _site/gm-campaign-state-patch.js
