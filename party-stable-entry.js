@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPartyStableEntryV2)return;
-window.__catlakPartyStableEntryV2=true;
+if(window.__catlakPartyStableEntryV3)return;
+window.__catlakPartyStableEntryV3=true;
 const APP=document.querySelector('#app');
 if(!APP)return;
 const txt=e=>String(e?.textContent||'').trim();
@@ -10,12 +10,14 @@ let queued=false;
 function toast(m){const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3000)}
 function ensureTop(){
  const nav=APP.querySelector('.nav');if(!nav)return null;
+ const live=nav.querySelector('[data-tab="gm"]');
+ if(live&&txt(live)!=='Canlı Oyun')live.textContent='Canlı Oyun';
  if(!isGM()){
   nav.querySelector('[data-prh-manager]')?.remove();
-  nav.querySelectorAll('[data-cpr-manager]').forEach(x=>x.remove());
+  nav.querySelectorAll('[data-cpr-manager],[data-pm3-open]').forEach(x=>x.remove());
   return null;
  }
- nav.querySelectorAll('[data-cpr-manager]').forEach(x=>x.remove());
+ nav.querySelectorAll('[data-cpr-manager],[data-pm3-open]').forEach(x=>x.remove());
  let b=nav.querySelector('[data-prh-manager]');
  if(!b){
   b=document.createElement('button');
@@ -24,7 +26,6 @@ function ensureTop(){
   b.textContent='Parti Yönetimi';
   b.title='Parti Yönetimi odasını aç';
  }
- const live=nav.querySelector('[data-tab="gm"]');
  if(live){if(live.nextElementSibling!==b)live.insertAdjacentElement('afterend',b)}
  else if(b.parentElement!==nav)nav.appendChild(b);
  return b;
@@ -36,18 +37,18 @@ function ensureCenter(){
  if(!b){b=document.createElement('button');b.type='button';b.dataset.psPartyCenter='1';b.textContent='Parti Yönetimi';bar.appendChild(b)}
  b.classList.toggle('on',!!APP.querySelector('main [data-prh-page]'));
 }
-function cleanLiveIntro(){
+function cleanLiveChrome(){
  if(!isGM())return;
  const live=APP.querySelector('.nav [data-tab="gm"].on');
  if(!live)return;
+ if(txt(live)!=='Canlı Oyun')live.textContent='Canlı Oyun';
  APP.querySelectorAll('main section.card').forEach(sec=>{
-  if(txt(sec.querySelector('.eyebrow'))!=='CANLI OYUN MASASI')return;
-  sec.querySelectorAll('p').forEach(p=>{
-   if(txt(p).includes('Solda oyuncuların attığı zarlar'))p.remove();
-  });
+  const eyebrow=txt(sec.querySelector('.eyebrow'));
+  const title=txt(sec.querySelector('h1,h2'));
+  if((eyebrow==='CANLI OYUN MASASI'||eyebrow==='CANLI OYUN')&&title==='Oyuncular & Zarlar')sec.remove();
  });
 }
-function maintain(){queued=false;ensureTop();ensureCenter();cleanLiveIntro()}
+function maintain(){queued=false;ensureTop();ensureCenter();cleanLiveChrome()}
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(maintain)}
 function openPartyManager(){
  if(!isGM())return;
@@ -68,7 +69,7 @@ window.addEventListener('click',e=>{
  if(!b)return;
  e.preventDefault();e.stopImmediatePropagation();openPartyManager();
 },true);
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
+new MutationObserver(schedule).observe(APP,{childList:true,subtree:true,characterData:true});
 setTimeout(maintain,80);setTimeout(maintain,400);setTimeout(maintain,1200);
-window.__catlakPartyStableEntry={maintain,open:openPartyManager,cleanLiveIntro};
+window.__catlakPartyStableEntry={maintain,open:openPartyManager,cleanLiveChrome};
 })();
