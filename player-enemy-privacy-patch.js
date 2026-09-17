@@ -48,7 +48,7 @@ window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
   if(document.querySelector('script[data-pse-loader]'))return;
   const s=document.createElement('script');
   s.dataset.pseLoader='1';
-  s.src='./party-stable-entry.js?v=party-entry-v3-live-game';
+  s.src='./party-stable-entry.js?v=party-entry-v4-manager-clean';
   s.async=false;
   s.onerror=function(){console.error('Sabit Parti Yönetimi giriş katmanı yüklenemedi.');};
   document.body.appendChild(s);
