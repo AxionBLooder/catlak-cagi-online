@@ -63,3 +63,13 @@ window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
   s.onerror=function(){console.error('Parti Yönetimi katmanı yüklenemedi.');};
   document.body.appendChild(s);
 })();
+
+(function loadEeliotProfilePatch(){
+  if(document.querySelector('script[data-eep-loader]'))return;
+  const s=document.createElement('script');
+  s.dataset.eepLoader='1';
+  s.src='./eeliot-character-patch.js?v=eeliot-profile-v1';
+  s.async=false;
+  s.onerror=function(){console.error('Eeliot karakter profili yüklenemedi.');};
+  document.body.appendChild(s);
+})();
