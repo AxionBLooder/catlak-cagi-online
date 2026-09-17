@@ -34,6 +34,16 @@ document.addEventListener('click',pepSchedule,true);
 setTimeout(pepSanitize,120);
 window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
 
+(function loadPartyStatUiFix(){
+  if(document.querySelector('script[data-psuf-loader]'))return;
+  const s=document.createElement('script');
+  s.dataset.psufLoader='1';
+  s.src='./party-stat-ui-fix.js?v=party-stat-ui-v2';
+  s.async=false;
+  s.onerror=function(){console.error('Parti menüsü / Stat karakter geçiş düzeltmesi yüklenemedi.');};
+  document.body.appendChild(s);
+})();
+
 (function loadPartyEeliotRuntimeHotfix(){
   if(document.querySelector('script[data-prh-loader]'))return;
   const s=document.createElement('script');
@@ -41,15 +51,5 @@ window.__catlakEnemyHpPrivacy={sanitize:pepSanitize,mode:'ac-only'};
   s.src='./party-eeliot-runtime-hotfix.js?v=runtime-v2-stable';
   s.async=false;
   s.onerror=function(){console.error('Parti/Eeliot runtime katmanı yüklenemedi.');};
-  document.body.appendChild(s);
-})();
-
-(function loadPartyStatUiFix(){
-  if(document.querySelector('script[data-psuf-loader]'))return;
-  const s=document.createElement('script');
-  s.dataset.psufLoader='1';
-  s.src='./party-stat-ui-fix.js?v=party-stat-ui-v1';
-  s.async=false;
-  s.onerror=function(){console.error('Parti menüsü / Stat karakter geçiş düzeltmesi yüklenemedi.');};
   document.body.appendChild(s);
 })();
