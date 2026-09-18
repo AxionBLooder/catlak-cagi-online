@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV22)return;
-window.__catlakPlayerSheetHardRecoveryV22=true;
+if(window.__catlakPlayerSheetHardRecoveryV23)return;
+window.__catlakPlayerSheetHardRecoveryV23=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -126,6 +126,7 @@ function restoreCachedSheet(wantRace=false){
   raceMode=false;raceWanted=!!wantRace;window.__catlakRaceWantedEarly=raceWanted;
   setRaceView(raceWanted);
   applyLayers();
+  setTimeout(()=>refreshStable('all'),0);
   return true;
 }
 function release(){
