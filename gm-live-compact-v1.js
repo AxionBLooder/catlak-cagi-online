@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmLiveCompactV11)return;
-window.__catlakGmLiveCompactV11=true;
+if(window.__catlakGmLiveCompactV12)return;
+window.__catlakGmLiveCompactV12=true;
 ['glc-style-v2','glc-style-v3','glc-style-v4','glc-style-v5','glc-style-v6','glc-style-v7'].forEach(id=>document.getElementById(id)?.remove());
 const APP=document.getElementById('app');if(!APP)return;
 
@@ -25,20 +25,18 @@ function cleanNav(){
  nav.querySelectorAll('[data-tab="characters"]').forEach(native=>native.remove())
 }
 
+function liveSelected(){return !!APP.querySelector('.nav [data-tab="gm"].on')}
 function decorateLive(){
- const main=APP.querySelector('main[data-cc-simple-live="1"]');if(!main)return;
+ const main=APP.querySelector('main');if(!main||!liveSelected()){APP.classList.remove('cc-live-battle-only');return}
+ APP.classList.add('cc-live-battle-only');
+ try{window.__catlakLiveCombatCenter?.restore?.()}catch(_){}
  [...main.children].forEach(el=>{
-  if(!(el instanceof HTMLElement)||!el.matches('.card')||el.classList.contains('cc-party-show'))return;
-  const tx=String(el.textContent||'').replace(/\s+/g,' ').trim();
-  if(/CANLI OYUN MASASI/i.test(tx)&&/Oyuncular\s*&\s*Zarlar/i.test(tx))el.remove();
+  if(!(el instanceof HTMLElement))return;
+  if(el.matches('[data-lcc-board]'))return;
+  el.remove();
  });
- const wrap=main.querySelector('.cc-live-two');
- if(wrap)wrap.remove();
- main.querySelectorAll('[data-glc-kind="players"],[data-glc-kind="rolls"]').forEach(x=>x.remove());
- if(APP.querySelector('.nav [data-tab="gm"].on')&&!main.querySelector('[data-lcc-board]')){
-   try{if(window.__catlakLiveCombatCenter?.restore?.())return}catch(_){}
-   setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},0);
- }
+ main.querySelectorAll('.cc-live-two,[data-glc-kind="players"],[data-glc-kind="rolls"],.cc-simple-player,.cc-simple-roll').forEach(x=>x.remove());
+ if(!main.querySelector('[data-lcc-board]'))setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},0);
 }
 
 const st=document.createElement('style');st.id='glc-style-v10';st.textContent=`
@@ -52,6 +50,8 @@ const st=document.createElement('style');st.id='glc-style-v10';st.textContent=`
 #app.gmc-gm .nav [data-tab="characters"]{display:none!important;order:900!important}
 #app.gmc-gm [data-gmc-route="characters"],#app.gmc-gm [data-gm2-route="characters"]{display:none!important}
 
+html body #app.cc-live-battle-only main{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
+html body #app.cc-live-battle-only main>*:not([data-lcc-board]){display:none!important}
 html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
 html body #app.gmc-gm:has(.nav [data-tab="gm"].on) main:has(.cc-live-two)>.card:not(.cc-party-show){display:none!important}
 html body #app.gmc-gm:has(.nav [data-tab="gm"].on) main .cc-live-two{display:none!important}
@@ -99,6 +99,10 @@ new MutationObserver(rs=>{
  });
  if(relevant)schedule();
 }).observe(APP,{childList:true,subtree:true});
+window.addEventListener('pointerdown',e=>{
+ const b=e.target?.closest?.('#app .nav [data-tab="gm"]');
+ if(b)APP.classList.add('cc-live-battle-only');
+},true);
 setTimeout(schedule,0);setTimeout(schedule,500);
 window.__catlakGmLiveCompact={maintain:schedule};
 })();
