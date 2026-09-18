@@ -1,10 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Invite Link No Reset
 on:
-  push:
-    paths:
-      - 'gm-ui-polish-v1.js'
-      - 'index.html'
-      - '.github/workflows/check-invite-link-no-reset.yml'
   workflow_dispatch:
 
 jobs:
