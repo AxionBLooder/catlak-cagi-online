@@ -89,15 +89,21 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v39-core-fallback-advanced','player-hard-recovery'),
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v40-atomic-sheet','player-hard-recovery'),
           load('./room-system-patch.js?v=player-bg-v21-clean-room-switch','rooms'),
           load('./battle-room-v3-patch.js?v=battle-v20-no-ghost-cache','battle-room-v3')
         ]);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),8500)}
+          var hardOk=false;
+          try{hardOk=!!(await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),8500))}
           catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
-          if(!app.querySelector('main .cc-character-stack[data-cc-hard-stack]')){
+          if(!hardOk&&!app.querySelector('main .cc-character-stack[data-cc-hard-stack]')){
             await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},700)})]);
+            var m=app.querySelector('main');
+            if(m&&!m.children.length){
+              var sheetBtn=app.querySelector('.nav [data-tab="sheet"]');
+              try{sheetBtn?.click()}catch(_){}
+            }
           }
         }
         await twoFrames();

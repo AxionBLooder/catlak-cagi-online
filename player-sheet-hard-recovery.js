@@ -522,6 +522,35 @@ function showWaiting(message){
   m.innerHTML=`<section class="card"><div class="eyebrow">OYUNCU MASASI</div><h2>Karakter kağıdı hazırlanıyor…</h2><p class="muted" data-cc-hard-wait-text>${esc(msg)}</p><button type="button" data-cc-hard-sheet-retry>Tekrar Dene</button></section>`;
   release();
 }
+function atomicSheetMount(chars,x){
+  const m=main();if(!m||!Array.isArray(chars)||!chars.length)return false;
+  let html='';
+  try{html=chars.map(c=>charHtml(c,x)).join('')}catch(e){console.error('CATLAK_PLAYER_HTML_BUILD',e);window.__catlakPlayerSheetLastError=e?.message||String(e);return false}
+  const probe=document.createElement('template');
+  probe.innerHTML=html;
+  if(!probe.content.querySelector('.cc-character-stack[data-cc-hard-stack] section.hero')){
+    window.__catlakPlayerSheetLastError='Gelişmiş oyuncu kağıdı doğrulanamadı.';
+    return false
+  }
+  const previous={html:m.innerHTML,className:m.className,hard:m.dataset.ccHardSheet||'',wait:m.dataset.ccHardWait||'',view:m.dataset.ccViewMount||''};
+  try{
+    // Swap only after the complete advanced sheet has been built and validated off-DOM.
+    m.replaceChildren(probe.content.cloneNode(true));
+    m.className='';
+    m.dataset.ccHardSheet='1';
+    delete m.dataset.ccHardWait;delete m.dataset.ccrBattle;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccViewMount;
+    if(!m.querySelector('.cc-character-stack[data-cc-hard-stack] section.hero'))throw new Error('Atomik oyuncu kağıdı mount doğrulaması başarısız.');
+    return true
+  }catch(e){
+    console.error('CATLAK_PLAYER_ATOMIC_MOUNT',e);
+    window.__catlakPlayerSheetLastError=e?.message||String(e);
+    m.innerHTML=previous.html;m.className=previous.className;
+    if(previous.hard)m.dataset.ccHardSheet=previous.hard;else delete m.dataset.ccHardSheet;
+    if(previous.wait)m.dataset.ccHardWait=previous.wait;else delete m.dataset.ccHardWait;
+    if(previous.view)m.dataset.ccViewMount=previous.view;else delete m.dataset.ccViewMount;
+    return false
+  }
+}
 async function recover(force=false){
   queued=false;
   if(!sheetActive())return false;
@@ -544,17 +573,17 @@ async function recover(force=false){
     const x=await extras(S,chars);
     if(!sheetActive())return false;
     window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
-    const m=main();if(!m)return false;
-    m.className='';
-    m.dataset.ccHardSheet='1';
+    if(!atomicSheetMount(chars,x)){
+      // Never destroy the working core sheet when advanced rendering cannot be completed.
+      if(coreSheetVisible())return true;
+      showWaiting('Gelişmiş karakter kağıdı hazırlanamadı. Tekrar Dene ile yeniden yükleyebilirsin.');
+      return false
+    }
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
-    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccrBattle;delete m.dataset.ccViewMount;delete m.dataset.ccHardWait;
-    const html=chars.map(c=>charHtml(c,x)).join('');
-    const mounted=window.__catlakViewRuntime?.mount?.('player-sheet',m,html);
-    if(!mounted||!m.querySelector('.cc-character-stack[data-cc-hard-stack]'))m.innerHTML=html;
     ensureRaceNav();setRaceView(raceWanted);
     applyLayers();cacheSheet();release();
     try{window.__catlakViewRuntime?.ready?.('player-sheet')}catch(_){}
+    window.__catlakPlayerSheetLastError='';
     window.dispatchEvent(new CustomEvent('catlak:player-hard-ready'));
     return ready();
   }catch(e){
@@ -651,5 +680,5 @@ window.addEventListener('pageshow',()=>{
   if(sheetActive()&&!ready())setTimeout(()=>schedule(false,0),120);
 });
 realtime();
-window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
+window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml,lastError:()=>String(window.__catlakPlayerSheetLastError||''),debug:()=>({active:sheetActive(),ready:ready(),core:coreSheetVisible(),hard:main()?.dataset.ccHardSheet||'',children:main()?.children?.length||0})};
 })();
