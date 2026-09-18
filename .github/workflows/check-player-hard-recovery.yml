@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v11' index.html
+          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v12' index.html
           grep -Fq 'recovery-core-13-single-player-owner' index.html
           grep -Fq 'catlakBootJoinedCharacter' live_08.txt
           grep -Fq "catlak-guest-join" live_08.txt
