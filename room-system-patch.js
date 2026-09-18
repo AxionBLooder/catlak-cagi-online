@@ -156,19 +156,18 @@ async function ccrBattleData(){
   if(chars.error)throw chars.error;
   const own=(chars.data||[]).filter(x=>x.data?.[CCR_PKEY]===true);
   const c=own.find(x=>x.id===s.character_id)||own[0]||null;
-  if(!c)return{snap:s,char:null,inv:[],items:[],conditions:[],rolls:[],derived:null};
-  const [ir,kr,rr]=await Promise.all([
+  if(!c)return{snap:s,char:null,inv:[],items:[],conditions:[],derived:null};
+  const [ir,kr]=await Promise.all([
     CCR_S.from('catlak_inventory').select('id,character_id,item_id,quantity,equipped,equipped_slot,player_note').eq('character_id',c.id).order('granted_at',{ascending:true}),
-    CCR_S.from('catlak_character_conditions').select('id,name,note,remaining_rounds,active,created_at').eq('character_id',c.id).eq('active',true).order('created_at',{ascending:true}),
-    CCR_S.from('catlak_rolls').select('id,character_id,label,roll_kind,formula,modifier,total,created_at').eq('character_id',c.id).order('created_at',{ascending:false}).limit(12)
+    CCR_S.from('catlak_character_conditions').select('id,name,note,remaining_rounds,active,created_at').eq('character_id',c.id).eq('active',true).order('created_at',{ascending:true})
   ]);
-  for(const r of [ir,kr,rr])if(r.error)throw r.error;
+  for(const r of [ir,kr])if(r.error)throw r.error;
   const ids=[...new Set((ir.data||[]).map(x=>x.item_id))];let itemRows=[];
   if(ids.length){
     const qr=await CCR_S.from('catlak_items').select('id,name,item_type,description,attack_stat,attack_bonus,attack_formula,damage_formula,damage_type,effects,ac_mode,ac_value').in('id',ids);
     if(qr.error)throw qr.error;itemRows=qr.data||[];
   }
-  return{snap:s,char:c,inv:ir.data||[],items:itemRows,conditions:kr.data||[],rolls:rr.data||[],derived:ccrDerived(c,ir.data||[],itemRows)};
+  return{snap:s,char:c,inv:ir.data||[],items:itemRows,conditions:kr.data||[],derived:ccrDerived(c,ir.data||[],itemRows)};
 }
 function ccrOrderHtml(s){
   return (s.order||[]).map(x=>`<div class="ccr-order-row ${x.is_current?'current':''} ${x.is_self?'self':''}">
@@ -202,15 +201,12 @@ function ccrBattleHtml(d){
   if(!s.active)return`<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>Savaş Hazır</h1><p class="muted">Şu anda aktif bir savaş yok. GM savaşı başlattığında bu oda otomatik güncellenecek.</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div></div></section>`;
   const order=ccrOrderHtml(s);
   if(!s.in_combat)return`<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>${ccrEsc(s.battle_name||'Savaş')}</h1><p class="muted">Savaş başladı; GM henüz karakterini karşılaşmaya eklemedi.</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div></div></section><section class="card"><div class="eyebrow">TUR SIRASI</div><h2>Round ${ccrNum(s.round)}</h2><div class="ccr-order">${order||'<div class="muted">Katılımcı yok.</div>'}</div></section>`;
-  const quick=['STR','DEX','CON','INT','WIS','CHA'].map(a=>`<button type="button" data-ccr-stat="${a}">${a} ${ccrSigned(ccrMod(der.stats?.[a]))}</button>`).join('');
   return `<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>${ccrEsc(s.battle_name||'Savaş')}</h1><p>${ccrEsc(d.char.name)} • Round ${ccrNum(s.round)} • ${s.is_my_turn?'<b class="gold">SIRA SENDE</b>':`Sıra: <b>${ccrEsc(s.current_name||'—')}</b>`}</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div><div class="vital"><span>DURUM</span><b>${s.is_my_turn?'▶':'•'}</b></div></div></section>
   <div class="ccr-battle-grid"><div>
     <section class="card"><div class="eyebrow">TUR SIRASI</div><h2>Round ${ccrNum(s.round)}</h2><div class="ccr-order">${order||'<div class="muted">Katılımcı yok.</div>'}</div></section>
     <section class="card"><div class="eyebrow">TAKILI SİLAHLAR</div><h2>Saldırı & Hasar</h2>${ccrWeaponsHtml(d)}</section>
-    <section class="card"><div class="eyebrow">HIZLI D20</div><div class="actions">${quick}</div></section>
   </div><aside>
     <section class="card"><div class="eyebrow">AKTİF DURUMLAR</div><h2>Üzerindeki Etkiler</h2>${ccrConditionsHtml(d.conditions)}</section>
-    <section class="card"><div class="eyebrow">SON ZARLARIN</div>${ccrRecentHtml(d.rolls)}</section>
   </aside></div>`;
 }
 async function ccrBattleRender(force=false){
@@ -264,6 +260,6 @@ document.addEventListener('click',e=>{
 
 function ccrRealtimeRefresh(){if(!ccrBattleOpen)return;const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true)}
 new MutationObserver(ccrSchedule).observe(CCR_APP,{childList:true,subtree:true});
-if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},ccrRealtimeRefresh).subscribe();
+if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},ccrRealtimeRefresh).subscribe();
 window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
 ccrEnsure();ccrRefreshPartyAccess();
