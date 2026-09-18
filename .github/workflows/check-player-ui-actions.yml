@@ -1,10 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Player UI Actions
 on:
-  push:
-    paths:
-      - 'player-sheet-hard-recovery.js'
-      - 'index.html'
-      - '.github/workflows/check-player-ui-actions.yml'
   workflow_dispatch:
 
 jobs:
