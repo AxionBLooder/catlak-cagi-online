@@ -109,12 +109,15 @@ jobs:
           ok('player.battle.preload','br3PreloadData' in battle)
 
           # 7. Data/action safety.
-          ok('safety.save.hold','__catlakActionStabilityV8' in action and 'actionHoldUntil' in action)
+          ok('safety.save.hold','__catlakActionStabilityV9' in action and 'actionHoldUntil' in action and 'isStableAction' in action)
           ok('safety.battle.action.lock','br3ActionBusy' in battle)
           ok('safety.live.action.lock','actionBusy' in live)
           ok('safety.live.inline.hp','adjustHpInline' in live and 'data-lcc-hp-amount' in live)
           ok('safety.live.inline.initiative','rollInitiativeInline' in live and 'data-lcc-order-list' in live)
           ok('safety.battle.single.owner','window.__catlakBattleRoomV3Test?.render' in rooms and 'ccrBattleRender(true);return' in rooms)
+          ok('safety.sheet.fail.open','const coreX=' in sheet and 'CATLAK_PLAYER_SHEET_HYDRATE' in sheet)
+          ok('safety.battle.fixed.geometry','ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle)
+          ok('safety.global.scroll','isStableAction' in action and '7600' in action and 'Math.abs(window.scrollY-s.y)>2' in action)
           ok('safety.sheet.no.combat.churn',"table:'catlak_combatants'" not in sheet and "table:'catlak_combat_state'" not in sheet)
           ok('safety.live.enemy.heal.only','İyileştirme Miktarı' in live and 'data-mode="damage"' not in live)
           ok('gm.ability.fixed.ac','Sabit AC Eşiği' in gm and 'CC_FIXED_AC' in gm and 'CC_FIXED_AC' in battle)
@@ -138,9 +141,9 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v33-no-combat-churn' in html)
+          ok('version.sheet','player-hard-recovery-v34-fast-core' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
-          ok('version.action','action-stability-v8-clean-css' in html)
+          ok('version.action','action-stability-v9-global-scroll' in html)
 
           if failures:
               raise SystemExit('PLAYABLE_HARDENING_FAIL: '+', '.join(failures))
