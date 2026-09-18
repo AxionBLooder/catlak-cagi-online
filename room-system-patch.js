@@ -159,7 +159,12 @@ async function ccrRefreshPartyAccess(force=false){
       requestAnimationFrame(()=>{try{sheet?.click()}catch(_){}});
     }
     return ccrPartyMember;
-  }catch(e){console.warn('CCR_PARTY_ACCESS',e);ccrPartyKnown=true;ccrPartyMember=false;return false}
+  }catch(e){
+    console.warn('CCR_PARTY_ACCESS',e);
+    ccrPartyKnown=true;
+    if(!ccrBattleOpen)ccrPartyMember=false;
+    return ccrPartyMember
+  }
   finally{ccrPartyBusy=false;ccrEnsureBattleNav()}
 }
 function ccrDerived(c,inv,items){
@@ -300,13 +305,16 @@ async function ccrBattleRender(force=false){
 }
 async function ccrBattleRollWeapon(invId,kind){
   const r=await CCR_S.rpc('catlak_roll_weapon',{p_inventory_id:invId,p_action:kind});if(r.error)throw r.error;
-  ccrToast(r.data?.total==null?`${r.data?.label||'Zar'}: GM Kararı`:`${r.data?.label||'Zar'}: ${r.data.total}`);
-  await ccrBattleRender(true);
+  ccrToast(r.data?.total==null?(String(r.data?.label||'Zar')+': GM Kararı'):(String(r.data?.label||'Zar')+': '+r.data.total));
+  if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(false);
+  else await ccrBattleRender(true);
 }
 async function ccrBattleRollStat(stat){
   const s=await CCR_S.rpc('catlak_player_combat_snapshot');if(s.error)throw s.error;const id=s.data?.character_id;if(!id)throw new Error('Aktif karakter bulunamadı');
   const r=await CCR_S.rpc('catlak_roll_stat',{p_character_id:id,p_stat:stat});if(r.error)throw r.error;
-  ccrToast(`${r.data?.label||stat}: ${r.data?.total}`);await ccrBattleRender(true);
+  ccrToast(String(r.data?.label||stat)+': '+r.data?.total);
+  if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(false);
+  else await ccrBattleRender(true);
 }
 function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
@@ -389,7 +397,12 @@ new MutationObserver(rs=>{
   });
   if(structural||ccrBattleOpen&&!main?.dataset.ccrBattle)ccrSchedule();
 }).observe(CCR_APP,{childList:true,subtree:true});
-window.addEventListener('catlak:realtime-sync',e=>{const k=String(e.detail?.kind||'');if(k==='party'||k==='character')ccrRefreshPartyAccess(true);if(['combat','ability','party','character'].includes(k))ccrQueueRealtime(false,k==='character')});
-if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess(true);ccrQueueRealtime(false,false)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrQueueRealtime(false,true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrQueueRealtime(true,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrQueueRealtime(true,false)).subscribe();
+window.addEventListener('catlak:realtime-sync',e=>{
+  const k=String(e.detail?.kind||'');
+  if(k==='party')ccrRefreshPartyAccess(true);
+  if(['combat','ability','party','character'].includes(k))ccrQueueRealtime(false,k==='character')
+});
+window.addEventListener('catlak:party-membership-changed',()=>ccrRefreshPartyAccess(true));
+if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrQueueRealtime(false,true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrQueueRealtime(true,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrQueueRealtime(true,false)).subscribe();
 window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
 ccrEnsure();ccrRefreshPartyAccess();
