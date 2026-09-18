@@ -45,7 +45,7 @@
   })();
   </script>
 
-  <script src="./runtime-health-guard.js?v=runtime-health-v5-owned-wait"></script>
+  <script src="./runtime-health-guard.js?v=runtime-health-v6-fast-first-action-owned-wait"></script>
   <script src="./app-action-stability.js?v=action-stability-v8-clean-css"></script>
 
   <script>
@@ -90,7 +90,8 @@
       try{
         await Promise.all([
           load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v32-full-desk-atomic','player-hard-recovery'),
-          load('./room-system-patch.js?v=player-bg-v18-hp-lock-realtime','rooms')
+          load('./room-system-patch.js?v=player-bg-v18-hp-lock-realtime','rooms'),
+          load('./battle-room-v3-patch.js?v=battle-v16-hp-focus-first-ready','battle-room-v3')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -110,7 +111,6 @@
 
     async function loadPlayerBackground(){
       await loadParallel([
-        ['./battle-room-v3-patch.js?v=battle-v15-pointer-actions','battle-room-v3'],
         ['./presence-patch.js?v=presence-v6-event-driven','presence'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster']
       ]);
@@ -124,9 +124,9 @@
         ['./event-rolls-patch.js?v=roll-flow-v4-atomic-mount','roll-flow'],
         ['./party-room-stable-v2.js?v=party-room-clean-v9-broadcast-sync','party-room-clean'],
         ['./battle-party-membership-guard.js?v=battle-party-v7-broadcast-sync','battle-party-guard'],
-        ['./gm-clean-router-v1.js?v=gm-clean-router-v14-ac-rule-realtime','gm-clean-router'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v15-optional-ac-rule','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v13-battle-only','gm-live-compact'],
-        ['./live-combat-center-patch.js?v=livecombat-v17-broadcast-sync','live-combat-center-runtime']
+        ['./live-combat-center-patch.js?v=livecombat-v18-inline-hp-init','live-combat-center-runtime']
       ]);
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
@@ -165,12 +165,12 @@
         }catch(_){}
         await twoFrames();
         reveal();
-        idleRun(function(){loadGmBackground().catch(function(e){console.warn('CATLAK_GM_BACKGROUND',e)})});
+        setTimeout(function(){loadGmBackground().catch(function(e){console.warn('CATLAK_GM_BACKGROUND',e)})},0);
         return;
       }
       await loadPlayerCritical();
       reveal();
-      idleRun(function(){loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)})});
+      setTimeout(function(){loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)})},0);
     }
 
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);

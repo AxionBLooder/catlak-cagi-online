@@ -11,15 +11,15 @@ const limits={
   'cc-live-entry-pending':5200,
   'cc-gm-nav-transition':1200,
   'cc-player-critical-pending':6500,
-  'cc-fast-nav-switch':5200
+  'cc-fast-nav-switch':950
 };
 
 if(!document.getElementById('cc-fast-nav-style')){
   const st=document.createElement('style');
   st.id='cc-fast-nav-style';
   st.textContent=`
-    html.cc-fast-nav-switch #app main{visibility:hidden!important;min-height:46vh!important}
-    html.cc-fast-nav-switch #app::after{content:'Ekran hazırlanıyor…';display:block;max-width:980px;margin:22px auto;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:800;box-sizing:border-box}
+    html.cc-fast-nav-switch #app main{opacity:.72!important;min-height:46vh!important;transition:opacity .12s ease!important}
+    html.cc-fast-nav-switch #app::after{content:'Güncelleniyor…';display:block;max-width:980px;margin:8px auto;padding:8px 12px;border:1px solid #284254;border-radius:10px;background:#08131c;color:#91a7bb;font-size:.76rem;font-weight:800;box-sizing:border-box}
     html.cc-player-critical-pending #app main{visibility:hidden!important;min-height:46vh!important}
     html.cc-player-critical-pending #app::after{content:'Oyuncu Masası hazırlanıyor…';display:block;max-width:980px;margin:22px auto;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:800;box-sizing:border-box}
   `;
@@ -40,7 +40,7 @@ function scan(){Object.keys(limits).forEach(arm)}
 let navSwitchArmed=false;
 function beginNavSwitch(btn){
   if(!btn||btn.classList.contains('on'))return;
-  if(btn.matches('[data-cc-hard-race-nav],[data-tab="sheet"]'))return;
+  if(btn.matches('[data-cc-hard-race-nav],[data-tab="sheet"],[data-tab="gm"],[data-ccr-battle],[data-gmc-open]'))return;
   navSwitchArmed=true;
   ROOT.classList.add('cc-fast-nav-switch');
   arm('cc-fast-nav-switch');
