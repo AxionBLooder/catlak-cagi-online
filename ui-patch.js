@@ -110,6 +110,7 @@ function rollHtml(r,chars,withRuling=true){
 }
 
 async function renderLiveTable(){
+  if(window.__catlakLiveCombatCenter)return;
   if(!isGM()||tabId()!=='gm')return;
   const main=APP.querySelector('main');if(!main||main.dataset.ccPage==='live')return;
   main.dataset.ccPage='loading-live';

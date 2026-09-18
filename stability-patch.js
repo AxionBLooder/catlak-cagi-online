@@ -66,6 +66,7 @@ async function ccClearRolls(){
 }
 
 async function ccRenderSimpleGm(force=false){
+  if(window.__catlakLiveCombatCenter&&ccIsGM()&&!ccMapActive&&ccTab()==='gm')return;
   if(!ccIsGM()||ccMapActive||ccTab()!=='gm'||ccLiveBusy)return;
   const main=CC_APP.querySelector('main');if(!main)return;
   if(!force&&main.dataset.ccSimpleLive==='1')return;
