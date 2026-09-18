@@ -1,0 +1,77 @@
+name: Check Player Hard Recovery
+on:
+  push:
+    paths:
+      - 'player-sheet-hard-recovery.js'
+      - 'index.html'
+      - 'live_08.txt'
+      - 'browser-app.js'
+      - '.github/workflows/check-player-hard-recovery.yml'
+  workflow_dispatch:
+
+jobs:
+  hard-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check player-sheet-hard-recovery.js
+          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v1' index.html
+          grep -Fq 'recovery-core-9-joined-sheet-boot' index.html
+          grep -Fq 'catlakBootJoinedCharacter' live_08.txt
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Recover blank invited-player sheet
+        run: |
+          cat > player-hard-recovery-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          (async()=>{
+            let exe='';
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{exe=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(exe)break}catch{}
+            }
+            if(!exe)throw new Error('Chrome missing');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
+                <div id="app"><header><span class="role">MİSAFİR</span></header>
+                <nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav>
+                <main></main></div><div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{
+                const char={id:'char-1',name:'Eeliot',owner_id:'user-1',play_status:'active',species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:22,hp_max:22,base_ac:13,base_speed:30,base_stats:{STR:8,DEX:14,CON:12,INT:18,WIS:13,CHA:10},data:{}};
+                const db={catlak_characters:[char],catlak_inventory:[],catlak_items:[],catlak_rolls:[],catlak_species_powers:[],catlak_special_paths:[]};
+                function query(table){
+                  const q={select(){return q},eq(){return q},in(){return q},order(){return q},limit(){return q},maybeSingle(){q._single=true;return q},then(ok,bad){let data=db[table]||[];if(q._single)data=data[0]||null;return Promise.resolve({data,error:null}).then(ok,bad)}};
+                  return q;
+                }
+                const channel={on(){return channel},subscribe(){return channel}};
+                window.__catlakSupabase={
+                  auth:{getSession:async()=>({data:{session:{user:{id:'user-1'}}}})},
+                  from:query,
+                  rpc:async()=>({data:null,error:null}),
+                  channel:()=>channel
+                };
+              });
+              await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
+              await page.waitForSelector('main section.hero [data-a="hp"][data-id="char-1"]',{timeout:5000});
+              const out=await page.evaluate(()=>({
+                name:document.querySelector('section.hero h1')?.textContent,
+                stat:document.querySelector('[data-a="stat"][data-stat="INT"]')?.textContent,
+                inventory:[...document.querySelectorAll('.eyebrow')].some(x=>x.textContent==='CANLI ENVANTER'),
+                rolls:[...document.querySelectorAll('.eyebrow')].some(x=>x.textContent==='SON ZARLAR'),
+                owner:document.querySelector('main')?.dataset.ccHardSheet
+              }));
+              if(out.name!=='Eeliot'||!out.stat?.includes('18')||!out.inventory||!out.rolls||out.owner!=='1')throw new Error('Recovery output failed '+JSON.stringify(out));
+              if(errors.length)throw new Error('Page errors '+errors.join(' | '));
+              console.log('PLAYER_HARD_RECOVERY_OK',JSON.stringify(out));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node player-hard-recovery-smoke.cjs
