@@ -44,11 +44,7 @@
   })();
   </script>
 
-  <script src="./live-game-entry-guard.js?v=live-entry-v13-no-legacy-flash"></script>
-  <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
-  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge"></script>
-  <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
-  <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
+  <script src="./runtime-health-guard.js?v=runtime-health-v1"></script>
   <script src="./app-action-stability.js?v=action-stability-v6-full-hold-window"></script>
 
   <script>
@@ -84,6 +80,7 @@
     async function waitForRole(){for(var i=0;i<80;i++){var t=String(app.querySelector('.role')?.textContent||'').trim();if(t)return t;await new Promise(function(r){setTimeout(r,25)})}return String(app.querySelector('.role')?.textContent||'').trim()}
     async function waitForPlayerSheet(){for(var i=0;i<120;i++){if(app.querySelector('main .cc-character-stack'))return true;await new Promise(function(r){setTimeout(r,20)})}return !!app.querySelector('main .cc-character-stack')}
     function twoFrames(){return new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(resolve)})})}
+    function idleRun(fn){if('requestIdleCallback'in window)requestIdleCallback(function(){fn()},{timeout:900});else setTimeout(fn,180)}
     async function awaitMaybe(x){if(x&&typeof x.then==='function')await x}
     async function awaitLimited(x,ms){if(!x||typeof x.then!=='function')return x;return await Promise.race([x,new Promise(function(resolve){setTimeout(function(){resolve(false)},ms||900)})])}
 
@@ -91,8 +88,8 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v24-instant-all-tabs','player-hard-recovery'),
-          load('./battle-room-v3-patch.js?v=battle-v9-entry-deadlock-fix','battle-room-v3')
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v25-optimized-observer','player-hard-recovery'),
+          load('./battle-room-v3-patch.js?v=battle-v10-no-polling','battle-room-v3')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -105,11 +102,10 @@
         }
         var roomPromise=loadParallel([
           ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-          ['./room-system-patch.js?v=player-bg-v14-never-stuck','rooms'],
+          ['./room-system-patch.js?v=player-bg-v15-light-observer','rooms'],
           ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
         ]);
         await Promise.all([recoverPromise,roomPromise]);
-        try{await awaitLimited(window.__catlakRoomSystemTest?.refreshPartyAccess?.(),800)}catch(_){}
         await twoFrames();
       }finally{
         document.documentElement.classList.remove('cc-player-critical-pending');
@@ -125,6 +121,11 @@
 
     async function loadGmCore(){
       await loadParallel([
+        ['./live-game-entry-guard.js?v=live-entry-v13-no-legacy-flash','live-entry-guard'],
+        ['./gm-view-stability.js?v=gm-view-stability-v1','gm-view-stability'],
+        ['./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge','gm-clean-click'],
+        ['./gm-ui-polish-v1.js?v=gm-ui-polish-v5','gm-ui-polish'],
+        ['./gm-nav-canonical.js?v=gm-nav-canonical-v1','gm-nav-canonical'],
         ['./gm-tools-patch.js?v=clean-gm-tools-v4-center-embedded','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
@@ -150,7 +151,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-14-never-stuck','rooms'],
+        ['./room-system-patch.js?v=recovery-15-light-observer','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
@@ -173,18 +174,18 @@
         }catch(_){}
         await twoFrames();
         reveal();
-        loadGmBackground().catch(function(e){console.warn('CATLAK_GM_BACKGROUND',e)});
+        idleRun(function(){loadGmBackground().catch(function(e){console.warn('CATLAK_GM_BACKGROUND',e)})});
         return;
       }
       await loadPlayerCritical();
       reveal();
-      loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)});
+      idleRun(function(){loadPlayerBackground().catch(function(e){console.warn('CATLAK_PLAYER_BACKGROUND',e)})});
     }
 
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-15-hard-projection-owner';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-16-no-legacy-live';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},6000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
