@@ -245,6 +245,11 @@ function ccrBattleHtml(d){
     <section class="card"><div class="eyebrow">AKTİF DURUMLAR</div><h2>Üzerindeki Etkiler</h2>${ccrConditionsHtml(d.conditions)}</section>
   </aside></div>`;
 }
+function ccrBattleEnhancedReady(main){
+  if(!main?.querySelector('[data-br3-abilities]'))return false;
+  if(main.dataset.br3CombatActive==='0')return true;
+  return !!main.querySelector('[data-br3-turn]');
+}
 async function ccrBattleRender(force=false){
   if(!ccrBattleOpen||!ccrIsPlayer()||ccrBattleBusy)return;
   const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));if(!main)return;
@@ -260,7 +265,7 @@ async function ccrBattleRender(force=false){
       for(let attempt=0;attempt<3&&!enhanced;attempt++){
         if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
         for(let i=0;i<40;i++){
-          enhanced=!!(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]'));
+          enhanced=ccrBattleEnhancedReady(main);
           if(enhanced)break;
           await new Promise(r=>setTimeout(r,15));
         }
@@ -275,8 +280,11 @@ async function ccrBattleRender(force=false){
         document.documentElement.classList.remove('cc-battle-entry-pending');
         main.innerHTML='<section class="card"><div class="eyebrow">⚔ SAVAŞ ODASI</div><h2>Savaş Odası yeniden hazırlanıyor</h2><p class="muted">Görünüm tamamlanamadı. Bir kez daha açmayı dene.</p><button type="button" data-ccr-battle-retry>Yeniden Dene</button></section>';
       }
-    }else if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
+    }else if(ccrBattleEnhancedReady(main)){
       main.classList.remove('ccr-base-building');
+      document.documentElement.classList.remove('cc-battle-entry-pending');
+      try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+      try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}
     }
     requestAnimationFrame(()=>window.scrollTo(0,oldY));
   }catch(e){
