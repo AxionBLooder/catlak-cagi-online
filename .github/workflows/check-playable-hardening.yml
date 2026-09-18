@@ -120,7 +120,7 @@ jobs:
           ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v40-atomic-sheet' in html and '8500' in html)
           ok('safety.sheet.atomic.mount','function atomicSheetMount' in sheet and "probe.content.querySelector('.cc-character-stack[data-cc-hard-stack] section.hero')" in sheet and 'previous={html:m.innerHTML' in sheet)
           ok('safety.sheet.atomic.rollback','m.innerHTML=previous.html' in sheet and 'CATLAK_PLAYER_ATOMIC_MOUNT' in sheet)
-          ok('safety.sheet.legacy.owner.guard','m.dataset.ccHardSheet==="1"' in browser and 'data-cc-hard-stack' in browser)
+          ok('safety.sheet.legacy.owner.guard','m.dataset.ccHardSheet==="1"' in core and 'data-cc-hard-stack' in core)
           ok('safety.sheet.legacy.intro.scoped','#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-desk-intro' in sheet and '#app.cc-player-hard-active main .cc-desk-intro{display:none!important}' not in sheet)
           ok('safety.sheet.blank.core.fallback','if(m&&!m.children.length)' in html and 'sheetBtn?.click()' in html)
           ok('safety.sheet.core.until.advanced',"if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true" in sheet and "schedule(false,100)" in sheet)
