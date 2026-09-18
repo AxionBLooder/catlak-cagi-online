@@ -100,11 +100,7 @@
             return recovered;
           })();
         }
-        var roomPromise=loadParallel([
-          ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-          ['./room-system-patch.js?v=player-bg-v15-light-observer','rooms'],
-          ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
-        ]);
+        var roomPromise=load('./room-system-patch.js?v=player-bg-v15-light-observer','rooms');
         await Promise.all([recoverPromise,roomPromise]);
         await twoFrames();
       }finally{
