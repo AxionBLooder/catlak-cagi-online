@@ -31,8 +31,8 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v31-race-no-shell' in html,
-            'canonical owner':'__catlakPlayerSheetHardRecoveryV31' in sheet,
+            'sheet version':'player-hard-recovery-v32-full-desk-batched' in html,
+            'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
             'race powers left':'[data-cc-hard-race]{display:block!important;grid-column:1!important;grid-row:1!important;justify-self:stretch!important' in sheet,
@@ -40,12 +40,16 @@ jobs:
             'two independent columns':'grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important' in sheet,
             'race main full width':'main.cc-hard-race-view[data-cc-hard-sheet="1"]{width:100%!important;max-width:none!important' in sheet,
             'outer race shell removed':'border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important' in sheet,
+            'player desk full width':'main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view){width:100%!important;max-width:none!important' in sheet,
+            'player realtime batched':'queueSheetSync' in sheet and 'cc-player-hard-sheet-v3' in sheet,
             'each list grows downward':'[data-cc-hard-race]>.grid' in sheet and '[data-cc-hard-abilities]>.grid' in sheet and 'grid-template-columns:1fr!important' in sheet,
             'mobile fallback':'main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important' in sheet and '[data-cc-hard-abilities]{grid-column:1!important;grid-row:2!important' in sheet,
             'single roll result':'showRollFlash(cid,roll);\n    toast(' not in sheet,
             'battle cache':'br3CachedHtml' in battle and 'br3RestoreCached' in battle,
             'battle preload':'br3PreloadData' in battle,
             'battle route owner':'closeBattle:ccrCloseBattle' in rooms,
+            'battle atomic transition':"begin?.('player-battle')" in rooms and 'ccrQueueRealtime' in rooms,
+            'battle duplicate realtime removed':"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle,
           }
           bad=[name for name,ok in checks.items() if not ok]
           if bad: raise SystemExit('PLAYER_STABILITY_FAIL: '+', '.join(bad))
