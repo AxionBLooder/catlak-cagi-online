@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV17)return;
-window.__catlakPlayerSheetHardRecoveryV17=true;
+if(window.__catlakPlayerSheetHardRecoveryV18)return;
+window.__catlakPlayerSheetHardRecoveryV18=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -88,16 +88,17 @@ function ensureRaceNav(){
   let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.textContent='Irk Becerileri';sheet.after(b)}
   return b;
 }
-let raceMode=false,sheetScrollY=0,raceScrollY=0;
+let raceMode=false,raceWanted=false,sheetScrollY=0,raceScrollY=0;
 function clearPlayerNavSelection(except){
   APP.querySelectorAll('.nav button.on').forEach(b=>{if(b!==except)b.classList.remove('on')});
   except?.classList.add('on');
 }
 function leaveRaceForForeignNav(){
   const m=main(),race=raceButton();if(!raceMode&&!m?.classList.contains('cc-hard-race-view'))return;
-  raceScrollY=window.scrollY;raceMode=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
+  raceScrollY=window.scrollY;raceMode=false;raceWanted=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
 }
 function setRaceView(on){
+  raceWanted=!!on;
   const m=main(),sheet=sheetButton(),race=ensureRaceNav();if(!m||m.dataset.ccHardSheet!=='1'||!race)return false;
   if(on){
     if(!raceMode)sheetScrollY=window.scrollY;
@@ -249,13 +250,11 @@ function hardAbilityTargets(a,x){
 function abilitiesHtml(c,x){
   const rows=Array.isArray(x.abilities)?x.abilities:[];
   if(!rows.length)return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">GM tarafından atanmış aktif yetenek yok.</p></section>`;
-  const active=!!x?.combat?.active,isTurn=!!x?.combat?.is_my_turn;
-  return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><div class="grid">${rows.map(a=>{
-    const targets=hardAbilityTargets(a,x),finite=a.uses_per_combat!=null,out=finite&&num(a.uses_remaining)<=0,needs=a.target_type!=='self';
-    const can=!out&&(!active||isTurn)&&(!needs||targets.length>0);
-    const target=needs?`<select data-cc-hard-ability-target="${esc(a.assignment_id)}">${targets.length?targets.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} • HP ${num(t.hp_current)}/${num(t.hp_max)}</option>`).join(''):'<option value="">Uygun hedef yok</option>'}</select>`:'';
-    const uses=finite?`${num(a.uses_remaining)}/${num(a.uses_per_combat)}`:'∞';
-    return `<article class="power"><small>${esc(String(a.ability_type||'skill').toUpperCase())}</small><h3>${esc(a.name||'Yetenek')}</h3><p>${esc(a.description||'')}${a.formula?' • '+esc(a.formula):''}</p><div class="muted">Kullanım: ${uses}</div><div class="actions">${target}<button type="button" class="primary" data-cc-hard-ability="${esc(a.assignment_id)}" ${can?'':'disabled'}>${out?'Hak Bitti':active&&!isTurn?'Sıra Sende Değil':'Kullan'}</button></div></article>`;
+  return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">Bu alan karakterinin yetenek açıklamalarını gösterir. Kullanım ve hedef seçimi yalnız Savaş Odası'nda yapılır.</p><div class="grid">${rows.map(a=>{
+    const finite=a.uses_per_combat!=null,uses=finite?`${num(a.uses_remaining)}/${num(a.uses_per_combat)}`:'∞';
+    const type=String(a.ability_type||'skill').toUpperCase();
+    const target=a.target_type==='enemy'?'Düşman':a.target_type==='ally'?'Müttefik':'Kendi';
+    return `<article class="power"><small>${esc(type)}</small><h3>${esc(a.name||'Yetenek')}</h3><p>${esc(a.description||'Açıklama bulunmuyor.')}</p><div class="muted">${a.formula?'Formül: '+esc(a.formula)+' • ':''}Hedef: ${esc(target)} • Kullanım: ${esc(uses)}${a.requires_attack?' • AC karşılaştırmalı saldırı':''}</div></article>`;
   }).join('')}</div></section>`;
 }
 function pathHtml(c,x){
@@ -497,7 +496,7 @@ async function recover(force=false){
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
     delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
     m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
-    ensureRaceNav();setRaceView(false);
+    ensureRaceNav();setRaceView(raceWanted);
     applyLayers();release();
     return ready();
   }catch(e){
@@ -514,9 +513,9 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();if(setRaceView(true))return;clearPlayerNavSelection(raceNav);recover(true).then(ok=>{if(ok)setRaceView(true);else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();raceWanted=true;if(setRaceView(true))return;clearPlayerNavSelection(raceNav);recover(true).then(ok=>{if(ok)setRaceView(true);else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(sheetNav&&isPlayer()&&main()?.classList.contains('cc-hard-race-view')){e.preventDefault();e.stopImmediatePropagation();setRaceView(false);return}
+  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view'))){e.preventDefault();e.stopImmediatePropagation();raceWanted=false;setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
   if(root){
     const hp=e.target.closest?.('[data-cc-hard-hp][data-id]');if(hp){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
@@ -526,7 +525,6 @@ document.addEventListener('click',e=>{
     const slot=e.target.closest?.('[data-ws-slot],[data-ws-remove]');if(slot){e.preventDefault();e.stopImmediatePropagation();hardSlot(slot);return}
     const vkp=e.target.closest?.('[data-cc-hard-vkp][data-id]');if(vkp){e.preventDefault();e.stopImmediatePropagation();hardVkp(vkp);return}
     const rest=e.target.closest?.('[data-cc-hard-long-rest][data-id]');if(rest){e.preventDefault();e.stopImmediatePropagation();hardLongRest(rest);return}
-    const ability=e.target.closest?.('[data-cc-hard-ability]');if(ability){e.preventDefault();e.stopImmediatePropagation();hardAbility(ability);return}
   }
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
   const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');
