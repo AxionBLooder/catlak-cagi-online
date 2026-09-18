@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV5)return;
-window.__catlakPlayerSheetHardRecoveryV5=true;
+if(window.__catlakPlayerSheetHardRecoveryV6)return;
+window.__catlakPlayerSheetHardRecoveryV6=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -76,7 +76,8 @@ async function extras(S,chars){
 }
 function derived(c,x){
   const stats={...(c.base_stats||{})};
-  let ac=num(c.base_ac),speed=num(c.base_speed),hp=num(c.hp_max),armorSets=[],armorBonus=0;
+  const combatRow=(Array.isArray(x?.combat?.order)?x.combat.order:[]).find(r=>String(r.character_id||'')===String(c.id));
+  let ac=num(c.base_ac),speed=num(c.base_speed),hp=num(combatRow?.hp_max??c.hp_max),armorSets=[],armorBonus=0;
   const itemMap=new Map(x.items.map(i=>[String(i.id),i]));
   for(const row of x.inv.filter(r=>String(r.character_id)===String(c.id)&&r.equipped)){
     const it=itemMap.get(String(row.item_id));if(!it)continue;
@@ -89,7 +90,7 @@ function derived(c,x){
     }
   }
   if(armorSets.length)ac=Math.max(ac,...armorSets);
-  return {...c,ds:stats,ac:ac+armorBonus,speed,hp};
+  return {...c,hp_current:combatRow?.hp_current!=null?num(combatRow.hp_current):num(c.hp_current),ds:stats,ac:ac+armorBonus,speed,hp};
 }
 function inventoryHtml(c,x){
   const itemMap=new Map(x.items.map(i=>[String(i.id),i]));
@@ -228,6 +229,14 @@ async function hardEquip(btn){
     toast('Ekipman güncellendi.');setTimeout(()=>recover(true),60);
   });
 }
+async function hardSlot(btn){
+  const card=btn.closest('.iw-player-item[data-pla-inv-row]'),id=card?.dataset.plaInvRow,slot=btn.dataset.wsSlot||null;if(!id)return;
+  return withAction('slot:'+id,btn,async()=>{
+    const S=await getRuntime(),r=await S.rpc('catlak_set_equipped_slot',{p_inventory_id:id,p_slot:slot});if(r.error)throw r.error;
+    toast(slot==='main_weapon'?'Silah 1. yuvaya atandı.':slot==='off_weapon'?'Silah 2. yuvaya atandı.':'Silah çıkarıldı.');
+    setTimeout(()=>recover(true),50);
+  });
+}
 async function hardVkp(btn){
   const id=btn.dataset.id;if(!id)return;
   return withAction('vkp:'+id,btn,async()=>{
@@ -305,6 +314,7 @@ document.addEventListener('click',e=>{
     const stat=e.target.closest?.('[data-cc-hard-stat]');if(stat){e.preventDefault();e.stopImmediatePropagation();hardStat(stat);return}
     const weapon=e.target.closest?.('[data-cc-hard-weapon][data-id]');if(weapon){e.preventDefault();e.stopImmediatePropagation();hardWeapon(weapon);return}
     const equip=e.target.closest?.('[data-cc-hard-equip][data-id]');if(equip){e.preventDefault();e.stopImmediatePropagation();hardEquip(equip);return}
+    const slot=e.target.closest?.('[data-ws-slot]');if(slot){e.preventDefault();e.stopImmediatePropagation();hardSlot(slot);return}
     const vkp=e.target.closest?.('[data-cc-hard-vkp][data-id]');if(vkp){e.preventDefault();e.stopImmediatePropagation();hardVkp(vkp);return}
     const ability=e.target.closest?.('[data-cc-hard-ability]');if(ability){e.preventDefault();e.stopImmediatePropagation();hardAbility(ability);return}
   }
