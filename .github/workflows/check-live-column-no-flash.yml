@@ -1,11 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Live Column No Flash
 on:
-  push:
-    paths:
-      - 'live-game-entry-guard.js'
-      - 'gm-live-compact-v1.js'
-      - 'index.html'
-      - '.github/workflows/check-live-column-no-flash.yml'
   workflow_dispatch:
 
 jobs:
