@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmNavCanonicalV1)return;
-window.__catlakGmNavCanonicalV1=true;
+if(window.__catlakGmNavCanonicalV2)return;
+window.__catlakGmNavCanonicalV2=true;
 const APP=document.getElementById('app');if(!APP)return;
 let queued=false;
 const norm=x=>String(x?.textContent||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr-TR').replace(/^[^a-z0-9çğıöşü]+/i,'');
@@ -27,6 +27,9 @@ function clean(){
  if(gm&&party&&gm.nextElementSibling!==party)gm.after(party);
  if(party&&management&&party.nextElementSibling!==management)party.after(management);
  else if(gm&&!party&&management&&gm.nextElementSibling!==management)gm.after(management);
+ const live=nav.querySelector('[data-tab="gm"]'),rolls=nav.querySelector('[data-tab="rolls"]');
+ if(live&&rolls&&live.nextElementSibling!==rolls)live.after(rolls);
+ if(rolls)rolls.textContent='Zar Akışı';
 }
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(clean)}
 new MutationObserver(rs=>{
