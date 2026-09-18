@@ -1,15 +1,15 @@
 (function(){
 'use strict';
-if(window.__catlakLiveGameEntryGuardV11)return;
-window.__catlakLiveGameEntryGuardV11=true;
+if(window.__catlakLiveGameEntryGuardV12)return;
+window.__catlakLiveGameEntryGuardV12=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
 let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0,liveStartedAt=0;
 const oldStyle=document.getElementById('cc-live-entry-guard-style');if(oldStyle)oldStyle.remove();
 const style=document.createElement('style');style.id='cc-live-entry-guard-style';style.textContent=`
 html.cc-live-entry-pending #app main{visibility:hidden!important}
-html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:14px 16px 30px!important}
-html body #app main[data-cc-simple-live="1"] .cc-live-two{display:grid!important;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr)!important;gap:14px!important;max-width:none!important;margin:8px auto 14px!important;align-items:start!important}
+html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
+html body #app main[data-cc-simple-live="1"] .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{box-sizing:border-box!important;width:100%!important;margin:0!important;padding:12px 14px!important;height:auto!important;max-height:340px!important;overflow:auto!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two .section-title{margin-bottom:6px!important;gap:6px!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two h2{font-size:.94rem!important;margin:.05em 0 .2em!important}
@@ -44,7 +44,7 @@ const gmActive=()=>!!APP.querySelector('.nav [data-tab="gm"].on');
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3600)}
 function removeLiveHeading(){const main=APP.querySelector('main[data-cc-simple-live="1"]');if(!main)return;[...main.children].forEach(el=>{if(!(el instanceof HTMLElement)||!el.matches('.card'))return;const text=String(el.textContent||'').replace(/\s+/g,' ').trim();if(/CANLI OYUN MASASI/i.test(text)&&/Oyuncular\s*&\s*Zarlar/i.test(text))el.remove()})}
 function combatExpected(){return !!window.__catlakLiveCombatCenter||!!document.querySelector('script[data-live-combat-center-runtime]')}
-function decorateLive(){const main=APP.querySelector('main');if(!isGM()||!gmActive()||!main||main.dataset.ccSimpleLive!=='1'||!main.querySelector('.cc-live-two'))return false;removeLiveHeading();const input=main.querySelector('#lcc-char-init');if(input){const label=input.closest('label');if(label)label.style.display='none';const toolbar=input.closest('.lcc-toolbar');if(toolbar&&!toolbar.querySelector('[data-cc-dex-init-note]')){const n=document.createElement('div');n.dataset.ccDexInitNote='1';n.textContent='Oyuncu inisiyatifi otomatik: d20 + DEX bonusu';toolbar.appendChild(n)}}if(combatExpected()&&!main.querySelector('[data-lcc-board]')){clearTimeout(combatKick);combatKick=setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},35);return false}main.dataset.ccLiveV7Ready='1';return true}
+function decorateLive(){const main=APP.querySelector('main');if(!isGM()||!gmActive()||!main||main.dataset.ccSimpleLive!=='1')return false;removeLiveHeading();main.querySelector('.cc-live-two')?.remove();const input=main.querySelector('#lcc-char-init');if(input){const label=input.closest('label');if(label)label.style.display='none';const toolbar=input.closest('.lcc-toolbar');if(toolbar&&!toolbar.querySelector('[data-cc-dex-init-note]')){const n=document.createElement('div');n.dataset.ccDexInitNote='1';n.textContent='Oyuncu inisiyatifi otomatik: d20 + DEX bonusu';toolbar.appendChild(n)}}if(combatExpected()&&!main.querySelector('[data-lcc-board]')){clearTimeout(combatKick);combatKick=setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},35);return false}main.dataset.ccLiveV7Ready='1';return true}
 function clearLivePending(){clearTimeout(liveFallback);liveFallback=0;if(liveRaf){cancelAnimationFrame(liveRaf);liveRaf=0}ROOT.classList.remove('cc-live-entry-pending')}
 function watchLive(){
  if(!ROOT.classList.contains('cc-live-entry-pending'))return;
