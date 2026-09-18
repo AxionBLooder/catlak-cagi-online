@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v38 -->
+<!-- clean-gm-runtime-v39 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -91,7 +91,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v12','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v13','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -142,7 +142,7 @@
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
         ['./room-system-patch.js?v=recovery-4-no-legacy-gm-room','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./gm-item-slot-patch.js?v=gm-item-slot-v4-route','gm-items'],
+        ['./gm-item-slot-patch.js?v=gm-item-slot-v5-type-slots','gm-items'],
         ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
