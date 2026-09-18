@@ -266,10 +266,16 @@ document.addEventListener('click',e=>{
   if(e.target.closest?.('[data-br3-end-turn]')){e.preventDefault();e.stopImmediatePropagation();br3EndTurn().catch(x=>br3Toast(x?.message||String(x)));return}
   if(e.target.closest?.('[data-br3-clear-log]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş Canlı Akışı temizlensin mi?'))br3ClearBattleLog().catch(x=>br3Toast(x?.message||String(x)));return}
 },true);
-new MutationObserver(()=>{
-  if(br3IsGM()){br3Soon(false,80);return}
+new MutationObserver(rs=>{
+  const main=BR3_APP.querySelector('main'),nav=BR3_APP.querySelector('.nav');
+  const structural=rs.some(r=>{
+    if(r.target===BR3_APP)return true;
+    if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+    return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role,[data-cex-gm-panel]')||n.querySelector?.('main,.nav,.role,[data-cex-gm-panel]')));
+  });
+  if(br3IsGM()){if(structural)br3Soon(false,80);return}
   if(!br3BattleView())return;
-  const main=BR3_APP.querySelector('main');
+  if(!structural&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))return;
   if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,25);
 }).observe(BR3_APP,{childList:true,subtree:true});
 BR3_S.channel('cc-battle-room-v3-live')
@@ -278,6 +284,13 @@ BR3_S.channel('cc-battle-room-v3-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>br3Soon(false,90))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))
  .subscribe();
-setInterval(()=>{if(br3IsGM())br3EnsureGmClear();else if(br3BattleView()){const main=BR3_APP.querySelector('main');if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0)}},5000);
+function br3RepairIfNeeded(){
+  if(br3IsGM()){br3EnsureGmClear();return}
+  if(!br3BattleView())return;
+  const main=BR3_APP.querySelector('main');
+  if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0);
+}
+window.addEventListener('focus',br3RepairIfNeeded);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')br3RepairIfNeeded()});
 setTimeout(()=>{br3PreloadData();if(br3BattleView())br3Soon(true,0)},80);
 window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,preload:br3PreloadData,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
