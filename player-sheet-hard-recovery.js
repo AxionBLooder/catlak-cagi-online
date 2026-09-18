@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV7)return;
-window.__catlakPlayerSheetHardRecoveryV7=true;
+if(window.__catlakPlayerSheetHardRecoveryV8)return;
+window.__catlakPlayerSheetHardRecoveryV8=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -17,7 +17,8 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   `;document.head.appendChild(st)
 }
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
-let busy=false,queued=false,lastRun=0,realtimeStarted=false;
+let busy=false,queued=false,lastRun=0,realtimeStarted=false,stableBusy=false,stableAgain=false;
+const stableKinds=new Set();
 
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -202,12 +203,12 @@ function charHtml(raw,x){
   <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
   <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
   ${vampHtml(c)}${pathHtml(c,x)}
-  <section class="card"><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
+  <section class="card" data-cc-hard-race><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
   ${conditionsHtml(c,x)}
   ${abilitiesHtml(c,x)}
   ${equipmentHtml(c,x)}
-  <section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
-  <section class="card"><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
+  <section class="card" data-cc-hard-inventory><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
+  <section class="card" data-cc-hard-rolls><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
 }
 function applyLayers(){
   try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
@@ -217,6 +218,56 @@ function applyLayers(){
   try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}
   try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
   setTimeout(()=>{try{window.__catlakStatRollTest?.ensure?.()}catch(_){}try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}},120);
+}
+function freshStack(c,x){
+  const box=document.createElement('div');box.innerHTML=charHtml(c,x).trim();return box.firstElementChild;
+}
+function replaceStableSection(stack,fresh,selector){
+  const old=stack.querySelector(selector),next=fresh.querySelector(selector);
+  if(old&&next){old.replaceWith(next);return true}
+  if(!old&&next){const grid=stack.querySelector(':scope > .psv4-grid .psv4-detail')||stack;grid.appendChild(next);return true}
+  if(old&&!next){old.remove();return true}
+  return false;
+}
+function stableSelectors(kinds){
+  if(kinds.has('all'))return ['section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]','[data-cc-hard-inventory]','[data-cc-hard-rolls]'];
+  const out=new Set();
+  const add=(...xs)=>xs.forEach(x=>out.add(x));
+  if(kinds.has('character'))add('section.hero');
+  if(kinds.has('inventory'))add('section.hero','[data-cc-hard-stats]','[data-cc-hard-equipment]','[data-cc-hard-inventory]');
+  if(kinds.has('rolls'))add('[data-cc-hard-rolls]');
+  if(kinds.has('conditions'))add('[data-cc-hard-conditions]');
+  if(kinds.has('abilities'))add('[data-cc-hard-abilities]');
+  if(kinds.has('combat'))add('section.hero','[data-cc-hard-abilities]','[data-cc-hard-conditions]');
+  return [...out];
+}
+function patchStable(chars,x,kinds){
+  const selectors=stableSelectors(kinds);
+  for(const c of chars){
+    const stack=APP.querySelector(`main[data-cc-hard-sheet="1"] .cc-character-stack[data-cc-hard-stack="${CSS.escape(String(c.id))}"]`);if(!stack)continue;
+    const fresh=freshStack(c,x);
+    selectors.forEach(sel=>replaceStableSection(stack,fresh,sel));
+  }
+  APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
+}
+async function refreshStable(kind='all'){
+  stableKinds.add(kind);
+  if(stableBusy){stableAgain=true;return true}
+  if(!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return false;
+  stableBusy=true;
+  try{
+    const kinds=new Set(stableKinds);stableKinds.clear();
+    const S=await getRuntime();if(!S)return false;
+    const ses=await getSession(S);if(!ses?.user?.id)return false;
+    const chars=await ownedRows(S,ses.user.id);if(!chars.length)return false;
+    const x=await extras(S,chars);if(!sheetActive()||main()?.dataset.ccHardSheet!=='1')return false;
+    patchStable(chars,x,kinds);
+    return true;
+  }catch(e){console.warn('CATLAK_PLAYER_STABLE_REFRESH',e);return false}
+  finally{
+    stableBusy=false;
+    if(stableAgain||stableKinds.size){stableAgain=false;setTimeout(()=>refreshStable(''),40)}
+  }
 }
 const actionLocks=new Set();
 async function withAction(key,btn,fn){
@@ -231,28 +282,28 @@ async function hardHp(btn){
   return withAction('hp:'+id,btn,async()=>{
     const S=await getRuntime();if(!S)throw new Error('Bağlantı hazır değil.');
     const r=await S.rpc('catlak_update_my_hp',{p_character_id:id,p_hp:next});if(r.error)throw r.error;
-    if(label)label.textContent=next+'/'+max;toast('HP '+next+'/'+max);setTimeout(()=>recover(true),50);
+    if(label)label.textContent=next+'/'+max;toast('HP '+next+'/'+max);setTimeout(()=>refreshStable('character'),50);
   });
 }
 async function hardStat(btn){
   const cid=btn.dataset.ccHardCharacter||btn.dataset.id,stat=String(btn.dataset.ccHardStat||'').toUpperCase();if(!cid||!STATS.includes(stat))return;
   return withAction('stat:'+cid+':'+stat,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_roll_stat',{p_character_id:cid,p_stat:stat});if(r.error)throw r.error;
-    toast((r.data?.label||stat)+': '+(r.data?.total??'?'));setTimeout(()=>recover(true),60);
+    toast((r.data?.label||stat)+': '+(r.data?.total??'?'));setTimeout(()=>refreshStable('rolls'),60);
   });
 }
 async function hardWeapon(btn){
   const id=btn.dataset.id,kind=btn.dataset.ccHardWeapon||btn.dataset.k||'attack';if(!id)return;
   return withAction('weapon:'+id+':'+kind,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_roll_weapon',{p_inventory_id:id,p_action:kind});if(r.error)throw r.error;
-    toast((r.data?.label||'Silah')+': '+(r.data?.total??'DM Kararı'));setTimeout(()=>recover(true),60);
+    toast((r.data?.label||'Silah')+': '+(r.data?.total??'DM Kararı'));setTimeout(()=>refreshStable('rolls'),60);
   });
 }
 async function hardEquip(btn){
   const id=btn.dataset.id;if(!id)return;
   return withAction('equip:'+id,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_set_equipped',{p_inventory_id:id,p_equipped:btn.dataset.v==='1'});if(r.error)throw r.error;
-    toast('Ekipman güncellendi.');setTimeout(()=>recover(true),60);
+    toast('Ekipman güncellendi.');setTimeout(()=>refreshStable('inventory'),60);
   });
 }
 async function hardSlot(btn){
@@ -260,14 +311,14 @@ async function hardSlot(btn){
   return withAction('slot:'+id,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_set_equipped_slot',{p_inventory_id:id,p_slot:slot});if(r.error)throw r.error;
     toast(slot==='main_weapon'?'Silah 1. yuvaya atandı.':slot==='off_weapon'?'Silah 2. yuvaya atandı.':'Silah çıkarıldı.');
-    setTimeout(()=>recover(true),50);
+    setTimeout(()=>refreshStable('inventory'),50);
   });
 }
 async function hardVkp(btn){
   const id=btn.dataset.id;if(!id)return;
   return withAction('vkp:'+id,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_update_vampire_kp',{p_character_id:id,p_delta:num(btn.dataset.d)});if(r.error)throw r.error;
-    toast('KP: '+r.data);setTimeout(()=>recover(true),60);
+    toast('KP: '+r.data);setTimeout(()=>refreshStable('character'),60);
   });
 }
 async function hardAbility(btn){
@@ -276,7 +327,7 @@ async function hardAbility(btn){
   return withAction('ability:'+id,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_player_use_ability',{p_assignment_id:id,p_target_id:target});if(r.error)throw r.error;
     const d=r.data||{};let m=d.ability||'Yetenek';if(d.hit===false)m+=': ISKA';else if(d.effect_type==='damage')m+=': '+d.amount+' hasar';else if(d.effect_type==='heal')m+=': '+d.amount+' iyileştirme';else m+=' kullanıldı';
-    toast(m);setTimeout(()=>recover(true),60);
+    toast(m);setTimeout(()=>refreshStable('combat'),60);
   });
 }
 function showWaiting(message){
@@ -288,9 +339,10 @@ function showWaiting(message){
 async function recover(force=false){
   queued=false;
   if(!sheetActive())return false;
-  const hadReady=ready();
+  const hadReady=ready(),hardOwned=main()?.dataset.ccHardSheet==='1';
+  if(hadReady&&hardOwned){if(force)refreshStable('all');return true}
   if(hadReady&&!force)return true;
-  if(hadReady&&main()?.dataset.ccHardSheet!=='1')return true;
+  if(hadReady&&!hardOwned)return true;
   if(busy)return hadReady;
   const now=Date.now();if(!force&&now-lastRun<180)return hadReady;lastRun=now;busy=true;
   try{
@@ -319,10 +371,8 @@ async function recover(force=false){
     extras(S,chars).then(x=>{
       if(!sheetActive())return;
       const cur=main();if(!cur||cur.dataset.ccHardSheet!=='1')return;
-      cur.innerHTML=chars.map(c=>charHtml(c,x)).join('');
-      APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
-      try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
-      applyLayers();release();
+      patchStable(chars,x,new Set(['all']));
+      release();
     }).catch(e=>console.warn('CATLAK_PLAYER_SHEET_EXTRAS',e));
     return baseReady;
   }catch(e){
@@ -351,7 +401,7 @@ document.addEventListener('click',e=>{
   if(b&&isPlayer()){setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
-window.addEventListener('catlak:data-refreshed',()=>{if(sheetActive())schedule(true,30)});
+window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())setTimeout(()=>refreshStable('all'),30);else schedule(true,30)});
 new MutationObserver(()=>{
   if(!sheetActive()||ready())return;
   const m=main();if(!m)return;
@@ -359,21 +409,21 @@ new MutationObserver(()=>{
 }).observe(APP,{childList:true,subtree:true});
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
-  const rerun=()=>{if(sheetActive()&&main()?.dataset.ccHardSheet==='1')schedule(true,80)};
-  S.channel('cc-player-hard-sheet-v1')
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},rerun)
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},rerun)
+  const sync=kind=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())setTimeout(()=>refreshStable(kind),50);else schedule(true,80)};
+  S.channel('cc-player-hard-sheet-v2')
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>sync('character'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>sync('inventory'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>sync('rolls'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>sync('conditions'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>sync('abilities'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>sync('combat'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>sync('combat'))
     .subscribe();
 }
-setTimeout(()=>schedule(true,0),180);
-setTimeout(()=>schedule(true,0),700);
-setTimeout(()=>schedule(true,0),1600);
-setTimeout(()=>schedule(true,0),3200);
+setTimeout(()=>{if(!ready())schedule(true,0)},180);
+setTimeout(()=>{if(!ready())schedule(true,0)},700);
+setTimeout(()=>{if(!ready())schedule(true,0)},1600);
+setTimeout(()=>{if(!ready())schedule(true,0)},3200);
 realtime();
-window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),ready};
+window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready};
 })();
