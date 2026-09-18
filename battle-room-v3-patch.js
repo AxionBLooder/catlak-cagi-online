@@ -299,5 +299,9 @@ function br3RepairIfNeeded(){
 }
 window.addEventListener('focus',br3RepairIfNeeded);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')br3RepairIfNeeded()});
-setTimeout(()=>{br3PreloadData();if(br3BattleView())br3Soon(true,0)},80);
+setTimeout(()=>{if(br3BattleView())br3Soon(true,0)},80);
+window.addEventListener('catlak:player-fast-ready',()=>{
+  const run=()=>{if(!br3BattleView())br3PreloadData()};
+  if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1200});else setTimeout(run,180);
+});
 window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,preload:br3PreloadData,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
