@@ -20,7 +20,7 @@ jobs:
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
           grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v7' index.html
-          grep -Fq 'recovery-core-10-canonical-invite-sheet' index.html
+          grep -Fq 'recovery-core-11-short-join-toast' index.html
           grep -Fq 'catlakBootJoinedCharacter' live_08.txt
           grep -Fq "catlak-guest-join" live_08.txt
           grep -Fq 'visibility:visible!important' index.html
