@@ -1,6 +1,7 @@
 const CCR_S=window.__catlakSupabase;
 const CCR_APP=document.querySelector('#app');
 if(!CCR_S||!CCR_APP)throw new Error('Çatlak Çağı oda sistemi başlatılamadı.');
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('player-room-router','room-system'))throw new Error('Oyuncu oda yönlendirmesi sahipliği çakıştı.');
 
 const ccrText=e=>String(e?.textContent||'').trim();
 const ccrRole=()=>ccrText(CCR_APP.querySelector('.role'));
