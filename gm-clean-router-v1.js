@@ -6,7 +6,7 @@ window.__catlakGmCleanRouterV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
 if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('gm-center','gm-clean-router'))return;
-const ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['reputation','İtibar Odası'],['seals','Mühür Odası'],['rules','Kaynaklar'],['account','Hesap'] ];
+const ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['events','Olay Atölyesi'],['creatures','Yaratık Kütüphanesi'],['reputation','İtibar Odası'],['seals','Mühür Odası'],['rules','Kaynaklar'],['account','Hesap'] ];
 const PAGES_BASE='https://axionblooder.github.io/catlak-cagi-online/';
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,7 +90,7 @@ function routeTo(r){
   if(r==='ability'){renderAbility(false);return true}
   if(r==='stats')return openStatsDirect();
   if(['items','races','builder','rules','account'].includes(r))return openNative(r);
-  if(r==='events'||r==='logs'){
+  if(r==='events'){
     const api=window.__catlakGmTools;if(typeof api?.open!=='function'){toast('Oyun araçları hazır değil.');return false}
     window.__catlakGmCenterBridge=true;
     try{api.open(r)}finally{queueMicrotask(()=>{window.__catlakGmCenterBridge=false})}
