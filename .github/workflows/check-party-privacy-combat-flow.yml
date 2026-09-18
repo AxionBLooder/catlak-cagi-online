@@ -33,7 +33,8 @@ jobs:
           node --check browser-app.js
           grep -Fq 'player-hard-recovery-v16-party-race' index.html
           grep -Fq 'player-bg-v5-party-gate' index.html
-          grep -Fq 'battle-party-v3-party-only' index.html
+          grep -Fq 'player-bg-v6-party-only' index.html
+          grep -Fq 'battle-party-v4-party-only' index.html
           grep -Fq 'livecombat-v4-party-library' live-combat-center-loader.js
           grep -Fq 'lcc-enemy-template' live-combat-center-patch.js
           grep -Fq "c.data?.[PKEY]===true" battle-party-membership-guard.js
