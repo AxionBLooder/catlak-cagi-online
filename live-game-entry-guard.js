@@ -1,10 +1,10 @@
 (function(){
 'use strict';
-if(window.__catlakLiveGameEntryGuardV7)return;
-window.__catlakLiveGameEntryGuardV7=true;
+if(window.__catlakLiveGameEntryGuardV8)return;
+window.__catlakLiveGameEntryGuardV8=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
-let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false;
+let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0;
 const oldStyle=document.getElementById('cc-live-entry-guard-style');if(oldStyle)oldStyle.remove();
 const style=document.createElement('style');style.id='cc-live-entry-guard-style';style.textContent=`
 html.cc-live-entry-pending #app main{visibility:hidden!important}
@@ -43,7 +43,7 @@ const gmActive=()=>!!APP.querySelector('.nav [data-tab="gm"].on');
 function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3600)}
 function removeLiveHeading(){const main=APP.querySelector('main[data-cc-simple-live="1"]');if(!main)return;[...main.children].forEach(el=>{if(!(el instanceof HTMLElement)||!el.matches('.card'))return;const text=String(el.textContent||'').replace(/\s+/g,' ').trim();if(/CANLI OYUN MASASI/i.test(text)&&/Oyuncular\s*&\s*Zarlar/i.test(text))el.remove()})}
 function combatExpected(){return !!window.__catlakLiveCombatCenter||!!document.querySelector('script[data-live-combat-center-runtime]')}
-function decorateLive(){const main=APP.querySelector('main');if(!isGM()||!gmActive()||!main||main.dataset.ccSimpleLive!=='1'||!main.querySelector('.cc-live-two'))return false;removeLiveHeading();const input=main.querySelector('#lcc-char-init');if(input){const label=input.closest('label');if(label)label.style.display='none';const toolbar=input.closest('.lcc-toolbar');if(toolbar&&!toolbar.querySelector('[data-cc-dex-init-note]')){const n=document.createElement('div');n.dataset.ccDexInitNote='1';n.textContent='Oyuncu inisiyatifi otomatik: d20 + DEX bonusu';toolbar.appendChild(n)}}if(combatExpected()&&!main.querySelector('[data-lcc-board]'))return false;main.dataset.ccLiveV7Ready='1';return true}
+function decorateLive(){const main=APP.querySelector('main');if(!isGM()||!gmActive()||!main||main.dataset.ccSimpleLive!=='1'||!main.querySelector('.cc-live-two'))return false;removeLiveHeading();const input=main.querySelector('#lcc-char-init');if(input){const label=input.closest('label');if(label)label.style.display='none';const toolbar=input.closest('.lcc-toolbar');if(toolbar&&!toolbar.querySelector('[data-cc-dex-init-note]')){const n=document.createElement('div');n.dataset.ccDexInitNote='1';n.textContent='Oyuncu inisiyatifi otomatik: d20 + DEX bonusu';toolbar.appendChild(n)}}if(combatExpected()&&!main.querySelector('[data-lcc-board]')){clearTimeout(combatKick);combatKick=setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},35);return false}main.dataset.ccLiveV7Ready='1';return true}
 function clearLivePending(){clearTimeout(liveFallback);liveFallback=0;if(liveRaf){cancelAnimationFrame(liveRaf);liveRaf=0}ROOT.classList.remove('cc-live-entry-pending')}
 function watchLive(){if(!ROOT.classList.contains('cc-live-entry-pending'))return;if(!isGM()||!gmActive()){clearLivePending();return}if(decorateLive()){requestAnimationFrame(()=>requestAnimationFrame(()=>{if(decorateLive())clearLivePending()}));return}liveRaf=requestAnimationFrame(watchLive)}
 function beginLive(){if(!isGM())return;clearTimeout(liveFallback);if(liveRaf)cancelAnimationFrame(liveRaf);APP.querySelector('main')?.removeAttribute('data-cc-live-v7-ready');ROOT.classList.add('cc-live-entry-pending');liveFallback=setTimeout(()=>{decorateLive();clearLivePending()},5000);liveRaf=requestAnimationFrame(watchLive)}
