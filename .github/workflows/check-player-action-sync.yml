@@ -29,8 +29,8 @@ jobs:
           node --check player-sheet-equipment-abilities-patch.js
           node --check gm-live-player-state.js
           node --check live-combat-center-patch.js
-          grep -Fq 'player-hard-recovery-v5' index.html
-          grep -Fq 'gm-live-player-state-v1' index.html
+          grep -Fq 'player-hard-recovery-v6' index.html
+          grep -Fq 'gm-live-player-state-v2' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Player and GM action synchronization
@@ -132,6 +132,14 @@ jobs:
                     const b=window.__db.catlak_combatants.find(x=>x.character_id===args.p_character_id);if(b)b.hp_current=args.p_hp;
                     window.__snapshot.order[0].hp_current=args.p_hp;window.__fire('catlak_characters');window.__fire('catlak_combatants');return{data:args.p_hp,error:null};
                   }
+                  if(name==='catlak_set_equipped_slot'){
+                    const row=window.__db.catlak_inventory.find(x=>x.id===args.p_inventory_id);if(row){row.equipped=!!args.p_slot;row.equipped_slot=args.p_slot||null}
+                    window.__fire('catlak_inventory');return{data:true,error:null};
+                  }
+                  if(name==='catlak_set_equipped'){
+                    const row=window.__db.catlak_inventory.find(x=>x.id===args.p_inventory_id);if(row)row.equipped=!!args.p_equipped;
+                    window.__fire('catlak_inventory');return{data:true,error:null};
+                  }
                   if(name==='catlak_player_use_ability'){
                     const a=window.__abilities.find(x=>x.assignment_id===args.p_assignment_id);if(a&&a.uses_remaining!=null)a.uses_remaining--;
                     window.__fire('catlak_character_abilities');return{data:{ability:a?.name||'Yetenek',effect_type:'heal',amount:3,hit:true},error:null};
@@ -164,7 +172,7 @@ jobs:
               await installMock(player,'MİSAFİR');
               await player.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
               await player.waitForSelector('main[data-cc-hard-sheet="1"] .cc-character-stack section.hero',{timeout:5000});
-              for(const file of ['stat-roll-patch.js','player-sheet-support-runtime.js','player-live-actions-patch.js','player-sheet-equipment-abilities-patch.js'])await player.addScriptTag({path:path.resolve(file)});
+              // Hard recovery v6 owns the critical actions directly so a slow optional layer cannot block play.
               await player.waitForSelector('.stat[data-sr-stat="DEX"]',{timeout:5000});
               await player.getByRole('button',{name:/DEX/}).first().click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_stat'));
@@ -177,6 +185,8 @@ jobs:
               await player.waitForSelector('[data-a="weapon"][data-k="attack"]',{timeout:5000});
               await player.getByRole('button',{name:'Saldırı At',exact:true}).first().click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_weapon'&&x.args.p_action==='attack'));
+              await player.locator('[data-ws-slot="off_weapon"]').first().click();
+              await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'));
 
               await player.waitForFunction(()=>document.body.textContent.includes('İnsan Direnci'),null,{timeout:5000});
               await player.waitForFunction(()=>document.body.textContent.includes('Zehirli'),null,{timeout:5000});
@@ -190,9 +200,10 @@ jobs:
                 calls:window.__rpcCalls.map(x=>x.name),
                 race:document.body.textContent.includes('İnsan Direnci'),
                 condition:document.body.textContent.includes('Zehirli'),
-                ability:document.body.textContent.includes('Acil Müdahale')
+                ability:document.body.textContent.includes('Acil Müdahale'),
+                slot:window.__rpcCalls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon')
               }));
-              if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
+              if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability||!pout.slot)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
               if(errors.length)throw new Error('PLAYER_PAGE_ERRORS '+errors.join(' | '));
 
               const gm=await browser.newPage();gm.setDefaultTimeout(7000);const gerr=[];gm.on('pageerror',e=>gerr.push(String(e.message||e)));
