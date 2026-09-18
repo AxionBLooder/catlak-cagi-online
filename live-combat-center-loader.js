@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakLiveCombatCenterLoaderV2)return;
-window.__catlakLiveCombatCenterLoaderV2=true;
+if(window.__catlakLiveCombatCenterLoaderV3)return;
+window.__catlakLiveCombatCenterLoaderV3=true;
 let tries=0;
 function start(){
   const app=document.getElementById('app');
@@ -18,7 +18,7 @@ function start(){
   if(document.querySelector('script[data-live-combat-center-runtime]'))return;
   const s=document.createElement('script');
   s.dataset.liveCombatCenterRuntime='1';
-  s.src='./live-combat-center-patch.js?v=livecombat-v4-party-library';
+  s.src='./live-combat-center-patch.js?v=livecombat-v5-anchorless';
   s.async=false;
   s.onerror=function(){console.error('Canlı savaş merkezi runtime dosyası yüklenemedi.');};
   document.body.appendChild(s);
