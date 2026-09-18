@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanRouterV3)return;
-window.__catlakGmCleanRouterV3=true;
+if(window.__catlakGmCleanRouterV4)return;
+window.__catlakGmCleanRouterV4=true;
 window.__catlakGmCleanRouterV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
