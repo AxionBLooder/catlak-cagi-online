@@ -45,11 +45,11 @@ jobs:
             'browser-app.js','runtime-health-guard.js','app-action-stability.js',
             'player-sheet-hard-recovery.js','battle-room-v3-patch.js','room-system-patch.js',
             'gm-clean-router-v1.js','gm-live-compact-v1.js','live-combat-center-patch.js',
-            'gm-ui-polish-v1.js','presence-patch.js','quality-of-life-patch.js'
+            'gm-ui-polish-v1.js','presence-patch.js','quality-of-life-patch.js','event-rolls-patch.js','visual-archive-map-flow-patch.js','gm-nav-canonical.js'
           ]
           for name in active:
               if not Path('_site',name).exists(): raise SystemExit('Aktif runtime pakette yok: '+name)
-          for name in ['runtime-health-guard.js','app-action-stability.js','player-sheet-hard-recovery.js','battle-room-v3-patch.js','room-system-patch.js','gm-clean-router-v1.js','gm-live-compact-v1.js','live-combat-center-patch.js']:
+          for name in ['runtime-health-guard.js','app-action-stability.js','player-sheet-hard-recovery.js','battle-room-v3-patch.js','room-system-patch.js','gm-clean-router-v1.js','gm-live-compact-v1.js','live-combat-center-patch.js','event-rolls-patch.js','visual-archive-map-flow-patch.js','gm-nav-canonical.js']:
               if name not in html: raise SystemExit('Aktif runtime index içinde yok: '+name)
 
           retired=[
@@ -68,11 +68,19 @@ jobs:
           sheet=Path('_site/player-sheet-hard-recovery.js').read_text(encoding='utf-8')
           live=Path('_site/live-combat-center-patch.js').read_text(encoding='utf-8')
           core=Path('_site/browser-app.js').read_text(encoding='utf-8')
-          if '__catlakPlayerSheetHardRecoveryV29' not in sheet: raise SystemExit('Oyuncu Masası owner sürümü yanlış')
-          if 'grid-column:1!important;justify-self:start!important' not in sheet: raise SystemExit('Irk güçleri sol kolon sözleşmesi eksik')
-          if 'grid-column:2!important;justify-self:end!important' not in sheet: raise SystemExit('Yetenekler sağ kolon sözleşmesi eksik')
+          rolls=Path('_site/event-rolls-patch.js').read_text(encoding='utf-8')
+          visuals=Path('_site/visual-archive-map-flow-patch.js').read_text(encoding='utf-8')
+          nav=Path('_site/gm-nav-canonical.js').read_text(encoding='utf-8')
+          gm=Path('_site/gm-clean-router-v1.js').read_text(encoding='utf-8')
+          if '__catlakPlayerSheetHardRecoveryV30' not in sheet: raise SystemExit('Oyuncu Masası owner sürümü yanlış')
+          if 'grid-column:1!important;grid-row:1!important;justify-self:stretch!important' not in sheet: raise SystemExit('Irk güçleri sol kolon sözleşmesi eksik')
+          if 'grid-column:2!important;grid-row:1!important;justify-self:stretch!important' not in sheet: raise SystemExit('Yetenekler sağ kolon sözleşmesi eksik')
           if 'cachedBoardHtml' not in live or 'restoreCachedBoard' not in live: raise SystemExit('Canlı masa cache sözleşmesi eksik')
           if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' not in core: raise SystemExit('Legacy canlı masa ownerı devrede')
+          if '__catlakUnifiedRollFlowV1' not in rolls or 'catlak_clear_roll_log' not in rolls: raise SystemExit('Birleşik Zar Akışı eksik')
+          if '__catlakVisualArchiveMapFlowV2' not in visuals or 'sw-gallery-head' not in visuals: raise SystemExit('Görsel Arşivi upload-only sözleşmesi eksik')
+          if 'live.after(rolls)' not in nav: raise SystemExit('Canlı Oyun Masası ve Zar Akışı yan yana değil')
+          if "['logs','Oturum Günlüğü']" in gm: raise SystemExit('Oturum Günlüğü geri dönmüş')
           print('DEPLOY_PLAYABLE_CONTRACT_OK')
           PY
 
