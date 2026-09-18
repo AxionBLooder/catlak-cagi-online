@@ -86,7 +86,12 @@ async function syncCharacters(showToast=false){
 }
 function scheduleSync(ms=120){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncCharacters(false),ms)}
 window.addEventListener('change',e=>{if(e.target?.id==='bcl')setTimeout(scheduleUi,0)},true);
-new MutationObserver(scheduleUi).observe(APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+ if(!isGM())return;
+ if(builderActive()){scheduleUi();return}
+ const relevant=rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.builder,#bcl,[data-ddb-choice-grid="bcl"]')||n.querySelector?.('.builder,#bcl,[data-ddb-choice-grid="bcl"]'))));
+ if(relevant)scheduleUi();
+}).observe(APP,{childList:true,subtree:true});
 S.channel('class-bonus-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_classes'},()=>{classes=[];loadClasses().then(()=>scheduleSync(50)).catch(e=>console.warn('CLASS_BONUS_CLASSES',e))}).on('postgres_changes',{event:'INSERT',schema:'public',table:'catlak_characters'},()=>scheduleSync(120)).subscribe();
 setTimeout(()=>{loadClasses().then(()=>syncCharacters(true)).catch(e=>console.warn('CLASS_BONUS_BOOT',e))},500);
 window.__catlakClassBonus={preset,label,refresh:()=>loadClasses().then(()=>syncCharacters(true)),syncUi};
