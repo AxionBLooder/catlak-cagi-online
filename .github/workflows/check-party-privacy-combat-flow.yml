@@ -1,0 +1,179 @@
+name: Check Party Privacy and Combat Flow
+on:
+  push:
+    paths:
+      - 'player-sheet-hard-recovery.js'
+      - 'room-system-patch.js'
+      - 'battle-party-membership-guard.js'
+      - 'party-room-stable-v2.js'
+      - 'live-combat-center-patch.js'
+      - 'live-combat-center-loader.js'
+      - 'gm-clean-click-guard.js'
+      - 'browser-app.js'
+      - 'index.html'
+      - '.github/workflows/check-party-privacy-combat-flow.yml'
+  workflow_dispatch:
+
+jobs:
+  party-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check player-sheet-hard-recovery.js
+          node --check room-system-patch.js
+          node --check battle-party-membership-guard.js
+          node --check party-room-stable-v2.js
+          node --check live-combat-center-patch.js
+          node --check live-combat-center-loader.js
+          node --check gm-clean-click-guard.js
+          node --check browser-app.js
+          grep -Fq 'player-hard-recovery-v16-party-race' index.html
+          grep -Fq 'player-bg-v5-party-gate' index.html
+          grep -Fq 'battle-party-v3-party-only' index.html
+          grep -Fq 'livecombat-v4-party-library' live-combat-center-loader.js
+          grep -Fq 'lcc-enemy-template' live-combat-center-patch.js
+          grep -Fq "c.data?.cc_party_member===true" battle-party-membership-guard.js
+          ! grep -Fq 'data-prsv2-battle=' party-room-stable-v2.js
+          grep -Fq '_.dataset.ccHardSheet==="1"' browser-app.js
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify party access, projection, race isolation and combat automation
+        run: |
+          cat > party-flow-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+          function playerMock(party){
+            return () => {
+              window.__handlers={};
+              window.__db={
+                catlak_characters:[{id:'c1',name:'Eeliot',owner_id:'u1',play_status:'active',species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:22,hp_max:22,base_ac:13,base_speed:30,base_stats:{STR:8,DEX:14,CON:14,INT:16,WIS:15,CHA:12},data:{cc_party_member:party},created_at:'2026-01-01'}],
+                catlak_inventory:[],catlak_items:[],catlak_species_powers:[{id:'p1',species_name:'İnsan',name:'Uyarlanabilir Miras',unlock_level:1,short_description:'Test güç',data:{},created_at:'2026-01-01'}],
+                catlak_special_paths:[],catlak_character_conditions:[],
+                catlak_party_visual:{singleton:true,kind:'map',ref_id:'m1',title:'İki Yüz',image_url:'https://example.com/map.jpg',note:'Parti haritası'}
+              };
+              function rows(t,st){
+                let d=t==='catlak_party_visual'?[window.__db.catlak_party_visual]:(window.__db[t]||[]).slice();
+                for(const[k,v] of st.eq)d=d.filter(x=>String(x?.[k])===String(v));
+                for(const[k,v] of st.ins)d=d.filter(x=>v.map(String).includes(String(x?.[k])));
+                return d;
+              }
+              function q(t){const st={eq:[],ins:[],single:false,lim:null};const o={
+                select(){return o},eq(k,v){st.eq.push([k,v]);return o},in(k,v){st.ins.push([k,v]);return o},order(){return o},limit(n){st.lim=n;return o},maybeSingle(){st.single=true;return o},
+                then(ok,bad){let d=rows(t,st);if(st.lim!=null)d=d.slice(0,st.lim);if(st.single)d=d[0]||null;return Promise.resolve({data:d,error:null}).then(ok,bad)}
+              };return o}
+              const ch={on(_e,f,cb){(window.__handlers[f.table]??=[]).push(cb);return ch},subscribe(){return ch}};
+              window.__fire=t=>(window.__handlers[t]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
+              window.__catlakSupabase={
+                auth:{getSession:async()=>({data:{session:{user:{id:'u1'}}}})},
+                from:q,channel:()=>ch,
+                rpc:async(name)=>{
+                  if(name==='catlak_player_combat_snapshot')return{data:{active:false,order:[]},error:null};
+                  if(name==='catlak_player_abilities')return{data:[],error:null};
+                  return{data:null,error:null}
+                }
+              };
+            }
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
+            try{
+              // Non-party player: no battle room, no projected visual.
+              const p=await browser.newPage();p.setDefaultTimeout(7000);
+              await p.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><span class="role">MİSAFİR</span><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
+              await p.evaluate(playerMock(false));
+              await p.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
+              await p.addScriptTag({path:path.resolve('room-system-patch.js')});
+              await p.waitForSelector('main[data-cc-hard-sheet="1"]');
+              await p.waitForTimeout(250);
+              let out=await p.evaluate(()=>({
+                battle:!!document.querySelector('[data-ccr-battle]'),
+                visualHidden:document.querySelector('[data-cc-hard-party-visual]')?.hidden===true,
+                raceMainDisplay:getComputedStyle(document.querySelector('[data-cc-hard-race]')).display
+              }));
+              if(out.battle||!out.visualHidden||out.raceMainDisplay!=='none')throw new Error('NONPARTY_PRIVACY '+JSON.stringify(out));
+
+              // Becoming a party member grants battle nav and projection, without replacing the sheet.
+              await p.evaluate(()=>{window.__stableMain=document.querySelector('main');window.__stableStack=document.querySelector('.cc-character-stack');window.__db.catlak_characters[0].data.cc_party_member=true;window.__fire('catlak_characters')});
+              await p.waitForSelector('[data-ccr-battle]');
+              await p.waitForFunction(()=>{const v=document.querySelector('[data-cc-hard-party-visual]');return v&&!v.hidden&&!!v.querySelector('img')});
+              out=await p.evaluate(()=>({
+                sameMain:window.__stableMain===document.querySelector('main'),
+                sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),
+                visualAfterInventory:document.querySelector('[data-cc-hard-inventory]')?.nextElementSibling?.matches('[data-cc-hard-party-visual]')===true
+              }));
+              if(!out.sameMain||!out.sameStack||!out.visualAfterInventory)throw new Error('PARTY_PROJECTION '+JSON.stringify(out));
+
+              // Race powers exist only in the dedicated race view.
+              await p.locator('[data-cc-hard-race-nav]').click();
+              await p.waitForTimeout(100);
+              out=await p.evaluate(()=>({
+                raceMode:document.querySelector('main').classList.contains('cc-hard-race-view'),
+                race:getComputedStyle(document.querySelector('[data-cc-hard-race]')).display,
+                hero:getComputedStyle(document.querySelector('section.hero')).display,
+                sameMain:window.__stableMain===document.querySelector('main')
+              }));
+              if(!out.raceMode||out.race==='none'||out.hero!=='none'||!out.sameMain)throw new Error('RACE_ISOLATION '+JSON.stringify(out));
+              await p.close();
+
+              // GM combat: start auto-adds only party members and enemy picker uses creature library.
+              const g=await browser.newPage();g.setDefaultTimeout(7000);
+              await g.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main data-cc-simple-live="1"><div class="cc-live-two"><section class="card">Oyuncular</section><section class="card">Zarlar</section></div></main></div><div id="toast" class="hidden"></div>`);
+              await g.evaluate(()=>{
+                window.__calls=[];window.__state={active:false};
+                window.__chars=[
+                  {id:'p1',name:'Parti Üyesi',play_status:'active',data:{cc_party_member:true},hp_current:20,hp_max:20,base_ac:12,base_stats:{DEX:14},created_at:'2026-01-01'},
+                  {id:'n1',name:'Parti Dışı',play_status:'active',data:{cc_party_member:false},hp_current:20,hp_max:20,base_ac:12,base_stats:{DEX:14},created_at:'2026-01-02'}
+                ];
+                window.__combatants=[];
+                window.__templates=[{id:'t1',name:'Goblin',creature_type:'Goblinoid',hp:7,ac:13,attack_name:'Kılıç',attack_formula:'1d20+4',damage_formula:'1d6+2'}];
+                function q(t){const st={eq:[],single:false};const o={
+                  select(){return o},eq(k,v){st.eq.push([k,v]);return o},order(){return o},maybeSingle(){st.single=true;return o},update(){return o},
+                  then(ok,bad){
+                    let d=t==='catlak_combat_state'?[{id:1,active:window.__state.active,name:'Karşılaşma',round:1,current_combatant_id:null}]:
+                      t==='catlak_combatants'?window.__combatants.slice():
+                      t==='catlak_characters'?window.__chars.slice():
+                      t==='catlak_character_conditions'?[]:
+                      t==='catlak_creature_templates'?window.__templates.slice():
+                      t==='catlak_character_abilities'?[]:[];
+                    for(const[k,v] of st.eq)d=d.filter(x=>String(x?.[k])===String(v));
+                    if(st.single)d=d[0]||null;
+                    return Promise.resolve({data:d,error:null}).then(ok,bad)
+                  }
+                };return o}
+                const ch={on(){return ch},subscribe(){return ch}};
+                window.__catlakSupabase={from:q,channel:()=>ch,rpc:async(name,args={})=>{
+                  window.__calls.push({name,args});
+                  if(name==='catlak_gm_combat_start'){window.__state.active=true;return{data:true,error:null}}
+                  if(name==='catlak_gm_combat_add_character'){window.__combatants.push({id:'c'+window.__combatants.length,kind:'player',character_id:args.p_character_id,name:window.__chars.find(c=>c.id===args.p_character_id)?.name,initiative:10,hp_current:20,hp_max:20,ac:12,created_at:new Date().toISOString()});return{data:true,error:null}}
+                  if(name==='catlak_gm_combat_add_template_batch')return{data:{count:1},error:null};
+                  return{data:null,error:null}
+                }};
+              });
+              await g.addScriptTag({path:path.resolve('live-combat-center-patch.js')});
+              await g.waitForSelector('[data-lcc-start]');
+              await g.locator('[data-lcc-start]').click();
+              await g.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_gm_combat_add_character'));
+              const auto=await g.evaluate(()=>window.__calls.filter(x=>x.name==='catlak_gm_combat_add_character').map(x=>x.args.p_character_id));
+              if(JSON.stringify(auto)!==JSON.stringify(['p1']))throw new Error('AUTO_PARTY '+JSON.stringify(auto));
+              await g.waitForSelector('#lcc-enemy-template');
+              const opts=await g.locator('#lcc-enemy-template option').allTextContents();
+              if(!opts.some(x=>x.includes('Goblin')))throw new Error('CREATURE_PICKER '+JSON.stringify(opts));
+              await g.selectOption('#lcc-enemy-template','t1');
+              await g.locator('[data-lcc-add-enemy]').click();
+              await g.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_gm_combat_add_template_batch'&&x.args.p_template_id==='t1'&&x.args.p_count===1));
+              console.log('PARTY_PRIVACY_COMBAT_FLOW_OK');
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node party-flow-smoke.cjs
