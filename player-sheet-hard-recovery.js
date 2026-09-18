@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV11)return;
-window.__catlakPlayerSheetHardRecoveryV11=true;
+if(window.__catlakPlayerSheetHardRecoveryV12)return;
+window.__catlakPlayerSheetHardRecoveryV12=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -9,16 +9,19 @@ APP.classList.add('cc-player-hard-active');
 if(!document.getElementById('cc-player-hard-ui-style')){
   const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
   #app.cc-player-hard-active main .cc-desk-intro{display:none!important}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:flex!important;flex-direction:column!important;gap:14px!important;max-width:1080px!important;margin:0 auto!important}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section{width:100%!important;margin:0!important}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{order:10}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr)!important;gap:14px!important;max-width:1180px!important;margin:0 auto!important;align-items:start!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{display:flex!important;flex-direction:column!important;gap:14px!important;min-width:0!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left{grid-column:1}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:2}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left>section,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right>section{width:100%!important;margin:0!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-stats]{order:20}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-race]{order:30}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-conditions]{order:40}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{order:50}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-equipment]{order:60}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-inventory]{order:70}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-rolls]{order:80}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-inventory]{order:30}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-rolls]{order:40}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-equipment]{order:10}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-conditions]{order:20}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{order:30}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-race]{order:40}
+  @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}}
   #app.cc-player-hard-active [data-cc-hard-stats] .eyebrow{display:none!important}
   #app.cc-player-hard-active [data-cc-hard-stats] .stat{cursor:pointer!important;pointer-events:auto!important}
   #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -146,15 +149,30 @@ function inventoryHtml(c,x){
     </article>`;
   }).join('')+'</div>';
 }
+function rollRowHtml(name,r){
+  return `<div class="roll" data-cc-roll-id="${esc(r?.id||'')}">
+    <div class="die">${r?.total==null?'?':esc(r.total)}</div>
+    <div><b>${esc(name||r?.label||'Karakter')}</b><br><span>${esc(r?.label||r?.roll_kind||'Zar')}</span><br>
+    <small>${r?.modifier?signed(r.modifier):''}${r?.created_at?' • '+new Date(r.created_at).toLocaleTimeString('tr-TR'):''}</small>
+    ${r?.dm_ruling?`<div class="gold">GM: ${esc(r.dm_ruling)}</div>`:''}</div>
+  </div>`;
+}
 function rollsHtml(c,x){
   const rows=x.rolls.filter(r=>String(r.character_id)===String(c.id)).slice(0,10);
   if(!rows.length)return '<div class="empty">Henüz zar yok.</div>';
-  return '<div class="rolls">'+rows.map(r=>`<div class="roll">
-    <div class="die">${r.total==null?'?':esc(r.total)}</div>
-    <div><b>${esc(c.name||r.label||'Karakter')}</b><br><span>${esc(r.label||r.roll_kind||'Zar')}</span><br>
-    <small>${esc(r.formula||'')} ${r.modifier?signed(r.modifier):''} • ${r.created_at?new Date(r.created_at).toLocaleTimeString('tr-TR'):''}</small>
-    ${r.dm_ruling?`<div class="gold">GM: ${esc(r.dm_ruling)}</div>`:''}</div>
-  </div>`).join('')+'</div>';
+  return '<div class="rolls">'+rows.map(r=>rollRowHtml(c.name,r)).join('')+'</div>';
+}
+function pushRollImmediate(cid,r){
+  if(!r)return false;
+  const stack=APP.querySelector(`main[data-cc-hard-sheet="1"] .cc-character-stack[data-cc-hard-stack="${CSS.escape(String(cid))}"]`);
+  const sec=stack?.querySelector('[data-cc-hard-rolls]');if(!sec)return false;
+  let list=sec.querySelector('.rolls');
+  if(!list){sec.querySelector('.empty')?.remove();list=document.createElement('div');list.className='rolls';sec.appendChild(list)}
+  const holder=document.createElement('div');holder.innerHTML=rollRowHtml(stack.querySelector('section.hero h1')?.textContent||'Karakter',r).trim();
+  const row=holder.firstElementChild;if(!row)return false;
+  const id=String(r.id||'');if(id&&list.querySelector(`[data-cc-roll-id="${CSS.escape(id)}"]`))return true;
+  list.prepend(row);while(list.children.length>10)list.lastElementChild.remove();
+  return true;
 }
 function powersHtml(c,x){
   const rows=x.powers.filter(p=>p.species_name===c.species_name&&p.data?.disabled!==true&&num(p.unlock_level)<=num(c.level));
@@ -217,14 +235,18 @@ function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
   return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
   <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
-  <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
-  ${vampHtml(c)}${pathHtml(c,x)}
-  <section class="card" data-cc-hard-race><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
-  ${conditionsHtml(c,x)}
-  ${abilitiesHtml(c,x)}
-  ${equipmentHtml(c,x)}
-  <section class="card" data-cc-hard-inventory><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
-  <section class="card" data-cc-hard-rolls><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
+  <div class="cc-hard-left">
+    <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
+    <section class="card" data-cc-hard-inventory><div class="eyebrow">ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
+    <section class="card" data-cc-hard-rolls><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section>
+  </div>
+  <aside class="cc-hard-right">
+    ${equipmentHtml(c,x)}
+    ${conditionsHtml(c,x)}
+    ${abilitiesHtml(c,x)}
+    ${vampHtml(c)}${pathHtml(c,x)}
+    <section class="card" data-cc-hard-race><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
+  </aside></div>`;
 }
 function applyLayers(){
   try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
@@ -283,7 +305,7 @@ const actionLocks=new Set();
 async function withAction(key,btn,fn){
   if(actionLocks.has(key))return;actionLocks.add(key);if(btn)btn.disabled=true;
   try{return await fn()}catch(e){console.warn('CATLAK_HARD_ACTION',key,e);toast(e?.message||String(e))}
-  finally{actionLocks.delete(key);if(btn?.isConnected)btn.disabled=false}
+  finally{actionLocks.delete(key);if(btn?.isConnected){btn.disabled=false;btn.classList.remove('cc-rolling')}}
 }
 async function hardHp(btn){
   const id=btn.dataset.id,delta=num(btn.dataset.d);if(!id||!delta)return;
@@ -298,15 +320,21 @@ async function hardHp(btn){
 async function hardStat(btn){
   const cid=btn.dataset.ccHardCharacter||btn.dataset.id,stat=String(btn.dataset.ccHardStat||'').toUpperCase();if(!cid||!STATS.includes(stat))return;
   return withAction('stat:'+cid+':'+stat,btn,async()=>{
+    btn.classList.add('cc-rolling');
     const S=await getRuntime(),r=await S.rpc('catlak_roll_stat',{p_character_id:cid,p_stat:stat});if(r.error)throw r.error;
-    toast((r.data?.label||stat)+': '+(r.data?.total??'?'));setTimeout(()=>refreshStable('rolls'),60);
+    const roll=Array.isArray(r.data)?r.data[0]:r.data;
+    pushRollImmediate(cid,roll);
+    toast((roll?.label||stat)+': '+(roll?.total??'?'));
+    btn.classList.remove('cc-rolling');
   });
 }
 async function hardWeapon(btn){
   const id=btn.dataset.id,kind=btn.dataset.ccHardWeapon||btn.dataset.k||'attack';if(!id)return;
   return withAction('weapon:'+id+':'+kind,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_roll_weapon',{p_inventory_id:id,p_action:kind});if(r.error)throw r.error;
-    toast((r.data?.label||'Silah')+': '+(r.data?.total??'DM Kararı'));setTimeout(()=>refreshStable('rolls'),60);
+    const roll=Array.isArray(r.data)?r.data[0]:r.data,cid=btn.closest('.cc-character-stack')?.dataset.ccHardStack;
+    if(cid)pushRollImmediate(cid,roll);
+    toast((roll?.label||'Silah')+': '+(roll?.total??'DM Kararı'));
   });
 }
 async function hardEquip(btn){
