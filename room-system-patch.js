@@ -56,7 +56,7 @@ if(!document.querySelector('#ccr-style')){
 function ccrPrepareBattleMain(main){
   if(!main)return null;
   main.className='ccr-battle-surface';
-  delete main.dataset.ccHardSheet;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
+  delete main.dataset.ccHardSheet;delete main.dataset.ccHardWait;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
   return main
 }
 function ccrToast(x){
@@ -300,13 +300,8 @@ function ccrOpenBattle(){
   try{window.__catlakViewRuntime?.begin?.('player-battle')}catch(_){}
   document.documentElement.classList.add('cc-battle-entry-pending');
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
-  const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));if(main)delete main.dataset.ccrBattle;
-  try{
-    if(window.__catlakBattleRoomV3Test?.restore?.()){
-      if(main)main.dataset.ccrBattle='1';
-      return;
-    }
-  }catch(_){}
+  const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));
+  if(main){delete main.dataset.ccrBattle;main.replaceChildren()}
   ccrBattleRender(true);
 }
 

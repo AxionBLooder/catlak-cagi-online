@@ -27,10 +27,16 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important;overflow:hidden!important}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-deck{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-top:10px}
   #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot:last-child{grid-column:1/-1}
-  #app.cc-player-hard-active .cc-roll-flash{position:fixed;right:18px;bottom:18px;z-index:90;min-width:220px;max-width:340px;padding:12px 14px;border:1px solid #3f6d88;border-radius:12px;background:rgba(7,18,28,.96);box-shadow:0 16px 42px rgba(0,0,0,.38);pointer-events:none}
-  #app.cc-player-hard-active .cc-roll-flash b{display:block;font-size:.78rem;color:var(--muted);letter-spacing:.07em}
-  #app.cc-player-hard-active .cc-roll-flash strong{display:block;margin-top:3px;font-size:1.8rem;color:var(--text)}
-  #app.cc-player-hard-active .cc-roll-flash span{display:block;margin-top:2px;color:#8fd7ff}
+  #app.cc-player-hard-active .cc-hard-hp-vital{min-width:190px!important}
+  #app.cc-player-hard-active .cc-hard-hp-control{display:grid!important;grid-template-columns:minmax(54px,1fr) 38px 38px!important;gap:6px!important;align-items:center!important;margin-top:8px!important}
+  #app.cc-player-hard-active .cc-hard-hp-control input{width:100%!important;min-width:0!important;text-align:center!important;padding:7px 6px!important;margin:0!important;pointer-events:auto!important;position:relative!important;z-index:5!important;background:#07111a!important;border:1px solid #36536a!important;color:var(--text)!important}
+  #app.cc-player-hard-active .cc-hard-hp-control button{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:38px!important;padding:7px 8px!important;margin:0!important;font-size:1.08rem!important;font-weight:900!important}
+  #app.cc-player-hard-active .ws-slot-controls{display:flex!important;visibility:visible!important;opacity:1!important;flex-wrap:wrap!important;gap:7px!important;width:100%!important}
+  #app.cc-player-hard-active .ws-slot-controls button{display:inline-flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+  #app.cc-player-hard-active .cc-roll-flash{position:fixed;left:50%;top:18%;right:auto;bottom:auto;transform:translateX(-50%);z-index:140;min-width:min(440px,calc(100vw - 32px));max-width:580px;padding:24px 28px;border:1px solid #4f88aa;border-radius:16px;background:rgba(5,15,24,.985);box-shadow:0 24px 70px rgba(0,0,0,.58);pointer-events:none;text-align:center}
+  #app.cc-player-hard-active .cc-roll-flash b{display:block;font-size:1rem;color:#9bc9e5;letter-spacing:.1em}
+  #app.cc-player-hard-active .cc-roll-flash strong{display:block;margin-top:9px;font-size:4.2rem;line-height:1;color:var(--text)}
+  #app.cc-player-hard-active .cc-roll-flash span{display:block;margin-top:9px;font-size:1.05rem;color:#8fd7ff}
   #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid!important;grid-template-columns:58px minmax(0,1fr)!important;gap:11px!important;align-items:center!important;padding:10px!important;border:1px solid var(--line)!important;border-radius:10px!important;background:linear-gradient(135deg,rgba(12,29,43,.94),rgba(8,18,29,.94))!important}
   #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot.is-filled{border-color:#4c708a!important;box-shadow:inset 0 0 0 1px rgba(104,187,230,.07)}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-mark{display:grid;place-items:center;height:42px;border:1px solid #36536e;border-radius:8px;color:var(--gold);font-size:.68rem;font-weight:900;letter-spacing:.08em;background:#091724}
@@ -111,21 +117,19 @@ function leaveRaceForForeignNav(){
 function setRaceView(on){
   raceWanted=!!on;window.__catlakRaceWantedEarly=raceWanted;
   const m=main(),sheet=sheetButton(),race=ensureRaceNav();if(!m||m.dataset.ccHardSheet!=='1'||!race)return false;
-  if(on){
-    if(!raceMode)sheetScrollY=window.scrollY;
-    raceMode=true;m.classList.add('cc-hard-race-view');clearPlayerNavSelection(race);
-    requestAnimationFrame(()=>window.scrollTo({top:raceScrollY||Math.max(0,m.offsetTop-10),behavior:'auto'}));
-  }else{
-    const wasRace=raceMode;if(wasRace)raceScrollY=window.scrollY;
-    raceMode=false;m.classList.remove('cc-hard-race-view');clearPlayerNavSelection(sheet);
-    if(wasRace)requestAnimationFrame(()=>window.scrollTo({top:sheetScrollY,behavior:'auto'}));
-  }
+  const wasRace=raceMode;
+  if(on&&!raceMode)sheetScrollY=window.scrollY;
+  if(!on&&raceMode)raceScrollY=window.scrollY;
+  raceMode=!!on;
+  m.className=on?'cc-hard-race-view':'';
+  delete m.dataset.ccrBattle;delete m.dataset.ccHardWait;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccViewMount;
+  clearPlayerNavSelection(on?race:sheet);
+  requestAnimationFrame(()=>window.scrollTo({top:on?(raceScrollY||Math.max(0,m.offsetTop-10)):(wasRace?sheetScrollY:window.scrollY),behavior:'auto'}));
   return true;
 }
 const previousPreserve=window.__catlakShouldPreserveCurrentView;
 window.__catlakShouldPreserveCurrentView=function(){
-  const m=main();
-  if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true;
+  if(sheetActive())return true;
   try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
 };
 
@@ -136,7 +140,7 @@ function cacheSheet(){
 function restoreCachedSheet(wantRace=false){
   if(!cachedSheetHtml)return false;
   const m=main();if(!m)return false;
-  m.className='';m.dataset.ccHardSheet='1';delete m.dataset.ccrBattle;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
+  m.className='';m.dataset.ccHardSheet='1';delete m.dataset.ccrBattle;delete m.dataset.ccHardWait;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccViewMount;
   if(!window.__catlakViewRuntime?.mount?.('player-sheet',m,cachedSheetHtml))m.innerHTML=cachedSheetHtml;
   ensureRaceNav();
   raceMode=false;raceWanted=!!wantRace;window.__catlakRaceWantedEarly=raceWanted;
@@ -259,9 +263,11 @@ function showRollFlash(cid,r){
   if(!r)return false;
   APP.querySelector('.cc-roll-flash')?.remove();
   const box=document.createElement('div');box.className='cc-roll-flash';
-  const label=esc(r.label||r.roll_kind||'Zar'),total=r.total==null?'?':esc(r.total),modText=r.modifier?signed(r.modifier):'';
-  box.innerHTML=`<b>${label}</b><strong>${total}</strong><span>${modText}</span>`;
-  APP.appendChild(box);clearTimeout(showRollFlash.t);showRollFlash.t=setTimeout(()=>box.remove(),2200);
+  const label=esc(r.label||r.roll_kind||'Zar Sonucu'),total=r.total==null?'?':esc(r.total);
+  const modifier=num(r.modifier),formula=String(r.formula||'').trim();
+  const detail=[formula,modifier?('Mod '+signed(modifier)):''].filter(Boolean).join(' • ');
+  box.innerHTML=`<b>${label}</b><strong>${total}</strong><span>${esc(detail||'Zar tamamlandı')}</span>`;
+  APP.appendChild(box);clearTimeout(showRollFlash.t);showRollFlash.t=setTimeout(()=>box.remove(),3600);
   return true;
 }
 function powersHtml(c,x){
@@ -336,7 +342,7 @@ function equipmentHtml(c,x){
 function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
   return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
-  <div class="vitals"><div class="vital" data-cc-hard-hp-readout><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div><div class="actions"><button type="button" data-cc-hard-long-rest data-id="${esc(c.id)}" data-max="${num(c.hp)}">Uzun Dinlenme</button></div></section>
+  <div class="vitals"><div class="vital cc-hard-hp-vital" data-cc-hard-hp-readout><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="cc-hard-hp-control"><input type="number" min="1" step="1" value="1" data-cc-hard-hp-amount="${esc(c.id)}" aria-label="HP değişim miktarı"><button type="button" class="danger" data-cc-hard-hp data-id="${esc(c.id)}" data-mode="damage">−</button><button type="button" data-cc-hard-hp data-id="${esc(c.id)}" data-mode="heal">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div><div class="actions"><button type="button" data-cc-hard-long-rest data-id="${esc(c.id)}" data-max="${num(c.hp)}">Uzun Dinlenme</button></div></section>
   <div class="cc-hard-left">
     <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
     <section class="card" data-cc-hard-inventory><div class="eyebrow">ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
@@ -412,13 +418,19 @@ async function withAction(key,btn,fn){
   finally{actionLocks.delete(key);if(btn?.isConnected){btn.disabled=false;btn.classList.remove('cc-rolling')}}
 }
 async function hardHp(btn){
-  const id=btn.dataset.id,delta=num(btn.dataset.d);if(!id||!delta)return;
-  const vital=btn.closest('.vital'),label=vital?.querySelector('b');
-  const m=String(label?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/),current=num(m?.[1]),max=num(m?.[2]),next=Math.max(0,Math.min(max,current+delta));
+  const id=btn.dataset.id,mode=String(btn.dataset.mode||'');if(!id||!['damage','heal'].includes(mode))return;
+  const vital=btn.closest('.vital'),label=vital?.querySelector('b'),input=vital?.querySelector('[data-cc-hard-hp-amount]');
+  const amount=Math.max(1,Math.trunc(Math.abs(num(input?.value)||1)));
+  const parts=String(label?.textContent||'').split('/'),current=num(parts[0]),max=num(parts[1]);
+  const delta=mode==='heal'?amount:-amount,next=Math.max(0,Math.min(max,current+delta));
   return withAction('hp:'+id,btn,async()=>{
     const S=await getRuntime();if(!S)throw new Error('Bağlantı hazır değil.');
     const r=await S.rpc('catlak_update_my_hp',{p_character_id:id,p_hp:next});if(r.error)throw r.error;
-    if(label)label.textContent=next+'/'+max;toast('HP '+next+'/'+max);setTimeout(()=>refreshStable('character'),50);
+    if(label)label.textContent=next+'/'+max;
+    if(input){input.value=String(amount);input.focus({preventScroll:true});input.select?.()}
+    window.__catlakRealtimeSync?.emit?.('character',{action:'hp-adjust'});
+    toast((mode==='heal'?'+':'−')+amount+' HP • '+next+'/'+max);
+    setTimeout(()=>refreshStable('character'),160);
   });
 }
 async function hardStat(btn){
@@ -555,6 +567,10 @@ function schedule(force=false,delay=0){
   queued=true;
   setTimeout(()=>recover(force),Math.max(0,delay));
 }
+document.addEventListener('pointerdown',e=>{
+  const field=e.target?.closest?.('[data-cc-hard-hp-amount]');
+  if(field)e.stopPropagation();
+},true);
 document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
@@ -572,8 +588,8 @@ document.addEventListener('click',e=>{
       if(restoreCachedSheet(false))return;
     }
     // No hard sheet yet: allow the core app's own tab handler to render first.
-    setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},260);
-    setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},900);
+    setTimeout(()=>{if(sheetActive()&&!ready())schedule(false,0)},120);
+    setTimeout(()=>{if(sheetActive()&&!ready())schedule(false,0)},650);
     return
   }
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
@@ -590,7 +606,7 @@ document.addEventListener('click',e=>{
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>{
   if(!sheetActive()||ready())return;
-  setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},160);
+  setTimeout(()=>{if(sheetActive()&&!ready())schedule(false,0)},120);
 });
 window.addEventListener('catlak:data-refreshed',()=>{
   if(!sheetActive())return;
@@ -628,8 +644,8 @@ async function realtime(){
 }
 setTimeout(()=>{
   ensureRaceNav();
-  if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0);
-},420);
+  if(sheetActive()&&!ready())schedule(false,0);
+},260);
 realtime();
 window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();

@@ -89,14 +89,15 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v37-visible-fallback','player-hard-recovery'),
-          load('./room-system-patch.js?v=player-bg-v20-fixed-surface','rooms'),
-          load('./battle-room-v3-patch.js?v=battle-v19-fixed-surface','battle-room-v3')
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v38-canonical-advanced','player-hard-recovery'),
+          load('./room-system-patch.js?v=player-bg-v21-clean-room-switch','rooms'),
+          load('./battle-room-v3-patch.js?v=battle-v20-no-ghost-cache','battle-room-v3')
         ]);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},500)})]);
-          if(!app.querySelector('main .cc-character-stack')&&!app.querySelector('main [data-a="hp"][data-id]')){
-            try{window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+          try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),8500)}
+          catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+          if(!app.querySelector('main .cc-character-stack[data-cc-hard-stack]')){
+            await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},700)})]);
           }
         }
         await twoFrames();

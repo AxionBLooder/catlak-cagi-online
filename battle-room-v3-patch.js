@@ -73,7 +73,7 @@ function br3NormalizeMain(main){
   if(!main)return null;
   main.className='ccr-battle-surface br3-live-layout';
   main.dataset.ccrBattle='1';
-  delete main.dataset.ccHardSheet;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
+  delete main.dataset.ccHardSheet;delete main.dataset.ccHardWait;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
   return main
 }
 function br3CreatureCard(x){
