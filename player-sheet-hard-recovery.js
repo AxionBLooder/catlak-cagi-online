@@ -142,6 +142,7 @@ async function safeRpc(S,name,args={},fallback=null,ms=1800){
 async function extras(S,chars){
   const ids=chars.map(c=>c.id).filter(Boolean);
   const species=[...new Set(chars.map(c=>c.species_name).filter(Boolean))];
+  const partyAllowed=chars.some(c=>c?.data?.cc_party_member===true);
   const [inv,items,powers,paths,conditions,abilities,combat,partyVisual]=await Promise.all([
     ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true}),[],1800):[],
     safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true}),[],1800),
@@ -150,7 +151,7 @@ async function extras(S,chars){
     ids.length?safeQuery(S.from('catlak_character_conditions').select('*').in('character_id',ids).eq('active',true).order('created_at',{ascending:true}),[],1800):[],
     safeRpc(S,'catlak_player_abilities',{},[],1800),
     safeRpc(S,'catlak_player_combat_snapshot',{}, {},1800),
-    safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,1800)
+    partyAllowed?safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,1800):Promise.resolve(null)
   ]);
   return {inv,items,powers,paths,conditions,abilities,combat,partyVisual};
 }
