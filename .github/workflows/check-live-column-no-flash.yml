@@ -19,8 +19,8 @@ jobs:
           set -euo pipefail
           node --check live-game-entry-guard.js
           node --check gm-live-compact-v1.js
-          grep -Fq 'live-entry-v9' index.html
-          grep -Fq 'flex-direction:column!important' gm-live-compact-v1.js
+          grep -Fq 'live-entry-v11-columns' index.html
+          grep -Fq 'grid-template-columns:minmax(320px,1fr) minmax(320px,1fr)!important' gm-live-compact-v1.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify old screen remains hidden until live is ready
@@ -65,13 +65,13 @@ jobs:
               });
               await page.waitForFunction(()=>!document.documentElement.classList.contains('cc-live-entry-pending'));
               const out=await page.evaluate(()=>({
-                direction:getComputedStyle(document.querySelector('.cc-live-two')).flexDirection,
+                columns:getComputedStyle(document.querySelector('.cc-live-two')).gridTemplateColumns,
                 display:getComputedStyle(document.querySelector('.cc-live-two')).display,
                 visibility:getComputedStyle(document.querySelector('#app main')).visibility,
                 players:document.querySelector('[data-glc-kind="players"]')?.style.order,
                 rolls:document.querySelector('[data-glc-kind="rolls"]')?.style.order
               }));
-              if(out.direction!=='column'||out.visibility!=='visible'||out.players!=='10'||out.rolls!=='20')
+              if(out.display!=='grid'||!out.columns||out.columns==='none'||out.visibility!=='visible'||out.players!=='10'||out.rolls!=='20')
                 throw new Error('LIVE_COLUMN_FAILED '+JSON.stringify(out));
               console.log('LIVE_COLUMN_NO_FLASH_OK',JSON.stringify({pendingBefore,out}));
             }finally{await browser.close()}
