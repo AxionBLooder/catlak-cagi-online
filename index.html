@@ -105,7 +105,7 @@
         }
         var roomPromise=loadParallel([
           ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-          ['./room-system-patch.js?v=player-bg-v13-entry-failsafe','rooms'],
+          ['./room-system-patch.js?v=player-bg-v14-never-stuck','rooms'],
           ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
         ]);
         await Promise.all([recoverPromise,roomPromise]);
@@ -150,7 +150,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-13-entry-failsafe','rooms'],
+        ['./room-system-patch.js?v=recovery-14-never-stuck','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
