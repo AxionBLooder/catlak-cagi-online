@@ -12,7 +12,7 @@ const num=x=>Number(x||0);
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const liveActive=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
-let busy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false;
+let busy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null;
 
 if(!document.querySelector('#lcc-style')){
  const st=document.createElement('style');st.id='lcc-style';st.textContent=`
@@ -76,6 +76,16 @@ async function loadData(){
  for(const r of [sr,br,cr,kr,tr])if(r.error)throw r.error;
  return {state:sr.data||{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:br.data||[],chars:cr.data||[],conditions:kr.data||[],templates:tr.data||[]};
 }
+async function preloadBoard(){
+ if(preloadBusy)return preloadBusy;
+ preloadBusy=loadData().then(async d=>{await autoEndClearedCombat(d);cachedBoardHtml=boardHtml(d);return cachedBoardHtml}).catch(()=>cachedBoardHtml).finally(()=>{preloadBusy=null});
+ return preloadBusy;
+}
+function restoreCachedBoard(main){
+ if(!main||!cachedBoardHtml||main.querySelector('[data-lcc-board]'))return false;
+ main.insertAdjacentHTML('beforeend',cachedBoardHtml);
+ return true;
+}
 function combatantHtml(x,current){
  const kind=x.kind==='player'?'OYUNCU':'DÜŞMAN';
  return `<article class="lcc-combatant ${x.id===current?'current':''}"><div class="lcc-combatant-top"><div class="lcc-init">${num(x.initiative)}</div><div><b>${esc(x.name||'Savaşçı')}</b><div class="lcc-mini">${kind} • AC ${x.ac??'?'}${x.id===current?' • SIRA BUNDA':''}</div><div class="lcc-hp">HP ${x.hp_current??'?'} / ${x.hp_max??'?'}</div></div><button type="button" class="danger small" data-lcc-remove="${esc(x.id)}">Çıkar</button></div><div class="lcc-actions"><button type="button" data-lcc-hp="${esc(x.id)}" data-d="-5">HP −5</button><button type="button" data-lcc-hp="${esc(x.id)}" data-d="-1">−1</button><button type="button" data-lcc-hp="${esc(x.id)}" data-d="1">+1</button><button type="button" data-lcc-hp="${esc(x.id)}" data-d="5">HP +5</button><button type="button" data-lcc-init="${esc(x.id)}">İnisiyatif</button></div></article>`;
@@ -109,19 +119,24 @@ async function autoEndClearedCombat(d){
 }
 async function render(force=false){
  wrapOldCombatRoute();
- if(!liveActive())return;
- const main=APP.querySelector('main');if(!main||busy)return;
- if(!force&&main.querySelector('[data-lcc-board]'))return;
+ if(!liveActive())return false;
+ const main=APP.querySelector('main');if(!main)return false;
+ const restored=restoreCachedBoard(main);
+ if(restored&&!force){setTimeout(()=>render(true),0);return true}
+ if(!force&&main.querySelector('[data-lcc-board]'))return true;
+ if(busy)return false;
  busy=true;
  try{
   const d=await loadData();
-  if(!liveActive()||APP.querySelector('main')!==main)return;
+  if(!liveActive()||APP.querySelector('main')!==main)return false;
   await autoEndClearedCombat(d);
+  cachedBoardHtml=boardHtml(d);
   const anchor=main.querySelector('.cc-live-two');
   main.querySelector('[data-lcc-board]')?.remove();
-  if(anchor?.parentNode)anchor.insertAdjacentHTML('afterend',boardHtml(d));
-  else main.insertAdjacentHTML('beforeend',boardHtml(d));
- }catch(e){console.error('LCC render',e);toast('Savaş masası yüklenemedi: '+(e?.message||String(e)))}finally{busy=false}
+  if(anchor?.parentNode)anchor.insertAdjacentHTML('afterend',cachedBoardHtml);
+  else main.insertAdjacentHTML('beforeend',cachedBoardHtml);
+  return true;
+ }catch(e){console.error('LCC render',e);toast('Savaş masası yüklenemedi: '+(e?.message||String(e)));return false}finally{busy=false}
 }
 async function rpc(name,args,msg){
  if(busy)return;busy=true;
@@ -184,10 +199,10 @@ APP.addEventListener('change',e=>{
  if(ac)ac.value=String(num(o.dataset.ac)||10);
 },true);
 
-function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive())render(false);else APP.querySelector('[data-lcc-board]')?.remove()})}
+function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
 const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(liveActive())render(true)},35)};
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
-setTimeout(schedule,120);setTimeout(schedule,700);setTimeout(schedule,1600);
-window.__catlakLiveCombatCenter={render:()=>render(true),open:openLive,removeLegacy:removeOldCombatEntry,start:startCombat};
+setTimeout(()=>preloadBoard(),20);setTimeout(schedule,120);setTimeout(schedule,700);setTimeout(schedule,1600);
+window.__catlakLiveCombatCenter={render:()=>render(true),restore:()=>restoreCachedBoard(APP.querySelector('main')),preload:preloadBoard,open:openLive,removeLegacy:removeOldCombatEntry,start:startCombat};
 })();
