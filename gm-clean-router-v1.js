@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanRouterV2)return;
-window.__catlakGmCleanRouterV2=true;
+if(window.__catlakGmCleanRouterV3)return;
+window.__catlakGmCleanRouterV3=true;
 window.__catlakGmCleanRouterV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
@@ -35,7 +35,13 @@ function markTop(){const nav=APP.querySelector('.nav');nav?.querySelectorAll('bu
 function setRoute(r){open=true;route=r;window.__catlakGmCleanRoute=r;markTop();ensureNav();ensureBar()}
 function close(){open=false;route='';renderToken++;window.__catlakGmCleanRoute='';APP.querySelector('[data-gmc-centerbar]')?.remove();APP.querySelector('.nav [data-gmc-open]')?.classList.remove('on')}
 function nativeTarget(r){const nav=APP.querySelector('.nav');if(!nav)return null;if(r==='stats')return nav.querySelector('[data-cc-stats-tab]');return nav.querySelector(`[data-tab="${r}"]`)}
-function openNative(r){const t=nativeTarget(r);if(!t){toast('Bu bölümün yerel ekranı bulunamadı.');return false}const token=++renderToken;t.click();setTimeout(()=>{if(token!==renderToken||route!==r)return;setRoute(r);ensureBar()},0);return true}
+function ensureNativeTarget(r){
+ const nav=APP.querySelector('.nav');if(!nav||r==='stats')return nativeTarget(r);
+ let t=nativeTarget(r);if(t)return t;
+ t=document.createElement('button');t.type='button';t.dataset.tab=r;t.dataset.gmcNativeBridge='1';t.textContent=r==='builder'?'Karakter Oluşturucu':r==='items'?'Eşya Atölyesi':r==='races'?'Irk Atölyesi':r;
+ t.style.display='none';nav.appendChild(t);return t;
+}
+function openNative(r){const t=ensureNativeTarget(r);if(!t){toast('Bu bölüm açılamadı.');return false}const token=++renderToken;t.click();setTimeout(()=>{if(token!==renderToken||route!==r)return;setRoute(r);ensureBar()},0);return true}
 function openStatsDirect(){const t=nativeTarget('stats'),render=window.__catlakRenderCompactStats;if(!t||typeof render!=='function'){toast('Stat Atölyesi hazır değil.');return false}const main=APP.querySelector('main');if(main){delete main.dataset.gmtTools;delete main.dataset.gmtSub;delete main.dataset.qolCreatureLibrary;delete main.dataset.cuxPage}t.classList.add('on');Promise.resolve(render(true)).then(()=>{if(route!=='stats')return;t.classList.add('on');ensureBar()}).catch(e=>toast('Stat Atölyesi açılamadı: '+(e?.message||String(e))));return true}
 
 const abilityType=x=>x==='spell'?'BÜYÜ':x==='special'?'ÖZEL':'YETENEK';
