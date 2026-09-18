@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
           node --check player-live-actions-patch.js
-          grep -Fq 'player-hard-recovery-v9' index.html
+          grep -Fq 'player-hard-recovery-v10' index.html
           grep -Fq 'player-actions-v5-hard-owned' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
