@@ -95,15 +95,19 @@ scan();
 window.__catlakRuntimeDiagnostics={list:()=>diagnostics.slice(),clear:()=>{diagnostics.length=0},report};
 window.__catlakRuntimeOwnership={claim,owner:surface=>owners.get(String(surface||''))||'',owns:(surface,owner)=>owners.get(String(surface||''))===String(owner||''),list:()=>Object.fromEntries(owners)};
 
-const viewBatches=new Map(),viewCache=new Map();
+const viewBatches=new Map(),viewCache=new Map(),viewPerf=[],viewStarted=new Map();
 function viewBegin(surface){
   const key=String(surface||'');
-  if(key)ROOT.dataset.ccViewTransition=key;
+  if(key){ROOT.dataset.ccViewTransition=key;viewStarted.set(key,performance.now())}
   ROOT.classList.add('cc-fast-nav-switch');
   navSwitchArmed=true;arm('cc-fast-nav-switch');
 }
 function viewReady(surface){
   const key=String(surface||''),current=String(ROOT.dataset.ccViewTransition||'');
+  if(key&&viewStarted.has(key)){
+    const ms=Math.max(0,Math.round(performance.now()-viewStarted.get(key)));
+    viewStarted.delete(key);viewPerf.push({surface:key,ms,at:new Date().toISOString()});if(viewPerf.length>40)viewPerf.shift()
+  }
   if(!key||!current||current===key){delete ROOT.dataset.ccViewTransition;finishNavSwitch()}
 }
 function viewBatch(key,fn,delay=70){
@@ -122,5 +126,6 @@ function viewMount(surface,main,html){
   return true
 }
 window.__catlakViewRuntime={begin:viewBegin,ready:viewReady,batch:viewBatch,mount:viewMount,cache:viewCacheSet,restore:viewCacheRestore,has:key=>viewCache.has(String(key||''))};
+window.__catlakRuntimePerformance={views:()=>viewPerf.slice(),slow:ms=>viewPerf.filter(x=>x.ms>=(Number(ms)||250)),clear:()=>{viewPerf.length=0}};
 window.__catlakRuntimeHealthGuard={scan,clear:clearClass,finishNavSwitch};
 })();
