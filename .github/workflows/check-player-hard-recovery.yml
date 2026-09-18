@@ -19,8 +19,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v14-owner-race' index.html
-          grep -Fq 'recovery-core-13-single-player-owner' index.html
+          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v15-stable-actions' index.html
+          grep -Fq 'recovery-core-14-no-player-realtime-reset' index.html
           grep -Fq 'catlakBootJoinedCharacter' live_08.txt
           grep -Fq "catlak-guest-join" live_08.txt
           grep -Fq 'visibility:visible!important' index.html
@@ -67,10 +67,10 @@ jobs:
                 name:document.querySelector('section.hero h1')?.textContent,
                 stat:document.querySelector('[data-a="stat"][data-stat="INT"]')?.textContent,
                 inventory:[...document.querySelectorAll('.eyebrow')].some(x=>x.textContent==='ENVANTER'),
-                rolls:[...document.querySelectorAll('.eyebrow')].some(x=>x.textContent==='SON ZARLAR'),
+                rolls:!!document.querySelector('[data-cc-hard-rolls]'),
                 owner:document.querySelector('main')?.dataset.ccHardSheet
               }));
-              if(out.name!=='Eeliot'||!out.stat?.includes('18')||!out.inventory||!out.rolls||out.owner!=='1')throw new Error('Recovery output failed '+JSON.stringify(out));
+              if(out.name!=='Eeliot'||!out.stat?.includes('18')||!out.inventory||out.rolls||out.owner!=='1')throw new Error('Recovery output failed '+JSON.stringify(out));
               if(errors.length)throw new Error('Page errors '+errors.join(' | '));
               console.log('PLAYER_HARD_RECOVERY_OK',JSON.stringify(out));
             }finally{await browser.close()}
