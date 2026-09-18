@@ -40,6 +40,7 @@ if(!document.querySelector('#br3-style')){
 const br3AbilityType=x=>x==='spell'?'BÜYÜ':x==='special'?'ÖZEL':'YETENEK';
 const br3Effect=x=>x==='heal'?'İYİLEŞTİRME':x==='utility'?'DESTEK':'HASAR';
 const br3TargetLabel=x=>x==='self'?'KENDİ':x==='ally'?'MÜTTEFİK':'DÜŞMAN';
+function br3AbilityRule(a){const raw=String(a?.description||''),m=raw.match(/\[\[CC_FIXED_AC:(\d+)\]\]/i);return{fixed:m?Math.max(1,br3Num(m[1])):0,description:raw.replace(/\s*\[\[CC_FIXED_AC:\d+\]\]\s*/ig,' ').trim()}}
 function br3Enemies(s){return (s?.order||[]).filter(x=>x.kind==='enemy')}
 function br3LivingEnemies(s){return br3Enemies(s).filter(x=>x.hp_current==null||br3Num(x.hp_current)>0)}
 function br3NormalizeTarget(s){const live=br3LivingEnemies(s);if(br3TargetId&&!live.some(x=>String(x.id)===String(br3TargetId)))br3TargetId='';return live}
@@ -77,7 +78,7 @@ function br3CreatureCard(x){
 function br3CreaturesSection(s){const enemies=br3Enemies(s);return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:''}</section>`}
 function br3AbilityTargets(a,s){const rows=s.order||[];if(a.target_type==='enemy')return rows.filter(x=>x.kind==='enemy'&&(x.hp_current==null||br3Num(x.hp_current)>0));if(a.target_type==='ally')return rows.filter(x=>x.kind==='player'&&br3Num(x.hp_current)>0);return[]}
 function br3AbilityCard(a,s){
-  const targets=br3AbilityTargets(a,s),uses=a.uses_per_combat==null?'∞':br3Num(a.uses_remaining)+'/'+br3Num(a.uses_per_combat),out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;
+  const rule=br3AbilityRule(a),targets=br3AbilityTargets(a,s),uses=a.uses_per_combat==null?'∞':br3Num(a.uses_remaining)+'/'+br3Num(a.uses_per_combat),out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;
   const isEnemy=a.target_type==='enemy',isAlly=a.target_type==='ally',selectedEnemy=isEnemy?targets.find(x=>String(x.id)===String(br3TargetId)):null;
   const targetReady=!isEnemy&&!isAlly?true:isEnemy?!!selectedEnemy:targets.length>0;
   const canUse=!!s.active&&!!s.in_combat&&!!s.is_my_turn&&!out&&targetReady;
@@ -89,7 +90,7 @@ function br3AbilityCard(a,s){
     targetHtml=`<label style="margin-top:9px">Hedef<select data-br3-ability-target="${br3Esc(a.assignment_id)}">${opts||'<option value="">Uygun hedef yok</option>'}</select></label>`;
   }
   const button=out?'Kullanım Hakkı Bitti':!s.in_combat?'Önce Savaşa Eklenmelisin':!s.is_my_turn?'Sıra Sende Değil':isEnemy&&!selectedEnemy?'Önce Hedef Seç':selectedEnemy?`Kullan → ${selectedEnemy.name}`:'Kullan';
-  return `<article class="br3-card br3-ability ${br3Esc(a.ability_type||'skill')}" data-br3-ability-card="${br3Esc(a.assignment_id)}" data-br3-ability-kind="${br3Esc(a.target_type||'self')}"><div class="eyebrow">${br3AbilityType(a.ability_type)} • ${br3Effect(a.effect_type)}</div><h3>${br3Esc(a.name)}</h3><div class="br3-pills"><span class="br3-pill">Hedef: ${br3TargetLabel(a.target_type)}</span>${a.formula?`<span class="br3-pill">${br3Esc(a.formula)}</span>`:''}<span class="br3-pill">Kullanım: ${uses}</span>${a.requires_attack?`<span class="br3-pill">AC Kuralı: d20${br3Num(a.attack_bonus)>=0?'+':''}${br3Num(a.attack_bonus)} ≥ hedef AC</span>`:''}</div>${a.description?`<div class="br3-note">${br3Esc(a.description)}</div>`:''}${targetHtml}<button type="button" class="primary widebtn" data-br3-use="${br3Esc(a.assignment_id)}" data-br3-use-kind="${br3Esc(a.target_type||'self')}" ${canUse?'':'disabled'}>${br3Esc(button)}</button></article>`;
+  return `<article class="br3-card br3-ability ${br3Esc(a.ability_type||'skill')}" data-br3-ability-card="${br3Esc(a.assignment_id)}" data-br3-ability-kind="${br3Esc(a.target_type||'self')}"><div class="eyebrow">${br3AbilityType(a.ability_type)} • ${br3Effect(a.effect_type)}</div><h3>${br3Esc(a.name)}</h3><div class="br3-pills"><span class="br3-pill">Hedef: ${br3TargetLabel(a.target_type)}</span>${a.formula?`<span class="br3-pill">${br3Esc(a.formula)}</span>`:''}<span class="br3-pill">Kullanım: ${uses}</span>${rule.fixed?`<span class="br3-pill">Sabit AC: d20${br3Num(a.attack_bonus)>=0?'+':''}${br3Num(a.attack_bonus)} &gt; ${rule.fixed}</span>`:(a.requires_attack?`<span class="br3-pill">Hedef AC: d20${br3Num(a.attack_bonus)>=0?'+':''}${br3Num(a.attack_bonus)} ≥ hedef AC</span>`:'')}</div>${rule.description?`<div class="br3-note">${br3Esc(rule.description)}</div>`:''}${targetHtml}<button type="button" class="primary widebtn" data-br3-use="${br3Esc(a.assignment_id)}" data-br3-use-kind="${br3Esc(a.target_type||'self')}" ${canUse?'':'disabled'}>${br3Esc(button)}</button></article>`;
 }
 function br3AbilitiesSection(d){const warning=d.warnings?.some(x=>x.includes('Yetenek'))?'<div class="br3-warning">Yetenek listesi şu anda alınamadı; yaratık hedefleme çalışmaya devam eder.</div>':'';return `<section class="card" data-br3-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>${d.abilities.length?'Aksiyon':'Henüz Yetenek Yok'}</h2><p class="muted">GM Merkezi → Yetenek bölümünden karakterine verilen büyü ve özel yetenekler burada görünür ve sıra sendeyken kullanılır.</p>${warning}${d.abilities.length?`<div class="br3-grid">${d.abilities.map(a=>br3AbilityCard(a,d.snap)).join('')}</div>`:'<div class="muted">Bu karaktere henüz bir yetenek atanmadı.</div>'}${br3ResultHtml(br3LastResult)}</section>`}
 function br3ResultHtml(r){
@@ -231,7 +232,39 @@ async function br3MaybeAutoEndCombat(beforeSnap){
   }catch(_){return false}finally{br3AutoEndBusy=false}
 }
 async function br3Strike(btn){if(br3ActionBusy)return;if(!br3TargetId)throw new Error('Önce bir yaratık hedefle.');const invId=btn.dataset.br3Strike;if(!invId)throw new Error('Silah bulunamadı.');const before=br3LastSnap;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_weapon_strike',{p_inventory_id:invId,p_target_id:br3TargetId});if(r.error)throw r.error;const d=r.data||{};window.__catlakRealtimeSync?.emit?.('combat',{action:'weapon-strike'});br3Toast(d.hit?`${d.target_name}: ${d.critical?'KRİTİK İSABET':'İSABET'} • ${d.damage_total} hasar`:`${d.target_name}: ISKA (${d.attack_total})`);if(br3Num(d.target_hp)<=0)br3TargetId='';if(!(await br3MaybeAutoEndCombat(before)))await br3Render(false)}finally{br3ActionBusy=false}}
-async function br3Use(btn){if(br3ActionBusy)return;const id=btn.dataset.br3Use,kind=btn.dataset.br3UseKind||'self',sel=BR3_APP.querySelector(`[data-br3-ability-target="${CSS.escape(id)}"]`),target=kind==='enemy'?(br3TargetId||null):(sel?.value||null),before=br3LastSnap;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_use_ability',{p_assignment_id:id,p_target_id:target});if(r.error)throw r.error;br3LastResult=r.data||null;const d=r.data||{};window.__catlakRealtimeSync?.emit?.('combat',{action:'ability-use'});window.__catlakRealtimeSync?.emit?.('ability',{action:'used'});let msg=d.ability||'Yetenek',check=d.attack_total!=null&&d.target_ac!=null?` • Saldırı ${br3Num(d.attack_total)} / AC ${br3Num(d.target_ac)}`:'';if(d.hit===false)msg+=`: ISKA${check} • kullanım hakkı harcandı • hasar yok`;else if(d.effect_type==='damage')msg+=`: İSABET${check} • ${br3Num(d.amount)} hasar`;else if(d.effect_type==='heal')msg+=`: ${br3Num(d.amount)} iyileştirme`;else msg+=' kullanıldı';br3Toast(msg);if(!(d.effect_type==='damage'&&await br3MaybeAutoEndCombat(before)))await br3Render(false)}finally{br3ActionBusy=false}}
+async function br3Use(btn){
+ if(br3ActionBusy)return;
+ const id=btn.dataset.br3Use,kind=btn.dataset.br3UseKind||'self',sel=BR3_APP.querySelector(`[data-br3-ability-target="${CSS.escape(id)}"]`),target=kind==='enemy'?(br3TargetId||null):(sel?.value||null),before=br3LastSnap;
+ const ability=br3LastData?.abilities?.find(a=>String(a.assignment_id)===String(id)),rule=br3AbilityRule(ability);
+ br3ActionBusy=true;
+ try{
+  let fixedRoll=null;
+  if(rule.fixed&&ability?.effect_type==='damage'){
+    const die=1+Math.floor(Math.random()*20),total=die+br3Num(ability.attack_bonus);
+    fixedRoll={die,total,ac:rule.fixed,hit:total>rule.fixed};
+    if(!fixedRoll.hit){
+      if(ability.uses_per_combat!=null){
+        const next=Math.max(0,br3Num(ability.uses_remaining)-1);
+        const spend=await BR3_S.from('catlak_character_abilities').update({uses_remaining:next}).eq('id',id);
+        if(spend.error)throw new Error('Kullanım hakkı azaltılamadı: '+spend.error.message);
+        ability.uses_remaining=next;
+      }
+      const targetRow=(br3LastSnap?.order||[]).find(x=>String(x.id)===String(target));
+      br3LastResult={ability:ability?.name||'Yetenek',target_name:targetRow?.name||'',effect_type:'damage',hit:false,attack_total:total,target_ac:rule.fixed,amount:0,fixed_ac:true};
+      window.__catlakRealtimeSync?.emit?.('ability',{action:'used-fixed-miss'});
+      br3Toast((ability?.name||'Yetenek')+': ISKA • '+total+' / Sabit AC '+rule.fixed+' • kullanım harcandı • hasar yok');
+      await br3Render(false);return
+    }
+  }
+  const r=await BR3_S.rpc('catlak_player_use_ability',{p_assignment_id:id,p_target_id:target});if(r.error)throw r.error;
+  const d=r.data||{};
+  br3LastResult=fixedRoll?{...d,hit:true,attack_total:fixedRoll.total,target_ac:fixedRoll.ac,fixed_ac:true}:d;
+  window.__catlakRealtimeSync?.emit?.('combat',{action:'ability-use'});window.__catlakRealtimeSync?.emit?.('ability',{action:'used'});
+  let msg=d.ability||ability?.name||'Yetenek',check=fixedRoll?(' • Sabit AC '+fixedRoll.total+' > '+fixedRoll.ac):(d.attack_total!=null&&d.target_ac!=null?` • Saldırı ${br3Num(d.attack_total)} / AC ${br3Num(d.target_ac)}`:'');
+  if(d.hit===false&&!fixedRoll)msg+=`: ISKA${check} • kullanım hakkı harcandı • hasar yok`;else if(d.effect_type==='damage')msg+=`: İSABET${check} • ${br3Num(d.amount)} hasar`;else if(d.effect_type==='heal')msg+=`: ${br3Num(d.amount)} iyileştirme`;else msg+=' kullanıldı';
+  br3Toast(msg);if(!(d.effect_type==='damage'&&await br3MaybeAutoEndCombat(before)))await br3Render(false)
+ }finally{br3ActionBusy=false}
+}
 async function br3HpChange(btn){if(br3ActionBusy)return;br3ActionBusy=true;br3HoldInteraction(1500);try{const input=BR3_APP.querySelector('[data-br3-hp-amount]'),amount=Math.max(1,Math.abs(br3Num(input?.value,1))),d=br3LastData||await br3Load(),self=(d.snap?.order||[]).find(x=>x.is_self);if(!self||!d.snap?.character_id)throw new Error('Savaş karakteri bulunamadı.');const delta=btn.dataset.br3HpChange==='heal'?amount:-amount,next=Math.max(0,Math.min(br3Num(self.hp_max),br3Num(self.hp_current)+delta));const r=await BR3_S.rpc('catlak_update_my_hp',{p_character_id:d.snap.character_id,p_hp:next});if(r.error)throw r.error;if(input){input.value=String(amount);input.focus({preventScroll:true});input.select?.()}self.hp_current=next;if(br3LastSnap){const mine=(br3LastSnap.order||[]).find(x=>x.is_self);if(mine)mine.hp_current=next}br3SyncHeroVitals(d.snap);br3Sig='';br3CacheCurrent();window.__catlakRealtimeSync?.emit?.('combat',{action:'player-hp'});br3Toast('HP '+next+'/'+br3Num(self.hp_max));setTimeout(()=>{if(!br3InteractionLocked())br3Render(false)},170)}finally{br3ActionBusy=false}}
 async function br3EndTurn(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_end_turn');if(r.error)throw r.error;window.__catlakRealtimeSync?.emit?.('combat',{action:'end-turn'});br3Toast('Tur bitti. Sıradaki: '+(r.data?.current_name||'—'));await br3Render(false)}finally{br3ActionBusy=false}}
 async function br3ClearBattleLog(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_gm_clear_battle_log');if(r.error)throw r.error;br3Toast(`Canlı akış temizlendi${r.data!=null?' • '+r.data+' kayıt':''}.`)}finally{br3ActionBusy=false}}
@@ -248,7 +281,7 @@ function br3SyncEnemyAbilityTargets(){
     if(!a)return;
     let line=card.querySelector('.br3-target-line');
     if(!line){line=document.createElement('div');line.className='br3-target-line';const use=card.querySelector('[data-br3-use]');use?.before(line)}
-    line.innerHTML='Hedef: <b>'+br3Esc(target?.name||'Seçilmedi')+'</b>'+(target&&a.requires_attack?' • AC '+br3Num(target.ac):'');
+    const rule=br3AbilityRule(a);line.innerHTML='Hedef: <b>'+br3Esc(target?.name||'Seçilmedi')+'</b>'+(rule.fixed?' • Sabit AC '+rule.fixed:(target&&a.requires_attack?' • Hedef AC '+br3Num(target.ac):''));
     const use=card.querySelector('[data-br3-use]');
     if(!use)return;
     const out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;

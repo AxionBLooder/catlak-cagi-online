@@ -91,7 +91,7 @@
         await Promise.all([
           load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v33-no-combat-churn','player-hard-recovery'),
           load('./room-system-patch.js?v=player-bg-v19-v3-owner','rooms'),
-          load('./battle-room-v3-patch.js?v=battle-v17-stable-owner','battle-room-v3')
+          load('./battle-room-v3-patch.js?v=battle-v18-stable-fixed-ac','battle-room-v3')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -124,7 +124,7 @@
         ['./event-rolls-patch.js?v=roll-flow-v4-atomic-mount','roll-flow'],
         ['./party-room-stable-v2.js?v=party-room-clean-v9-broadcast-sync','party-room-clean'],
         ['./battle-party-membership-guard.js?v=battle-party-v7-broadcast-sync','battle-party-guard'],
-        ['./gm-clean-router-v1.js?v=gm-clean-router-v15-optional-ac-rule','gm-clean-router'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v16-fixed-ac-mode','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v13-battle-only','gm-live-compact'],
         ['./live-combat-center-patch.js?v=livecombat-v19-enemy-heal-only','live-combat-center-runtime']
       ]);
