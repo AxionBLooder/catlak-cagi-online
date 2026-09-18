@@ -19,8 +19,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v15-stable-actions' index.html
-          grep -Fq 'recovery-core-14-no-player-realtime-reset' index.html
+          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v16-party-race' index.html
+          grep -Fq 'recovery-core-15-hard-projection-owner' index.html
           grep -Fq 'catlakBootJoinedCharacter' live_08.txt
           grep -Fq "catlak-guest-join" live_08.txt
           grep -Fq 'visibility:visible!important' index.html
