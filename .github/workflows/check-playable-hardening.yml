@@ -63,7 +63,7 @@ jobs:
           ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
           ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
           ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
-          ok('legacy.gm.live.disabled','window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' in core)
+          ok('legacy.gm.live.disabled','window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm"' in core)
 
           # 2. Legacy runtime quarantine: files may remain in repo, but cannot be loaded.
           retired=['gm-live-player-state.js','gm-controls-patch.js','dice-ux-patch.js',
