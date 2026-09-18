@@ -31,8 +31,8 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v28-race-left-right' in html,
-            'canonical owner':'__catlakPlayerSheetHardRecoveryV28' in sheet,
+            'sheet version':'player-hard-recovery-v29-race-columns-stable' in html,
+            'canonical owner':'__catlakPlayerSheetHardRecoveryV29' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
             'race powers left':'[data-cc-hard-race]{display:block!important;grid-column:1!important;justify-self:start!important' in sheet,
