@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV28)return;
-window.__catlakPlayerSheetHardRecoveryV28=true;
+if(window.__catlakPlayerSheetHardRecoveryV29)return;
+window.__catlakPlayerSheetHardRecoveryV29=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -62,7 +62,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
     #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{display:grid!important;grid-template-columns:minmax(0,560px) minmax(0,560px)!important;justify-content:space-between!important;grid-column:1/-1!important}
     #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
   }
-  @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important;max-width:760px!important}}
+  @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important;max-width:760px!important}#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race],#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{grid-column:1!important;justify-self:stretch!important}}
   `;document.head.appendChild(st)
 }
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
