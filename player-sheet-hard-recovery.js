@@ -5,6 +5,7 @@ window.__catlakPlayerSheetHardRecoveryV28=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('player-sheet','player-sheet-hard-recovery'))return;
 APP.classList.add('cc-player-hard-active');
 if(!document.getElementById('cc-player-hard-ui-style')){
   const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
