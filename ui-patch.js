@@ -35,7 +35,8 @@ function fixNav(){
 
 function enhancePlayerDesk(){
   if(isGM()||tabId()!=='sheet')return;
-  const main=APP.querySelector('main');if(!main||main.dataset.ccDesk==='1')return;
+  const main=APP.querySelector('main');
+  if(!main||main.dataset.ccHardSheet==='1'||main.querySelector('.cc-character-stack[data-cc-hard-stack]')||main.dataset.ccDesk==='1')return;
   const heroes=[...main.children].filter(x=>x.matches?.('section.hero'));
   if(!heroes.length){
     main.innerHTML=`<section class="card cc-desk-intro"><div class="eyebrow">OYUNCU MASASI</div><h1>Canlı oyuna hazır</h1><p class="muted">Burada sadece GM'nin sana gönderdiği ve canlı oyuna bağlanan karakter görünür. GM'den karakter davet linkini açtığında karakter otomatik olarak bu masaya gelir.</p></section>`;

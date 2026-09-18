@@ -9,7 +9,7 @@ if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('play
 APP.classList.add('cc-player-hard-active');
 if(!document.getElementById('cc-player-hard-ui-style')){
   const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
-  #app.cc-player-hard-active main .cc-desk-intro{display:none!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-desk-intro{display:none!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(320px,.95fr)!important;gap:16px!important;max-width:1220px!important;margin:0 auto!important;align-items:start!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1/-1!important;width:100%!important;margin:0!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{display:flex!important;flex-direction:column!important;gap:14px!important;min-width:0!important}
