@@ -36,7 +36,7 @@ jobs:
           grep -Fq 'battle-party-v3-party-only' index.html
           grep -Fq 'livecombat-v4-party-library' live-combat-center-loader.js
           grep -Fq 'lcc-enemy-template' live-combat-center-patch.js
-          grep -Fq "c.data?.cc_party_member===true" battle-party-membership-guard.js
+          grep -Fq "c.data?.[PKEY]===true" battle-party-membership-guard.js
           ! grep -Fq 'data-prsv2-battle=' party-room-stable-v2.js
           grep -Fq '_.dataset.ccHardSheet==="1"' browser-app.js
       - name: Install browser driver
