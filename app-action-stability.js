@@ -1,10 +1,13 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV1)return;
-window.__catlakActionStabilityV1=true;
+if(window.__catlakActionStabilityV2)return;
+window.__catlakActionStabilityV2=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
+if(!document.getElementById('cc-entry-stability-style')){
+  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main{visibility:hidden!important}html.cc-race-entry-pending #app main{visibility:hidden!important}';document.head.appendChild(st);
+}
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
 let snap=null,restoreTimer=0;
@@ -41,7 +44,38 @@ function queueRestore(){
   [0,70,220,520].forEach(ms=>setTimeout(restore,ms));
   restoreTimer=setTimeout(()=>{snap=null},1900);
 }
-window.addEventListener('pointerdown',e=>{if(e.button!=null&&e.button!==0)return;if(isCommitButton(e.target))take()},true);
+let battleFallback=0;
+function beginBattleEntry(){
+  document.documentElement.classList.add('cc-battle-entry-pending');
+  clearTimeout(battleFallback);battleFallback=setTimeout(()=>document.documentElement.classList.remove('cc-battle-entry-pending'),2200);
+}
+function finishBattleEntry(){
+  clearTimeout(battleFallback);document.documentElement.classList.remove('cc-battle-entry-pending');
+}
+window.addEventListener('pointerdown',e=>{
+  if(e.button!=null&&e.button!==0)return;
+  if(e.target?.closest?.('[data-ccr-battle]'))beginBattleEntry();
+  if(isCommitButton(e.target))take();
+},true);
+window.addEventListener('click',e=>{
+  const race=e.target?.closest?.('[data-cc-hard-race-nav]');
+  if(race&&role()!=='GM'){
+    e.preventDefault();e.stopImmediatePropagation();
+    window.__catlakRaceWantedEarly=true;
+    const h=window.__catlakPlayerSheetHardRecovery;
+    if(h?.setRaceView?.(true)){document.documentElement.classList.remove('cc-race-entry-pending');return}
+    document.documentElement.classList.add('cc-race-entry-pending');
+    Promise.resolve(h?.recover?.()).then(()=>{h?.ensureRaceNav?.();h?.setRaceView?.(true);document.documentElement.classList.remove('cc-race-entry-pending')}).catch(()=>document.documentElement.classList.remove('cc-race-entry-pending'));
+    return;
+  }
+  const sheet=e.target?.closest?.('#app .nav [data-tab="sheet"]');
+  if(sheet&&window.__catlakRaceWantedEarly===true&&role()!=='GM'){
+    const h=window.__catlakPlayerSheetHardRecovery;
+    if(h?.setRaceView){
+      e.preventDefault();e.stopImmediatePropagation();window.__catlakRaceWantedEarly=false;h.setRaceView(false);return;
+    }
+  }
+},true);
 window.addEventListener('click',e=>{if(isCommitButton(e.target)){if(!snap)take();queueRestore()}},true);
 window.addEventListener('submit',e=>{
   const form=e.target;
@@ -51,5 +85,5 @@ window.addEventListener('submit',e=>{
   queueRestore();
 },true);
 
-window.__catlakActionStability={snapshot:take,restore};
+window.__catlakActionStability={snapshot:take,restore,finishBattleEntry};
 })();
