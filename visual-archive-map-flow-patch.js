@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakVisualArchiveMapFlowV1)return;
-window.__catlakVisualArchiveMapFlowV1=true;
+if(window.__catlakVisualArchiveMapFlowV2)return;
+window.__catlakVisualArchiveMapFlowV2=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
@@ -16,16 +16,19 @@ if(!document.querySelector('#vamf-style')){
  const st=document.createElement('style');st.id='vamf-style';st.textContent=`
  #app [data-vamf-places] .vamf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
  #app .vamf-card{overflow:hidden}.vamf-frame{min-height:220px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:14px;background:#050b14;padding:8px;margin:9px 0}.vamf-frame img{display:block;width:auto;height:auto;max-width:100%;max-height:410px;object-fit:contain}.vamf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.vamf-actions .danger{margin-left:auto}
+ #app main[data-sw-page="gallery"]>section.card:has(.sw-gallery-head),#app main[data-sw-page="gallery"] .sw-gallery,#app main[data-sw-page="gallery"] .sw-gallery-head{display:none!important}
  `;document.head.appendChild(st)
 }
 
 function mapActive(){return !!APP.querySelector('.nav [data-cc-map-tab].on')}
 function cleanupArchivePage(){
  const main=APP.querySelector('main');if(!main||main.dataset.swPage!=='gallery')return;
- [...main.querySelectorAll(':scope > section.card')].forEach(sec=>{if(txt(sec.querySelector('h2'))==='Yüklenen Görseller')sec.remove()});
+ [...main.querySelectorAll(':scope > section.card')].forEach(sec=>{
+   if(sec.querySelector('.sw-gallery-head,.sw-gallery')||txt(sec.querySelector('h2'))==='Yüklenen Görseller')sec.remove()
+ });
  const hero=main.querySelector('.sw-hero');if(hero){
   const h=hero.querySelector('h1');if(h&&isGM())h.textContent='Görsel Yükleme';
-  const p=hero.querySelector('p');if(p&&isGM())p.textContent='Görselleri burada yükle. Seçtiğin türe göre Harita ekranında Haritalar, Yerler & Sahneler veya NPC bölümüne otomatik yerleşir.';
+  const p=hero.querySelector('p');if(p&&isGM())p.textContent='Bu ekran yalnız görsel eklemek içindir. Yüklediğin görseller Harita ekranındaki ilgili bölüme otomatik yerleşir.';
  }
  main.querySelectorAll('option[value="other"]').forEach(o=>o.textContent='Yer / Sahne');
 }
