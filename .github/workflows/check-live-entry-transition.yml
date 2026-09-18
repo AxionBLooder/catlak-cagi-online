@@ -1,11 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Live Game Entry Transition
 on:
-  push:
-    paths:
-      - 'index.html'
-      - 'live-game-entry-guard.js'
-      - 'live-combat-center-patch.js'
-      - '.github/workflows/check-live-entry-transition.yml'
   workflow_dispatch:
 
 jobs:
