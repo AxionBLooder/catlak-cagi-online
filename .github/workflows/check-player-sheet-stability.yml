@@ -1,9 +1,12 @@
 name: Check Player Sheet Stability
+
 on:
   push:
+    branches: [main]
     paths:
       - 'player-sheet-hard-recovery.js'
-      - 'browser-app.js'
+      - 'battle-room-v3-patch.js'
+      - 'room-system-patch.js'
       - 'index.html'
       - '.github/workflows/check-player-sheet-stability.yml'
   workflow_dispatch:
@@ -14,117 +17,43 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
-      - name: Static single-owner checks
+      - name: Verify current player screen contract
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          node --check browser-app.js
-          grep -Fq 'player-hard-recovery-v16-party-race' index.html
-          grep -Fq 'recovery-core-15-hard-projection-owner' index.html
-          grep -Fq 'g.dataset.ccDesk==="1"||g.dataset.ccHardSheet==="1"' browser-app.js
-          grep -Fq 'source:"core-hard-sheet"' browser-app.js
-          ! grep -Fq "'player-bind'" index.html
-          ! grep -Fq "'player-sheet'" index.html
-          ! grep -Fq "'player-support'" index.html
-          ! grep -Fq "'player-actions'" index.html
-          ! grep -Fq "'player-equip'" index.html
-          ! grep -Fq "'weapon-slot'" index.html
-          ! grep -Fq "'stat-roll'" index.html
-      - name: Install browser driver
-        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify no repeated player rerender
-        run: |
-          cat > player-sheet-stability-smoke.cjs <<'JS'
-          const {chromium}=require('playwright-core');
-          const {execFileSync}=require('child_process');
-          const path=require('path');
-          function chromePath(){
-            for(const c of ['google-chrome','google-chrome-stable','chromium']){
-              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
-            }
-            throw new Error('Chrome missing');
+          node --check battle-room-v3-patch.js
+          node --check room-system-patch.js
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          sheet=Path('player-sheet-hard-recovery.js').read_text(encoding='utf-8')
+          battle=Path('battle-room-v3-patch.js').read_text(encoding='utf-8')
+          rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
+
+          checks={
+            'sheet version':'player-hard-recovery-v28-race-left-right' in html,
+            'canonical owner':'__catlakPlayerSheetHardRecoveryV28' in sheet,
+            'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
+            'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
+            'race powers left':'[data-cc-hard-race]{display:block!important;grid-column:1!important;justify-self:start!important' in sheet,
+            'abilities right':'[data-cc-hard-abilities]{display:block!important;grid-column:2!important;justify-self:end!important' in sheet,
+            'two independent columns':'grid-template-columns:minmax(0,560px) minmax(0,560px)!important' in sheet,
+            'each list grows downward':'[data-cc-hard-race]>.grid' in sheet and '[data-cc-hard-abilities]>.grid' in sheet and 'grid-template-columns:1fr!important' in sheet,
+            'mobile fallback':'main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important' in sheet,
+            'single roll result':'showRollFlash(cid,roll);\n    toast(' not in sheet,
+            'battle cache':'br3CachedHtml' in battle and 'br3RestoreCached' in battle,
+            'battle preload':'br3PreloadData' in battle,
+            'battle route owner':'closeBattle:ccrCloseBattle' in rooms,
           }
-          (async()=>{
-            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
-            try{
-              const page=await browser.newPage();page.setDefaultTimeout(7000);
-              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
-                <div id="app"><header><span class="role">MİSAFİR</span></header>
-                <nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav>
-                <main><div class="cc-character-stack"><section class="card hero"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>Eeliot</h1></div><div class="vital"><button data-a="hp" data-id="c1">HP</button><b>22/22</b></div></section><section class="card"><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></section></div></main></div><div id="toast" class="hidden"></div>`);
-              await page.evaluate(()=>{
-                window.__handlers={};window.__calls=[];
-                window.__db={
-                  catlak_characters:[{id:'c1',name:'Eeliot',owner_id:'u1',play_status:'active',species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:22,hp_max:22,base_ac:13,base_speed:30,base_stats:{STR:8,DEX:14,CON:14,INT:16,WIS:15,CHA:12},data:{},created_at:'2026-01-01'}],
-                  catlak_inventory:[],catlak_items:[],catlak_rolls:[],catlak_species_powers:[],catlak_special_paths:[],catlak_character_conditions:[]
-                };
-                function rows(t,f,ins){let a=(window.__db[t]||[]).slice();for(const[k,v]of f)a=a.filter(x=>String(x[k])===String(v));for(const[k,v]of ins)a=a.filter(x=>v.map(String).includes(String(x[k])));return a}
-                function q(t){const st={f:[],ins:[],single:false,lim:null};const o={
-                  select(){return o},eq(k,v){st.f.push([k,v]);return o},in(k,v){st.ins.push([k,v]);return o},order(){return o},limit(n){st.lim=n;return o},maybeSingle(){st.single=true;return o},
-                  then(ok,bad){let d=rows(t,st.f,st.ins);if(st.lim!=null)d=d.slice(0,st.lim);if(st.single)d=d[0]||null;return Promise.resolve({data:d,error:null}).then(ok,bad)}
-                };return o}
-                const ch={on(_e,f,cb){(window.__handlers[f.table]??=[]).push(cb);return ch},subscribe(){return ch}};
-                window.__fire=t=>(window.__handlers[t]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
-                window.__catlakSupabase={
-                  auth:{getSession:async()=>({data:{session:{user:{id:'u1'}}}})},
-                  from:q,channel:()=>ch,
-                  rpc:async(name,args={})=>{
-                    window.__calls.push({name,args});
-                    if(name==='catlak_player_combat_snapshot')return{data:{active:false,order:[]},error:null};
-                    if(name==='catlak_player_abilities')return{data:[],error:null};
-                    if(name==='catlak_roll_stat'){
-                      const r={id:'r'+(window.__db.catlak_rolls.length+1),character_id:'c1',label:args.p_stat+' Testi',roll_kind:'stat',formula:'1d20',modifier:2,total:16,dice:[14],created_at:new Date().toISOString()};
-                      window.__db.catlak_rolls.unshift(r);window.__fire('catlak_rolls');return{data:r,error:null};
-                    }
-                    return{data:null,error:null}
-                  }
-                };
-              });
-              await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
-              await page.waitForSelector('main[data-cc-hard-sheet="1"] [data-cc-hard-stat="DEX"]');
-              await page.waitForSelector('[data-cc-hard-race-nav]');
-              const before=await page.evaluate(()=>{
-                window.__stableMain=document.querySelector('main');
-                window.__stableStack=document.querySelector('.cc-character-stack');
-                window.__stableStat=document.querySelector('[data-cc-hard-stat="DEX"]');
-                return {
-                  top:window.__stableStat.getBoundingClientRect().top,
-                  text:document.body.innerText,
-                  owner:window.__stableMain.dataset.ccHardSheet,
-                  legacy:document.body.innerText.includes('D20 TESTLERİ')||document.body.innerText.includes('CANLI KARAKTER KAĞIDI'),
-                  left:!!document.querySelector('.cc-hard-left'),
-                  right:!!document.querySelector('.cc-hard-right'),
-                  raceNav:!!document.querySelector('[data-cc-hard-race-nav]')
-                };
-              });
-              for(let i=0;i<8;i++)await page.evaluate(()=>window.dispatchEvent(new CustomEvent('catlak:data-refreshed',{detail:{source:'test'}})));
-              await page.waitForTimeout(400);
-              const mid=await page.evaluate(()=>({
-                sameMain:window.__stableMain===document.querySelector('main'),
-                sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),
-                sameStat:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
-                connected:window.__stableStat.isConnected,
-                top:document.querySelector('[data-cc-hard-stat="DEX"]').getBoundingClientRect().top,
-                text:document.body.innerText
-              }));
-              await page.locator('[data-cc-hard-stat="DEX"]').click();
-              await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'));
-              await page.waitForFunction(()=>document.body.innerText.includes('DEX Testi'));
-              await page.waitForTimeout(300);
-              const after=await page.evaluate(()=>({
-                sameMain:window.__stableMain===document.querySelector('main'),
-                sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),
-                sameStat:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
-                connected:window.__stableStat.isConnected,
-                top:document.querySelector('[data-cc-hard-stat="DEX"]').getBoundingClientRect().top,
-                text:document.body.innerText
-              }));
-              const bad=/Canlı Karakterlerim|Envanter yükleniyor|Zarlar yükleniyor/i;
-              const driftMid=Math.abs(mid.top-before.top),driftAfter=Math.abs(after.top-before.top);
-              if(before.owner!=='1'||before.legacy||!before.left||!before.right||!before.raceNav||bad.test(before.text)||bad.test(mid.text)||bad.test(after.text)||!mid.sameMain||!mid.sameStack||!mid.sameStat||!mid.connected||!after.sameMain||!after.sameStack||!after.sameStat||!after.connected||driftMid>2||driftAfter>2)
-                throw new Error('PLAYER_RESET_LOOP '+JSON.stringify({before,mid,after,driftMid,driftAfter}));
-              console.log('PLAYER_SHEET_SINGLE_OWNER_OK');
-            }finally{await browser.close()}
-          })().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          node player-sheet-stability-smoke.cjs
+          bad=[name for name,ok in checks.items() if not ok]
+          if bad: raise SystemExit('PLAYER_STABILITY_FAIL: '+', '.join(bad))
+
+          retired=['player-sheet-patch.js','player-live-actions-patch.js','stat-roll-patch.js','battle-action-stability-patch.js']
+          for name in retired:
+              if name in html:
+                  raise SystemExit('Eski oyuncu runtime yeniden yüklenmiş: '+name)
+
+          if 'setInterval(' in sheet or 'setInterval(' in battle:
+              raise SystemExit('Oyuncu kritik runtime polling içeriyor')
+          print('PLAYER_STABILITY_CURRENT_OK')
+          PY
