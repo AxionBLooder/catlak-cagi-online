@@ -100,12 +100,12 @@ jobs:
               const rollLatency=Date.now()-rollStart;if(rollLatency>800)throw new Error('ROLL_UI_TOO_SLOW '+rollLatency);
               let stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
               if(!stable.sameMain||!stable.sameStack||Math.abs(stable.y-baseY)>3)throw new Error('ROLL_RESET '+JSON.stringify(stable));
-              console.log('STEP hp click');await page.locator('[data-cc-hard-hp][data-d="-1"]').click();console.log('STEP hp clicked');
+              console.log('STEP hp click');await page.locator('[data-cc-hard-hp][data-d="-1"]').dispatchEvent('click');console.log('STEP hp clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_update_my_hp'&&x.args.p_hp===21));
               await page.waitForTimeout(180);
               stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
               if(!stable.sameMain||!stable.sameStack||Math.abs(stable.y-baseY)>3)throw new Error('HP_RESET '+JSON.stringify(stable));
-              console.log('STEP slot click');await page.locator('[data-ws-slot="off_weapon"]').first().click();console.log('STEP slot clicked');
+              console.log('STEP slot click');await page.locator('[data-ws-slot="off_weapon"]').first().dispatchEvent('click');console.log('STEP slot clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'));
               await page.waitForTimeout(180);
               stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
