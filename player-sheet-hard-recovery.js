@@ -157,18 +157,27 @@ async function getSession(S){
   try{return (await S.auth.getSession()).data?.session||null}catch(_){return null}
 }
 async function ownedRows(S,uid){
+  // The core app may already have rendered the guest character before hard recovery starts.
+  // Reuse that id first instead of replacing a valid sheet with a retry loop.
+  const domId=APP.querySelector('main [data-a="hp"][data-id],main [data-cc-hard-hp][data-id]')?.dataset?.id||'';
+  if(domId){
+    try{
+      const q=await timeout(S.from('catlak_characters').select('*').eq('id',domId).maybeSingle(),5000,'character dom handoff');
+      if(!q.error&&q.data)return [q.data];
+    }catch(_){}
+  }
   try{
-    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),1200,'character owner query');
+    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),6500,'character owner query');
     if(!r.error&&r.data?.length)return r.data;
-  }catch(_){}
+  }catch(e){console.warn('CATLAK_CHARACTER_OWNER_QUERY',e?.message||e)}
   try{
-    const snap=await timeout(S.rpc('catlak_player_combat_snapshot'),1200,'combat snapshot');
+    const snap=await timeout(S.rpc('catlak_player_combat_snapshot'),4500,'combat snapshot');
     const id=snap?.data?.character_id;
     if(id){
-      const q=await timeout(S.from('catlak_characters').select('*').eq('id',id).maybeSingle(),1200,'character fallback');
+      const q=await timeout(S.from('catlak_characters').select('*').eq('id',id).maybeSingle(),4500,'character fallback');
       if(!q.error&&q.data)return [q.data];
     }
-  }catch(_){}
+  }catch(e){console.warn('CATLAK_CHARACTER_FALLBACK',e?.message||e)}
   return [];
 }
 async function timeout(promise,ms=2200,label='request'){
@@ -488,10 +497,14 @@ async function hardAbility(btn){
 }
 function showWaiting(message){
   const m=main();if(!m||!sheetActive())return;
-  const msg=String(message||'Davet bağlantısı tamamlandı. Karakter verisi bekleniyor.');
-  if(m.dataset.ccHardSheet==='waiting'&&m.dataset.ccHardWait===msg)return;
+  const msg=String(message||'Karakter bilgileri yükleniyor…');
+  if(m.dataset.ccHardSheet==='waiting'){
+    m.dataset.ccHardWait=msg;
+    const p=m.querySelector('[data-cc-hard-wait-text]');if(p)p.textContent=msg;
+    return
+  }
   m.dataset.ccHardSheet='waiting';m.dataset.ccHardWait=msg;
-  m.innerHTML=`<section class="card"><div class="eyebrow">OYUNCU MASASI</div><h2>Karakter kağıdı hazırlanıyor…</h2><p class="muted">${esc(msg)}</p><button type="button" data-cc-hard-sheet-retry>Tekrar Dene</button></section>`;
+  m.innerHTML=`<section class="card"><div class="eyebrow">OYUNCU MASASI</div><h2>Karakter kağıdı hazırlanıyor…</h2><p class="muted" data-cc-hard-wait-text>${esc(msg)}</p><button type="button" data-cc-hard-sheet-retry>Tekrar Dene</button></section>`;
   release();
 }
 async function recover(force=false){
@@ -504,15 +517,12 @@ async function recover(force=false){
   try{
     const S=await getRuntime();if(!S)return hadReady;
     const ses=await getSession(S);if(!ses?.user?.id){if(!hadReady)showWaiting('Oyuncu oturumu henüz hazır değil.');return hadReady}
-    if(!hadReady)showWaiting('Karakter bilgileri yükleniyor…');
-    let chars=[];
-    for(const wait of [0,180,500]){
-      if(wait)await new Promise(r=>setTimeout(r,wait));
-      chars=await ownedRows(S,ses.user.id);
-      if(chars.length)break;
-      if(!sheetActive())return false;
+    if(!hadReady&&main()?.dataset.ccHardSheet!=='waiting')showWaiting('Karakter bilgileri yükleniyor…');
+    const chars=await ownedRows(S,ses.user.id);
+    if(!chars.length){
+      if(!hadReady)showWaiting('Karakter bağlantısı henüz görünmüyor. Tekrar Dene düğmesini kullanabilirsin.');
+      return hadReady
     }
-    if(!chars.length){if(!hadReady)showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return hadReady}
     if(!sheetActive())return false;
     if(!sheetActive())return false;
     const partyAllowed=chars.some(c=>c?.data?.cc_party_member===true);
@@ -549,7 +559,8 @@ async function recover(force=false){
   }finally{busy=false}
 }
 function schedule(force=false,delay=0){
-  if(queued&&!force)return;queued=true;
+  if(queued)return;
+  queued=true;
   setTimeout(()=>recover(force),Math.max(0,delay));
 }
 document.addEventListener('click',e=>{
@@ -585,7 +596,7 @@ document.addEventListener('click',e=>{
   if(b&&isPlayer()){ensureRaceNav();setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>{if(!ready())schedule(false,0)});
-window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;schedule(true,30)});
+window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;if(main()?.dataset.ccHardSheet==='waiting')return;schedule(false,60)});
 new MutationObserver(rs=>{
   if(!isPlayer())return;
   const nav=APP.querySelector('.nav'),m=main();
