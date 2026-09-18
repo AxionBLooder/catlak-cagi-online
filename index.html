@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v32 -->
+<!-- clean-gm-runtime-v33 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -49,7 +49,7 @@
   <script src="./live-game-entry-guard.js?v=live-entry-v9"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v7"></script>
-  <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v4"></script>
+  <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
   <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
 
   <script>
@@ -91,19 +91,19 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v8','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v9','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
         }
         await loadParallel([
-          ['./player-sheet-bind-fix.js?v=player-bind-v4','player-bind'],
-          ['./player-sheet-runtime-v4.js?v=player-sheet-v6-stable','player-sheet'],
-          ['./stat-roll-patch.js?v=player-sheet-v4c','stat-roll'],
+          ['./player-sheet-bind-fix.js?v=player-bind-v5','player-bind'],
+          ['./player-sheet-runtime-v4.js?v=player-sheet-v7-hard-owned','player-sheet'],
+          ['./stat-roll-patch.js?v=stat-roll-v2-hard-owned','stat-roll'],
           ['./item-system-patch.js?v=item-system-v4-route','items'],
-          ['./player-sheet-support-runtime.js?v=player-support-v2c','player-support'],
-          ['./player-live-actions-patch.js?v=player-actions-v4-slots','player-actions'],
-          ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip'],
-          ['./weapon-slot-patch.js?v=weapon-slot-v1','weapon-slot']
+          ['./player-sheet-support-runtime.js?v=player-support-v3-hard-owned','player-support'],
+          ['./player-live-actions-patch.js?v=player-actions-v5-hard-owned','player-actions'],
+          ['./player-sheet-equipment-abilities-patch.js?v=player-equip-v5-hard-owned','player-equip'],
+          ['./weapon-slot-patch.js?v=weapon-slot-v2-hard-owned','weapon-slot']
         ]);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
