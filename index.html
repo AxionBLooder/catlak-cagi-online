@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v22 -->
+<!-- clean-gm-runtime-v23 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -100,7 +100,7 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v3','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v4','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
