@@ -59,7 +59,7 @@ jobs:
               if not cond: failures.append(name)
 
           # 1. Single renderer / screen ownership
-          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV31' in sheet)
+          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV32' in sheet)
           ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
           ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
           ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
@@ -75,6 +75,8 @@ jobs:
           ok('route.gm.canonical','window.__catlakGmCleanRouter?.current?.()' in action and 'window.__catlakGmCleanRouter.route' in action)
           ok('route.player.sheet.cache','restoreCachedSheet' in sheet and 'setRaceView' in sheet)
           ok('route.player.battle.cache','window.__catlakBattleRoomV3Test?.restore?.()' in rooms)
+          ok('route.atomic.runtime','__catlakViewRuntime' in health and 'viewMount' in health and 'viewBatch' in health)
+          ok('route.gm.atomic',"gmViewBegin" in gm and "gmViewReady" in gm)
 
           # 4. Battle regression contract.
           ok('battle.target.local','function br3SelectTarget' in battle and 'br3SyncEnemyAbilityTargets' in battle)
@@ -101,11 +103,13 @@ jobs:
           ok('player.abilities.right','[data-cc-hard-abilities]{display:block!important;grid-column:2!important;grid-row:1!important;justify-self:stretch!important' in sheet)
           ok('player.race.full.width','main.cc-hard-race-view[data-cc-hard-sheet="1"]{width:100%!important;max-width:none!important' in sheet)
           ok('player.race.no.shell','border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important' in sheet)
+          ok('player.desk.full.width','main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view){width:100%!important;max-width:none!important' in sheet)
+          ok('player.realtime.batched','queueSheetSync' in sheet and 'cc-player-hard-sheet-v3' in sheet)
           ok('player.single.roll',"showRollFlash(cid,roll);\n    toast(" not in sheet)
           ok('player.battle.preload','br3PreloadData' in battle)
 
           # 7. Data/action safety.
-          ok('safety.save.hold','__catlakActionStabilityV7' in action and 'actionHoldUntil' in action)
+          ok('safety.save.hold','__catlakActionStabilityV8' in action and 'actionHoldUntil' in action)
           ok('safety.battle.action.lock','br3ActionBusy' in battle)
           ok('safety.live.action.lock','actionBusy' in live)
           ok('safety.delete.confirm',"confirm(" in qol)
@@ -114,18 +118,23 @@ jobs:
           for name,text in [('battle',battle),('presence',presence),('qol',qol),('sheet',sheet)]:
               ok('perf.no.polling.'+name,'setInterval(' not in text)
           ok('perf.live.cache','cachedBoardHtml' in live and 'restoreCachedBoard' in live)
+          ok('perf.live.dedup','liveSig' in live)
+          ok('perf.battle.single.realtime',"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle)
+          ok('perf.room.batch','ccrQueueRealtime' in rooms and 'ccr-battle-live-v2' in rooms)
+          ok('perf.gm.batch','queueGmcLive' in gm and 'gmc-clean-live-v2' in gm)
           ok('perf.sheet.cache','cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet)
 
           # 9. Error visibility / diagnostics.
           ok('diagnostics.buffer','__catlakRuntimeDiagnostics' in health)
           ok('diagnostics.reporter','__catlakReportError' in health)
           ok('diagnostics.bounded','diagnostics.length>30' in health)
+          ok('diagnostics.performance','__catlakRuntimePerformance' in health and 'viewPerf' in health)
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v31-race-no-shell' in html)
-          ok('version.health','runtime-health-v4-ownership' in html)
-          ok('version.action','action-stability-v7-canonical-router' in html)
+          ok('version.sheet','player-hard-recovery-v32-full-desk-batched' in html)
+          ok('version.health','runtime-health-v5-atomic-views' in html)
+          ok('version.action','action-stability-v8-clean-css' in html)
 
           if failures:
               raise SystemExit('PLAYABLE_HARDENING_FAIL: '+', '.join(failures))
