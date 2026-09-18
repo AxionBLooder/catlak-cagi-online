@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
           node --check browser-app.js
-          grep -Fq 'player-hard-recovery-v13' index.html
+          grep -Fq 'player-hard-recovery-v14-owner-race' index.html
           grep -Fq 'recovery-core-13-single-player-owner' index.html
           grep -Fq 'g.dataset.ccDesk==="1"||g.dataset.ccHardSheet==="1"' browser-app.js
           grep -Fq 'source:"core-hard-sheet"' browser-app.js
@@ -51,7 +51,7 @@ jobs:
               await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
                 <div id="app"><header><span class="role">MİSAFİR</span></header>
                 <nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav>
-                <main></main></div><div id="toast" class="hidden"></div>`);
+                <main><div class="cc-character-stack"><section class="card hero"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>Eeliot</h1></div><div class="vital"><button data-a="hp" data-id="c1">HP</button><b>22/22</b></div></section><section class="card"><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></section></div></main></div><div id="toast" class="hidden"></div>`);
               await page.evaluate(()=>{
                 window.__handlers={};window.__calls=[];
                 window.__db={
@@ -82,6 +82,7 @@ jobs:
               });
               await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
               await page.waitForSelector('main[data-cc-hard-sheet="1"] [data-cc-hard-stat="DEX"]');
+              await page.waitForSelector('[data-cc-hard-race-nav]');
               const before=await page.evaluate(()=>{
                 window.__stableMain=document.querySelector('main');
                 window.__stableStack=document.querySelector('.cc-character-stack');
@@ -89,7 +90,11 @@ jobs:
                 return {
                   top:window.__stableStat.getBoundingClientRect().top,
                   text:document.body.innerText,
-                  owner:window.__stableMain.dataset.ccHardSheet
+                  owner:window.__stableMain.dataset.ccHardSheet,
+                  legacy:document.body.innerText.includes('D20 TESTLERİ')||document.body.innerText.includes('CANLI KARAKTER KAĞIDI'),
+                  left:!!document.querySelector('.cc-hard-left'),
+                  right:!!document.querySelector('.cc-hard-right'),
+                  raceNav:!!document.querySelector('[data-cc-hard-race-nav]')
                 };
               });
               for(let i=0;i<8;i++)await page.evaluate(()=>window.dispatchEvent(new CustomEvent('catlak:data-refreshed',{detail:{source:'test'}})));
@@ -116,7 +121,7 @@ jobs:
               }));
               const bad=/Canlı Karakterlerim|Envanter yükleniyor|Zarlar yükleniyor/i;
               const driftMid=Math.abs(mid.top-before.top),driftAfter=Math.abs(after.top-before.top);
-              if(before.owner!=='1'||bad.test(before.text)||bad.test(mid.text)||bad.test(after.text)||!mid.sameMain||!mid.sameStack||!mid.sameStat||!mid.connected||!after.sameMain||!after.sameStack||!after.sameStat||!after.connected||driftMid>2||driftAfter>2)
+              if(before.owner!=='1'||before.legacy||!before.left||!before.right||!before.raceNav||bad.test(before.text)||bad.test(mid.text)||bad.test(after.text)||!mid.sameMain||!mid.sameStack||!mid.sameStat||!mid.connected||!after.sameMain||!after.sameStack||!after.sameStat||!after.connected||driftMid>2||driftAfter>2)
                 throw new Error('PLAYER_RESET_LOOP '+JSON.stringify({before,mid,after,driftMid,driftAfter}));
               console.log('PLAYER_SHEET_SINGLE_OWNER_OK');
             }finally{await browser.close()}
