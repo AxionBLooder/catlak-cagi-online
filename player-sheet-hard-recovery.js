@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV8)return;
-window.__catlakPlayerSheetHardRecoveryV8=true;
+if(window.__catlakPlayerSheetHardRecoveryV9)return;
+window.__catlakPlayerSheetHardRecoveryV9=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -9,6 +9,16 @@ APP.classList.add('cc-player-hard-active');
 if(!document.getElementById('cc-player-hard-ui-style')){
   const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
   #app.cc-player-hard-active main .cc-desk-intro{display:none!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:flex!important;flex-direction:column!important;gap:14px!important;max-width:1080px!important;margin:0 auto!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section{width:100%!important;margin:0!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{order:10}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-stats]{order:20}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-race]{order:30}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-conditions]{order:40}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{order:50}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-equipment]{order:60}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-inventory]{order:70}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-rolls]{order:80}
   #app.cc-player-hard-active [data-cc-hard-stats] .eyebrow{display:none!important}
   #app.cc-player-hard-active [data-cc-hard-stats] .stat{cursor:pointer!important;pointer-events:auto!important}
   #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -199,7 +209,7 @@ function equipmentHtml(c,x){
 }
 function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
-  return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
+  return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
   <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
   <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
   ${vampHtml(c)}${pathHtml(c,x)}
@@ -211,13 +221,7 @@ function charHtml(raw,x){
   <section class="card" data-cc-hard-rolls><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
 }
 function applyLayers(){
-  try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
-  try{window.__catlakStatRollTest?.ensure?.()}catch(_){}
-  try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}
-  try{window.__catlakPlayerLiveTest?.refresh?.(true)}catch(_){}
-  try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}
   try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
-  setTimeout(()=>{try{window.__catlakStatRollTest?.ensure?.()}catch(_){}try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}},120);
 }
 function freshStack(c,x){
   const box=document.createElement('div');box.innerHTML=charHtml(c,x).trim();return box.firstElementChild;
@@ -401,7 +405,7 @@ document.addEventListener('click',e=>{
   if(b&&isPlayer()){setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
-window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())setTimeout(()=>refreshStable('all'),30);else schedule(true,30)});
+window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;schedule(true,30)});
 new MutationObserver(()=>{
   if(!sheetActive()||ready())return;
   const m=main();if(!m)return;
