@@ -1,13 +1,10 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV7)return;
-window.__catlakActionStabilityV7=true;
+if(window.__catlakActionStabilityV8)return;
+window.__catlakActionStabilityV8=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
-if(!document.getElementById('cc-entry-stability-style')){
-  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main>*{visibility:hidden!important}html.cc-battle-entry-pending #app main::before{content:"Savaş Odası hazırlanıyor…";display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}';document.head.appendChild(st);
-}
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
 let snap=null,restoreTimer=0,actionHoldUntil=0;
