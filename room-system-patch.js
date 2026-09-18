@@ -218,6 +218,11 @@ async function ccrBattleRender(force=false){
     const d=await ccrBattleData();
     if(!ccrBattleOpen||gen!==ccrBattleGen||CCR_APP.querySelector('main')!==main)return;
     ccrEnsureBattleNav();main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
+    if(document.documentElement.classList.contains('cc-battle-entry-pending')){
+      for(let i=0;i<40&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
+      if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
+      try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+    }
     requestAnimationFrame(()=>window.scrollTo(0,oldY));
   }catch(e){ccrToast('Savaş Odası yüklenemedi: '+(e?.message||String(e)))}finally{ccrBattleBusy=false}
 }
@@ -235,7 +240,7 @@ function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
   ccrHubOpen=false;ccrBattleOpen=true;window.__catlakBattleRoomOpen=true;
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
-  const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
+  const main=CCR_APP.querySelector('main');if(main){delete main.dataset.ccrBattle;document.documentElement.classList.add('cc-battle-entry-pending')}
   ccrBattleRender(true);
 }
 
@@ -258,8 +263,12 @@ document.addEventListener('click',e=>{
   if(navButton&&!ccrProgrammatic)ccrCloseRooms();
 },true);
 
-function ccrRealtimeRefresh(){if(!ccrBattleOpen)return;const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true)}
+function ccrRealtimeRefresh(full=false){
+  if(!ccrBattleOpen)return;
+  if(!full&&window.__catlakBattleRoomV3Test?.render){window.__catlakBattleRoomV3Test.render(false);return}
+  const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true)
+}
 new MutationObserver(ccrSchedule).observe(CCR_APP,{childList:true,subtree:true});
-if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},ccrRealtimeRefresh).subscribe();
+if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrRealtimeRefresh(false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrRealtimeRefresh(false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrRealtimeRefresh(true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrRealtimeRefresh(true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrRealtimeRefresh(true)).subscribe();
 window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
 ccrEnsure();ccrRefreshPartyAccess();
