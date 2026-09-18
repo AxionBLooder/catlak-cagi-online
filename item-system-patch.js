@@ -111,7 +111,12 @@ document.addEventListener('click',e=>{const save=e.target.closest('[data-iw-save
 
 function iwRun(){iwScheduled=false;if(iwIsGM()&&iwTab()==='items')iwRenderWorkshop()}
 function iwSchedule(){if(iwScheduled)return;iwScheduled=true;requestAnimationFrame(iwRun)}
-new MutationObserver(iwSchedule).observe(IW_APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+  if(!iwIsGM()||iwTab()!=='items')return;
+  const main=IW_APP.querySelector('main');
+  const relevant=rs.some(r=>r.target===main||[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.iw-workshop,[data-iw-save],[data-iw-give],main')||n.querySelector?.('.iw-workshop,[data-iw-save],[data-iw-give],main'))));
+  if(relevant)iwSchedule();
+}).observe(IW_APP,{childList:true,subtree:true});
 IW_S.channel('cc-item-system-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},iwSchedule).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},iwSchedule).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},iwSchedule).subscribe();
 iwSchedule();
 window.__catlakItemSystemTest={fields:iwFields,itemExtra:iwItemExtra,allowedSlots:iwAllowedSlots,syncGiveSlot:iwSyncGiveSlot};
