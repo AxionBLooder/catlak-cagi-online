@@ -1,6 +1,7 @@
 const BR3_S=window.__catlakSupabase;
 const BR3_APP=document.querySelector('#app');
 if(!BR3_S||!BR3_APP)throw new Error('Çatlak Çağı Savaş Odası v3 başlatılamadı.');
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('player-battle','battle-room-v3'))throw new Error('Savaş Odası sahipliği çakıştı.');
 window.__catlakBattleRoomV4=true;
 window.__catlakBattleRoomV3=true;
 
