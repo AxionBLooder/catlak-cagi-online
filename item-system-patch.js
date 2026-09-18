@@ -7,7 +7,7 @@ const iwH=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const iwN=x=>Number(x||0);
 const iwTxt=e=>String(e?.textContent||'').trim();
 const iwIsGM=()=>iwTxt(IW_APP.querySelector('.role'))==='GM';
-const iwTab=()=>IW_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
+const iwTab=()=>String(window.__catlakGmCleanRoute||IW_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'');
 const iwToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(iwToast.t);iwToast.t=setTimeout(()=>t.classList.add('hidden'),4300)};
 let iwBusy=false,iwScheduled=false,iwEditId=null,iwCache=null;
 
