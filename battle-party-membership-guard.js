@@ -59,7 +59,11 @@ window.addEventListener('click',e=>{
  if(b||add||e.target?.closest?.('[data-lcc-start],[data-gmt-combat-start]'))schedule(120);
 },true);
 
-new MutationObserver(()=>{normalizeUi()}).observe(APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+ if(!isGM())return;
+ const relevant=rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('[data-pptf-battle],[data-prh-set-battle],[data-lcc-board],[data-gmt-add-char]')||n.querySelector?.('[data-pptf-battle],[data-prh-set-battle],[data-lcc-board],[data-gmt-add-char]'))));
+ if(relevant)normalizeUi();
+}).observe(APP,{childList:true,subtree:true});
 S.channel('battle-party-guard')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>schedule(420))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>schedule(260))
