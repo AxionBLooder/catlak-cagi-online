@@ -7,7 +7,7 @@ const srTxt=e=>String(e?.textContent||'').trim();
 const srEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const srIsGM=()=>srTxt(SR_APP.querySelector('.role'))==='GM';
 const srTab=()=>SR_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
-const srIsSheet=()=>!srIsGM()&&srTab()==='sheet';
+const srIsSheet=()=>!srIsGM()&&srTab()==='sheet'&&SR_APP.querySelector('main')?.dataset.ccHardSheet!=='1';
 const srToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(srToast.t);srToast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
 const srBusy=new Set();
 
