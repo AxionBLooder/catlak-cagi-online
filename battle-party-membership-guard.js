@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakBattlePartyGuardV1)return;
-window.__catlakBattlePartyGuardV1=true;
+if(window.__catlakBattlePartyGuardV2)return;
+window.__catlakBattlePartyGuardV2=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
@@ -38,7 +38,7 @@ async function reconcile(){
   ]);for(const r of[cr,br,sr])if(r.error)throw r.error;
   const chars=cr.data||[],combatants=br.data||[];
   for(const c of chars){if(c.data?.[BKEY]===true&&c.data?.[PKEY]!==true){const data={...(c.data||{}),[BKEY]:false};const u=await S.from('catlak_characters').update({data}).eq('id',c.id).select('id');if(u.error)throw u.error;c.data=data}}
-  eligible=new Set(chars.filter(c=>c.play_status==='active'&&c.data?.[PKEY]===true&&c.data?.[BKEY]===true).map(c=>String(c.id)));loaded=true;
+  eligible=new Set(chars.filter(c=>c.play_status==='active'&&c.data?.[PKEY]===true).map(c=>String(c.id)));loaded=true;
   if(sr.data?.active){
    const existing=new Map();
    for(const x of combatants){if(x.kind==='player'&&x.character_id){existing.set(String(x.character_id),x);if(!eligible.has(String(x.character_id)))await removeCombatant(x.id)}}
@@ -53,11 +53,11 @@ function block(e,msg){e.preventDefault();e.stopPropagation();e.stopImmediateProp
 window.addEventListener('click',e=>{
  if(!isGM())return;
  const b=e.target?.closest?.('[data-pptf-battle],[data-prh-set-battle]');
- if(b&&String(b.dataset.v||'')==='1'&&!cardParty(b)){block(e,'Önce karakteri partiye al. Parti dışında olan karakter Savaş Odasına alınamaz.');return}
+ if(b&&String(b.dataset.v||'')==='1'&&!cardParty(b)){block(e,'Önce karakteri partiye al. Parti dışında olan karakter savaşa eklenemez.');return}
  const add=e.target?.closest?.('[data-lcc-add-char],[data-gmt-add-char]');
- if(add&&loaded){const sel=add.matches('[data-lcc-add-char]')?APP.querySelector('#lcc-add-char'):APP.querySelector('#gmt-add-char'),id=String(sel?.value||'');if(id&&!eligible.has(id)){block(e,'Bu karakter partide ve Savaş Odasında işaretli değil.');return}}
+ if(add&&loaded){const sel=add.matches('[data-lcc-add-char]')?APP.querySelector('#lcc-add-char'):APP.querySelector('#gmt-add-char'),id=String(sel?.value||'');if(id&&!eligible.has(id)){block(e,'Bu karakter aktif partide değil.');return}}
  const party=e.target?.closest?.('[data-pptf-party],[data-prh-set-party]');if(party&&String(party.dataset.v||'')==='0')schedule(420);
- if(b||add||e.target?.closest?.('[data-lcc-start],[data-gmt-combat-start]'))schedule(420);
+ if(b||add||e.target?.closest?.('[data-lcc-start],[data-gmt-combat-start]'))schedule(120);
 },true);
 
 new MutationObserver(()=>{normalizeUi()}).observe(APP,{childList:true,subtree:true});
