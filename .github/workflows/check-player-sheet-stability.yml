@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
           node --check browser-app.js
-          grep -Fq 'player-hard-recovery-v12' index.html
+          grep -Fq 'player-hard-recovery-v13' index.html
           grep -Fq 'recovery-core-13-single-player-owner' index.html
           grep -Fq 'g.dataset.ccDesk==="1"||g.dataset.ccHardSheet==="1"' browser-app.js
           grep -Fq 'source:"core-hard-sheet"' browser-app.js
