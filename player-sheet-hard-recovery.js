@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV1)return;
-window.__catlakPlayerSheetHardRecoveryV1=true;
+if(window.__catlakPlayerSheetHardRecoveryV2)return;
+window.__catlakPlayerSheetHardRecoveryV2=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -33,31 +33,37 @@ async function getSession(S){
   try{return (await S.auth.getSession()).data?.session||null}catch(_){return null}
 }
 async function ownedRows(S,uid){
-  const r=await S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true});
-  if(r.error)throw r.error;
-  if(r.data?.length)return r.data;
   try{
-    const snap=await S.rpc('catlak_player_combat_snapshot');
+    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),2200,'character owner query');
+    if(!r.error&&r.data?.length)return r.data;
+  }catch(_){}
+  try{
+    const snap=await timeout(S.rpc('catlak_player_combat_snapshot'),1800,'combat snapshot');
     const id=snap?.data?.character_id;
     if(id){
-      const q=await S.from('catlak_characters').select('*').eq('id',id).maybeSingle();
+      const q=await timeout(S.from('catlak_characters').select('*').eq('id',id).maybeSingle(),1800,'character fallback');
       if(!q.error&&q.data)return [q.data];
     }
   }catch(_){}
   return [];
 }
-async function safeQuery(promise,fallback=[]){
-  try{const r=await promise;return r?.error?fallback:(r?.data||fallback)}catch(_){return fallback}
+async function timeout(promise,ms=2200,label='request'){
+  let timer;
+  try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timeout')),ms)})])}
+  finally{clearTimeout(timer)}
+}
+async function safeQuery(promise,fallback=[],ms=2200){
+  try{const r=await timeout(promise,ms);return r?.error?fallback:(r?.data||fallback)}catch(_){return fallback}
 }
 async function extras(S,chars){
   const ids=chars.map(c=>c.id).filter(Boolean);
   const species=[...new Set(chars.map(c=>c.species_name).filter(Boolean))];
   const [inv,items,rolls,powers,paths]=await Promise.all([
-    ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true})):[],
-    safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true})),
-    ids.length?safeQuery(S.from('catlak_rolls').select('*').in('character_id',ids).order('created_at',{ascending:false}).limit(60)):[],
-    species.length?safeQuery(S.from('catlak_species_powers').select('*').in('species_name',species).order('unlock_level',{ascending:true})):[],
-    species.length?safeQuery(S.from('catlak_special_paths').select('*').in('species_name',species).order('sort_order',{ascending:true})):[]
+    ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true}),[],1800):[],
+    safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true}),[],1800),
+    ids.length?safeQuery(S.from('catlak_rolls').select('*').in('character_id',ids).order('created_at',{ascending:false}).limit(60),[],1800):[],
+    species.length?safeQuery(S.from('catlak_species_powers').select('*').in('species_name',species).order('unlock_level',{ascending:true}),[],1800):[],
+    species.length?safeQuery(S.from('catlak_special_paths').select('*').in('species_name',species).order('sort_order',{ascending:true}),[],1800):[]
   ]);
   return {inv,items,rolls,powers,paths};
 }
@@ -171,16 +177,24 @@ async function recover(force=false){
       if(!sheetActive())return false;
     }
     if(!chars.length){showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Birkaç saniye içinde otomatik tekrar denenecek.');return false}
-    const x=await extras(S,chars);
     if(!sheetActive())return false;
     const m=main();if(!m)return false;
+    const base={inv:[],items:[],rolls:[],powers:[],paths:[]};
     m.className='';
     m.dataset.ccHardSheet='1';
     delete m.dataset.ccDesk;delete m.dataset.ccPage;
-    m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
+    m.innerHTML=chars.map(c=>charHtml(c,base)).join('');
     try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
     applyLayers();release();
-    return ready();
+    const baseReady=ready();
+    extras(S,chars).then(x=>{
+      if(!sheetActive())return;
+      const cur=main();if(!cur||cur.dataset.ccHardSheet!=='1')return;
+      cur.innerHTML=chars.map(c=>charHtml(c,x)).join('');
+      try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
+      applyLayers();release();
+    }).catch(e=>console.warn('CATLAK_PLAYER_SHEET_EXTRAS',e));
+    return baseReady;
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
     showWaiting(e?.message||'Karakter verisi yüklenemedi.');
