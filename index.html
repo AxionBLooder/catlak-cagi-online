@@ -12,7 +12,7 @@
   <style>
     html,body{margin:0;min-height:100%;background:#071019;color:#edf6ff;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
     html.cc-player-critical-pending #app main{visibility:visible!important}
-    #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .14s ease}
+    #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .08s ease}
     #cc-start-cover.cc-done{opacity:0;pointer-events:none}
     #cc-start-cover strong{font-size:clamp(2rem,7vw,4.6rem);letter-spacing:.04em;color:#edf6ff;text-shadow:0 8px 32px #000}
     #cc-safe-boot{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
@@ -36,7 +36,7 @@
       var cover=document.getElementById('cc-start-cover');
       if(!cover)return;
       cover.classList.add('cc-done');
-      setTimeout(function(){cover&&cover.remove()},180);
+      setTimeout(function(){cover&&cover.remove()},90);
     }
     var hasJoin=false;try{hasJoin=!!new URLSearchParams(location.search).get('join')}catch(_){}
     setTimeout(releaseStartCover,hasJoin?5000:7000);
@@ -46,7 +46,7 @@
 
   <script src="./live-game-entry-guard.js?v=live-entry-v12-no-legacy-row"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
-  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v8-no-ghost"></script>
+  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
   <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
   <script src="./app-action-stability.js?v=action-stability-v5-all-save-stable"></script>
@@ -60,7 +60,7 @@
 
     function reveal(){
       if(uiReady)return;uiReady=true;clearTimeout(revealFallback);
-      requestAnimationFrame(function(){requestAnimationFrame(function(){if(!cover)return;cover.classList.add('cc-done');setTimeout(function(){cover?.remove()},180)})});
+      requestAnimationFrame(function(){requestAnimationFrame(function(){if(!cover)return;cover.classList.add('cc-done');setTimeout(function(){cover?.remove()},90)})});
     }
     function clearLocalSession(){
       try{Object.keys(localStorage).forEach(function(k){if(/^sb-.*-auth-token$/i.test(k))localStorage.removeItem(k)})}catch(_){}
@@ -90,12 +90,26 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v22-race-isolated','player-hard-recovery');
+        await Promise.all([
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v23-instant-tabs','player-hard-recovery'),
+          load('./battle-room-v3-patch.js?v=battle-v8-cached-final-view','battle-room-v3')
+        ]);
+        var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          var recovered=false;
-          try{recovered=!!(await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),1800))}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
-          if(!recovered)await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},700)})]);
+          recoverPromise=(async function(){
+            var recovered=false;
+            try{recovered=!!(await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),1600))}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+            if(!recovered)await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},550)})]);
+            return recovered;
+          })();
         }
+        var roomPromise=loadParallel([
+          ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
+          ['./room-system-patch.js?v=player-bg-v12-no-legacy-flash','rooms'],
+          ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
+        ]);
+        await Promise.all([recoverPromise,roomPromise]);
+        try{await awaitLimited(window.__catlakRoomSystemTest?.refreshPartyAccess?.(),800)}catch(_){}
         await twoFrames();
       }finally{
         document.documentElement.classList.remove('cc-player-critical-pending');
@@ -103,28 +117,22 @@
     }
 
     async function loadPlayerBackground(){
-      // Enhanced battle runtime loads first; the Savaş Odası nav is created only afterwards.
-      // This prevents the legacy/base battle layout from flashing before v3/v4 enhancement.
-      await load('./battle-room-v3-patch.js?v=battle-v7-action-autoend','battle-room-v3');
       await loadParallel([
         ['./presence-patch.js?v=presence-v5-shared-online','presence'],
-        ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v11-race-detach','rooms'],
-        ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
-        ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
+        ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster']
       ]);
     }
 
     async function loadGmCore(){
       await loadParallel([
-        ['./gm-tools-patch.js?v=clean-gm-tools-v3-fast','gm-tools'],
+        ['./gm-tools-patch.js?v=clean-gm-tools-v4-center-embedded','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
         ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean']
       ]);
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
-        ['./gm-clean-router-v1.js?v=gm-clean-router-v7-presence-stable-actions','gm-clean-router'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v8-embedded-workshops','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v10-combat-only','gm-live-compact']
       ]);
       await load('./live-combat-center-patch.js?v=livecombat-v6-autoend-stable','live-combat-center-runtime');
@@ -142,7 +150,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-11-race-detach','rooms'],
+        ['./room-system-patch.js?v=recovery-12-no-legacy-flash','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
@@ -177,7 +185,7 @@
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
     var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-15-hard-projection-owner';core.async=false;
-    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
+    core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},6000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
     bootTimer=setTimeout(function(){if(document.getElementById('cc-safe-boot'))fail('Başlangıç tamamlanamadı','Ana uygulama yanıt verdi ancak ekran oluşturulamadı. Oturumu temizleyip tekrar deneyebilirsin.')},10000);
