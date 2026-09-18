@@ -1,15 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Player Sheet Support
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'player-sheet-runtime-v4.js'
-      - 'player-sheet-support-runtime.js'
-      - 'player-live-actions-patch.js'
-      - 'player-sheet-equipment-abilities-patch.js'
-      - 'index.html'
-      - '.github/workflows/check-player-sheet-support.yml'
   workflow_dispatch:
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
