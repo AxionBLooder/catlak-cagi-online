@@ -84,6 +84,10 @@ jobs:
           ok('battle.auto.end','br3MaybeAutoEndCombat' in battle)
           ok('battle.no.empty.enemy.copy','Henüz Yaratık Yok' not in battle and 'GM henüz bu savaşa yaratık eklemedi' not in battle)
           ok('battle.fail.safe','data-ccr-battle-retry' in rooms and 'cc-battle-entry-pending' in rooms)
+          ok('battle.idle.full.shell',"const active=!!s.active,inCombat=!!s.in_combat" in rooms and "Henüz inisiyatif atılmadı." in rooms and "ccr-battle-grid" in rooms)
+          ok('battle.idle.actions.visible',"!s.active?'Savaş Başlamadı'" in battle and "data-br3-abilities" in battle)
+          ok('battle.idle.creatures.visible',"Henüz aktif savaş yok; yaratıklar savaş başladığında burada görünecek." in battle)
+          ok('battle.idle.turn.visible',"GM savaşı başlattığında tur burada başlayacak." in battle)
           ok('battle.enemy.add',('catlak_gm_combat_add_enemy' in live or 'catlak_gm_combat_add_creature' in live or 'catlak_gm_combat_add_template' in live) and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
 
           # 5. GM flow contract.
