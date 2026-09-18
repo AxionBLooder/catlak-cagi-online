@@ -1,12 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check GM Workshop Speed
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'gm-clean-router-v1.js'
-      - 'index.html'
-      - '.github/workflows/check-gm-workshop-speed.yml'
   workflow_dispatch:
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
