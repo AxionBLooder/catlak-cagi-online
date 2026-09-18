@@ -77,7 +77,7 @@ jobs:
           if 'grid-column:2!important;grid-row:1!important;justify-self:stretch!important' not in sheet: raise SystemExit('Yetenekler sağ kolon sözleşmesi eksik')
           if 'cachedBoardHtml' not in live or 'restoreCachedBoard' not in live: raise SystemExit('Canlı masa cache sözleşmesi eksik')
           if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' not in core: raise SystemExit('Legacy canlı masa ownerı devrede')
-          if '__catlakUnifiedRollFlowV1' not in rolls or 'catlak_clear_roll_log' not in rolls: raise SystemExit('Birleşik Zar Akışı eksik')
+          if '__catlakUnifiedRollFlowV2' not in rolls or 'catlak_clear_roll_log' not in rolls: raise SystemExit('Birleşik Zar Akışı eksik')
           if '__catlakVisualArchiveMapFlowV2' not in visuals or 'sw-gallery-head' not in visuals: raise SystemExit('Görsel Arşivi upload-only sözleşmesi eksik')
           if 'live.after(rolls)' not in nav: raise SystemExit('Canlı Oyun Masası ve Zar Akışı yan yana değil')
           if "['logs','Oturum Günlüğü']" in gm: raise SystemExit('Oturum Günlüğü geri dönmüş')
