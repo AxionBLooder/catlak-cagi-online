@@ -255,10 +255,16 @@ async function ccrBattleRollStat(stat){
 }
 function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
-  document.documentElement.classList.add('cc-battle-entry-pending');
   ccrHubOpen=false;ccrBattleOpen=true;window.__catlakBattleRoomOpen=true;
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
   const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
+  try{
+    if(window.__catlakBattleRoomV3Test?.restore?.()){
+      if(main)main.dataset.ccrBattle='1';
+      return;
+    }
+  }catch(_){}
+  document.documentElement.classList.add('cc-battle-entry-pending');
   ccrBattleRender(true);
 }
 
