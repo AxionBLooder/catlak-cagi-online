@@ -117,7 +117,9 @@ jobs:
           ok('safety.battle.single.owner','window.__catlakBattleRoomV3Test?.render' in rooms and 'ccrBattleRender(true);return' in rooms)
           ok('safety.sheet.core.fallback','coreSheetVisible' in sheet and "window.addEventListener('catlak:player-fast-ready'" in sheet)
           ok('safety.sheet.guest.no.loop',"6500,'character owner query'" in sheet and "setTimeout(()=>schedule(true,0),900)" not in sheet and 'data-cc-hard-wait-text' in sheet)
-          ok('safety.sheet.core.first','schedule(false,160)' in sheet and "setTimeout(()=>{if(!ready())schedule(true,0)},900)" not in sheet and 'coreSheetVisible' in sheet)
+          ok('safety.sheet.core.first','blankPlayerSurface' in sheet and "setTimeout(()=>{if(!ready())schedule(true,0)},900)" not in sheet and 'coreSheetVisible' in sheet)
+          ok('safety.sheet.visible.fallback',"showWaiting('Karakter bilgileri yükleniyor…')" in sheet and 'Karakter bağlantısı bulunamadı' in sheet and '},420);' in sheet)
+          ok('safety.sheet.complete.details',"[],4500" in sheet and "{},[],4500" in sheet)
           ok('safety.sheet.realtime.no.takeover',"if(!sheetActive()||!(main()?.dataset.ccHardSheet==='1'&&ready()))return" in sheet)
           ok('safety.battle.fixed.geometry','ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle)
           ok('safety.global.scroll','isStableAction' in action and '7600' in action and 'Math.abs(window.scrollY-s.y)>2' in action)
@@ -144,7 +146,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v36-core-first' in html)
+          ok('version.sheet','player-hard-recovery-v37-visible-fallback' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
           ok('version.action','action-stability-v9-global-scroll' in html)
 

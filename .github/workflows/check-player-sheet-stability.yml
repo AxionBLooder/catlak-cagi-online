@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v36-core-first' in html,
+            'sheet version':'player-hard-recovery-v37-visible-fallback' in html,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
@@ -55,7 +55,10 @@ jobs:
             'guest query tolerant':"6500,'character owner query'" in sheet and "5000,'character dom handoff'" in sheet,
             'guest no auto retry':"setTimeout(()=>schedule(true,0),900)" not in sheet and "if(queued)return" in sheet,
             'waiting card stable':'data-cc-hard-wait-text' in sheet,
-            'core first boot':'player-fast-ready' in sheet and 'schedule(false,160)' in sheet and "setTimeout(()=>{if(!ready())schedule(true,0)},900)" not in sheet,
+            'core first boot':'player-fast-ready' in sheet and 'blankPlayerSurface' in sheet and "setTimeout(()=>{if(!ready())schedule(true,0)},900)" not in sheet,
+            'visible blank fallback':"showWaiting('Karakter bilgileri yükleniyor…')" in sheet and 'Karakter bağlantısı bulunamadı' in sheet,
+            'complete detail budget':"[],4500" in sheet and "{},[],4500" in sheet,
+            'bounded startup fallback':'},420);' in sheet and '},900);' in sheet,
             'realtime no takeover':"if(!sheetActive()||!(main()?.dataset.ccHardSheet==='1'&&ready()))return" in sheet,
           }
           bad=[name for name,ok in checks.items() if not ok]
