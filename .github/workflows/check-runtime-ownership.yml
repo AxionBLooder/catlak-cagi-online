@@ -17,6 +17,10 @@ on:
       - 'gm-ui-polish-v1.js'
       - 'presence-patch.js'
       - 'quality-of-life-patch.js'
+      - 'event-rolls-patch.js'
+      - 'visual-archive-map-flow-patch.js'
+      - 'gm-nav-canonical.js'
+      - 'gm-tools-patch.js'
       - '.github/workflows/check-runtime-ownership.yml'
   workflow_dispatch:
 
@@ -59,6 +63,9 @@ jobs:
             'gm-clean-router-v1.js',
             'gm-live-compact-v1.js',
             'live-combat-center-patch.js',
+            'event-rolls-patch.js',
+            'visual-archive-map-flow-patch.js',
+            'gm-nav-canonical.js',
           ]
           for name in required:
               if name not in html:
@@ -72,6 +79,7 @@ jobs:
             'player-live-actions-patch.js',
             'gm-management-room-patch.js',
             'gm-center-router-core.js',
+            'session-log-delete-fix.js',
           ]
           for name in retired:
               if name in html:
