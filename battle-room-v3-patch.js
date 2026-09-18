@@ -16,7 +16,7 @@ const br3BattleView=()=>{
   return window.__catlakBattleRoomOpen===true||btn?.classList.contains('on')||main?.dataset.ccrBattle==='1';
 };
 const br3Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(br3Toast.t);br3Toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false,br3CachedHtml='',br3Preload=null,br3PreloadAt=0,br3PreloadBusy=null,br3InteractionUntil=0;
+let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false,br3CachedHtml='',br3Preload=null,br3PreloadAt=0,br3PreloadBusy=null,br3InteractionUntil=0,br3BoundCharacterId='';
 function br3HoldInteraction(ms=1300){br3InteractionUntil=Math.max(br3InteractionUntil,Date.now()+ms);window.__catlakBattleInteractionUntil=Math.max(Number(window.__catlakBattleInteractionUntil||0),br3InteractionUntil)}
 function br3InteractionLocked(){const a=document.activeElement;return Date.now()<br3InteractionUntil||!!(a&&BR3_APP.contains(a)&&a.matches?.('[data-br3-hp-amount]'))}
 
@@ -145,7 +145,7 @@ function br3SyncBattleShell(s){
   }else if(order)order.remove();
 }
 function br3TurnSection(s){if(!s?.active)return'';const title=s.is_my_turn?'Sıra Sende':'Sıra: '+br3Esc(s.current_name||'—'),detail=s.in_combat?'Round '+br3Num(s.round):'Karakterin henüz karşılaşmaya eklenmedi.';return `<section class="card br3-turn ${s.is_my_turn?'ready':''}" data-br3-turn><div><div class="eyebrow">TUR KONTROLÜ</div><h2>${title}</h2><div class="mini muted">${detail}</div></div><button type="button" class="primary" data-br3-end-turn ${s.is_my_turn?'':'disabled'}>Turumu Bitir ▶</button></section>`}
-function br3HpControl(s){const self=(s.order||[]).find(x=>x.is_self);return `<div class="vital br3-hero-hp" data-br3-hp><span>CAN DEĞİŞİMİ</span><input type="number" min="1" step="1" value="1" data-br3-hp-amount aria-label="Can değişim miktarı"><button type="button" class="danger" data-br3-hp-change="damage" ${self?'':'disabled'}>− Hasar</button><button type="button" data-br3-hp-change="heal" ${self?'':'disabled'}>+ İyileştir</button></div>`}
+function br3HpControl(){return `<div class="vital br3-hero-hp" data-br3-hp><span>CAN DEĞİŞİMİ</span><input type="number" min="1" step="1" value="1" data-br3-hp-amount aria-label="Can değişim miktarı"><button type="button" class="danger" data-br3-hp-change="damage">− Hasar</button><button type="button" data-br3-hp-change="heal">+ İyileştir</button></div>`}
 
 function br3EnhanceWeapons(s){
   const live=br3NormalizeTarget(s),target=live.find(x=>String(x.id)===String(br3TargetId))||null;
@@ -164,13 +164,43 @@ function br3EnhanceWeapons(s){
     }
   });
 }
+function br3HeroHpReadout(){
+  const hero=BR3_APP.querySelector('main section.hero');if(!hero)return null;
+  const vital=[...hero.querySelectorAll('.vital')].find(v=>br3Txt(v.querySelector('span')).toUpperCase()==='HP');
+  const b=vital?.querySelector('b');if(!b)return null;
+  const m=String(b.textContent||'').match(/(-?\d+)\s*\/\s*(-?\d+)/);
+  if(!m)return {node:b,current:null,max:null};
+  return {node:b,current:br3Num(m[1]),max:Math.max(1,br3Num(m[2],1))};
+}
+async function br3ResolveHpCharacter(snap){
+  const self=(snap?.order||[]).find(x=>x.is_self);
+  const directId=String(snap?.character_id||self?.character_id||br3BoundCharacterId||'');
+  const readout=br3HeroHpReadout();
+  if(directId&&self){
+    br3BoundCharacterId=directId;
+    return {id:directId,name:self.name||'',current:br3Num(self.hp_current),max:Math.max(1,br3Num(self.hp_max,readout?.max||1)),self,readout};
+  }
+  const ses=(await BR3_S.auth.getSession()).data?.session,uid=ses?.user?.id;
+  if(!uid)throw new Error('Oyuncu oturumu bulunamadı.');
+  const qr=await BR3_S.from('catlak_characters')
+    .select('id,name,hp_current,hp_max,data,play_status')
+    .eq('owner_id',uid).eq('play_status','active').order('created_at',{ascending:true});
+  if(qr.error)throw qr.error;
+  const party=(qr.data||[]).filter(x=>x.data?.cc_party_member===true);
+  const row=party.find(x=>String(x.id)===directId)||party[0]||null;
+  if(!row)throw new Error('Partiye bağlı aktif karakter bulunamadı.');
+  br3BoundCharacterId=String(row.id);
+  const current=readout?.current!=null?readout.current:br3Num(row.hp_current);
+  const max=readout?.max!=null?readout.max:Math.max(1,br3Num(row.hp_max,1));
+  return {id:String(row.id),name:row.name||'',current,max,self:self||null,readout};
+}
 function br3SyncHeroVitals(s){
-  const hero=BR3_APP.querySelector('main section.hero'),self=(s?.order||[]).find(x=>x.is_self);if(!hero||!self)return;
+  const hero=BR3_APP.querySelector('main section.hero'),self=(s?.order||[]).find(x=>x.is_self);if(!hero)return;
   hero.querySelectorAll('.vital').forEach(v=>{
     const label=br3Txt(v.querySelector('span')).toUpperCase(),b=v.querySelector('b');
     if(!b)return;
-    if(label==='HP')b.textContent=br3Num(self.hp_current)+'/'+br3Num(self.hp_max);
-    else if(label==='AC'&&self.ac!=null)b.textContent=String(br3Num(self.ac));
+    if(label==='HP'&&self)b.textContent=br3Num(self.hp_current)+'/'+br3Num(self.hp_max);
+    else if(label==='AC'&&self?.ac!=null)b.textContent=String(br3Num(self.ac));
   });
 }
 function br3CacheCurrent(){
@@ -310,7 +340,31 @@ async function br3Use(btn){
   br3Toast(msg);if(!(d.effect_type==='damage'&&await br3MaybeAutoEndCombat(before)))await br3Render(false)
  }finally{br3ActionBusy=false}
 }
-async function br3HpChange(btn){if(br3ActionBusy)return;br3ActionBusy=true;br3HoldInteraction(1500);try{const input=BR3_APP.querySelector('[data-br3-hp-amount]'),amount=Math.max(1,Math.abs(br3Num(input?.value,1))),d=br3LastData||await br3Load(),self=(d.snap?.order||[]).find(x=>x.is_self);if(!self||!d.snap?.character_id)throw new Error('Savaş karakteri bulunamadı.');const delta=btn.dataset.br3HpChange==='heal'?amount:-amount,next=Math.max(0,Math.min(br3Num(self.hp_max),br3Num(self.hp_current)+delta));const r=await BR3_S.rpc('catlak_update_my_hp',{p_character_id:d.snap.character_id,p_hp:next});if(r.error)throw r.error;if(input){input.value=String(amount);input.focus({preventScroll:true});input.select?.()}self.hp_current=next;if(br3LastSnap){const mine=(br3LastSnap.order||[]).find(x=>x.is_self);if(mine)mine.hp_current=next}br3SyncHeroVitals(d.snap);br3Sig='';br3CacheCurrent();window.__catlakRealtimeSync?.emit?.('combat',{action:'player-hp'});br3Toast('HP '+next+'/'+br3Num(self.hp_max));setTimeout(()=>{if(!br3InteractionLocked())br3Render(false)},170)}finally{br3ActionBusy=false}}
+async function br3HpChange(btn){
+  if(br3ActionBusy)return;
+  br3ActionBusy=true;br3HoldInteraction(1800);
+  try{
+    const input=BR3_APP.querySelector('[data-br3-hp-amount]');
+    const amount=Math.max(1,Math.abs(br3Num(input?.value,1)));
+    const d=br3LastData||await br3Load(),bound=await br3ResolveHpCharacter(d.snap||{});
+    const delta=btn.dataset.br3HpChange==='heal'?amount:-amount;
+    const next=Math.max(0,Math.min(bound.max,bound.current+delta));
+    const r=await BR3_S.rpc('catlak_update_my_hp',{p_character_id:bound.id,p_hp:next});if(r.error)throw r.error;
+    if(input){input.value=String(amount);input.focus({preventScroll:true});input.select?.()}
+    if(bound.self)bound.self.hp_current=next;
+    if(d.snap)d.snap.character_id=bound.id;
+    if(br3LastSnap){
+      br3LastSnap.character_id=bound.id;
+      const mine=(br3LastSnap.order||[]).find(x=>x.is_self);if(mine)mine.hp_current=next;
+    }
+    const readout=br3HeroHpReadout();if(readout?.node)readout.node.textContent=next+'/'+bound.max;
+    br3SyncHeroVitals(d.snap);br3Sig='';br3CacheCurrent();
+    window.__catlakRealtimeSync?.emit?.('character',{action:'hp-adjust',character_id:bound.id});
+    window.__catlakRealtimeSync?.emit?.('combat',{action:'player-hp',character_id:bound.id});
+    br3Toast((btn.dataset.br3HpChange==='heal'?'+':'−')+amount+' HP • '+next+'/'+bound.max);
+    setTimeout(()=>{if(!br3InteractionLocked())br3Render(false)},220);
+  }finally{br3ActionBusy=false}
+}
 async function br3EndTurn(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_player_end_turn');if(r.error)throw r.error;window.__catlakRealtimeSync?.emit?.('combat',{action:'end-turn'});br3Toast('Tur bitti. Sıradaki: '+(r.data?.current_name||'—'));await br3Render(false)}finally{br3ActionBusy=false}}
 async function br3ClearBattleLog(){if(br3ActionBusy)return;br3ActionBusy=true;try{const r=await BR3_S.rpc('catlak_gm_clear_battle_log');if(r.error)throw r.error;br3Toast(`Canlı akış temizlendi${r.data!=null?' • '+r.data+' kayıt':''}.`)}finally{br3ActionBusy=false}}
 function br3EnsureGmClear(){
