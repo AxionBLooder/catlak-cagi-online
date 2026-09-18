@@ -29,7 +29,7 @@ jobs:
           node --check player-sheet-equipment-abilities-patch.js
           node --check gm-live-player-state.js
           node --check live-combat-center-patch.js
-          grep -Fq 'player-hard-recovery-v6' index.html
+          grep -Fq 'player-hard-recovery-v7' index.html
           grep -Fq 'gm-live-player-state-v3' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
@@ -172,8 +172,11 @@ jobs:
               await installMock(player,'MİSAFİR');
               await player.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
               await player.waitForSelector('main[data-cc-hard-sheet="1"] .cc-character-stack section.hero',{timeout:5000});
-              // Hard recovery v6 owns the critical actions directly so a slow optional layer cannot block play.
+              await player.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
               await player.waitForSelector('[data-cc-hard-stat="DEX"]',{timeout:5000});
+              await player.waitForFunction(()=>!document.body.textContent.includes('D20 TESTLERİ')&&!document.body.textContent.includes('d20 at'));
+              await player.waitForFunction(()=>document.querySelector('[data-cc-hard-equipment]')?.textContent.includes('1. Silah')&&document.querySelector('[data-cc-hard-equipment]')?.textContent.includes('2. Silah'));
+              await player.waitForFunction(()=>!document.querySelector('.cc-desk-intro'));
               await player.locator('[data-cc-hard-stat="DEX"]').first().click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_stat'));
               await player.waitForFunction(()=>document.body.textContent.includes('DEX Testi'));
