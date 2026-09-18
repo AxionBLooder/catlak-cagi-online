@@ -194,6 +194,13 @@ jobs:
               await player.locator('[data-cc-hard-ability="assign-1"]').click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_player_use_ability'));
 
+              await player.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
+              await player.waitForSelector('[data-psv4-race-nav]',{timeout:5000});
+              await player.locator('[data-psv4-race-nav]').click();
+              await player.waitForFunction(()=>document.body.textContent.includes('IRK BECERİLERİ')&&document.body.textContent.includes('İnsan Direnci'),null,{timeout:5000});
+              await player.locator('.nav [data-tab="sheet"]').click();
+              await player.waitForSelector('main section.hero',{timeout:5000});
+
               const pout=await player.evaluate(()=>({
                 hp:document.querySelector('section.hero .vital b')?.textContent,
                 rolls:window.__db.catlak_rolls.map(x=>x.label),
@@ -201,9 +208,10 @@ jobs:
                 race:document.body.textContent.includes('İnsan Direnci'),
                 condition:document.body.textContent.includes('Zehirli'),
                 ability:document.body.textContent.includes('Acil Müdahale'),
-                slot:window.__rpcCalls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon')
+                slot:window.__rpcCalls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'),
+                raceTab:!!document.querySelector('[data-psv4-race-nav]')
               }));
-              if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability||!pout.slot)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
+              if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability||!pout.slot||!pout.raceTab)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
               if(errors.length)throw new Error('PLAYER_PAGE_ERRORS '+errors.join(' | '));
 
               const gm=await browser.newPage();gm.setDefaultTimeout(7000);const gerr=[];gm.on('pageerror',e=>gerr.push(String(e.message||e)));
