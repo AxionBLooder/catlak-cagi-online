@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV18)return;
-window.__catlakPlayerSheetHardRecoveryV18=true;
+if(window.__catlakPlayerSheetHardRecoveryV19)return;
+window.__catlakPlayerSheetHardRecoveryV19=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -37,18 +37,18 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy b{display:block;color:#f2d284;font-size:.76rem;letter-spacing:.04em}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span.muted{color:var(--muted)}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race]{display:none!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race],#app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:block!important}
-  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>:not([data-cc-hard-race]){display:none!important}
-  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]{display:block!important;max-width:980px!important;margin:0 auto!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>:not([data-cc-hard-race]):not([data-cc-hard-abilities]){display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race],#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{display:block!important;max-width:980px!important;margin:0 auto 14px!important}
   #app.cc-player-hard-active [data-cc-hard-party-visual]{overflow:hidden!important;border-color:#6e5b2f!important;background:linear-gradient(135deg,#151a20,#17131c)!important}
   #app.cc-player-hard-active [data-cc-hard-party-visual] .cc-hard-party-frame{display:flex;align-items:center;justify-content:center;min-height:180px;border:1px solid var(--line);border-radius:12px;background:#050b14;padding:8px;margin-top:10px}
   #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block;width:auto;height:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px}
 
   @media(min-width:1181px){
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;max-width:1500px!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr)!important;gap:14px!important;max-width:1280px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-left,
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-right{display:contents!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-stats],
@@ -56,7 +56,6 @@ if(!document.getElementById('cc-player-hard-ui-style')){
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-party-visual]{grid-column:1!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-equipment],
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-conditions]{grid-column:2!important}
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{grid-column:3!important;grid-row:2 / span 3!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{padding:14px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero .vitals{gap:8px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero [data-cc-hard-long-rest]{white-space:nowrap}
@@ -85,7 +84,7 @@ const sheetActive=()=>isPlayer()&&(!!sheetButton()?.classList.contains('on')||!!
 function ensureRaceNav(){
   if(!isPlayer())return null;
   const nav=APP.querySelector('.nav'),sheet=sheetButton();if(!nav||!sheet)return null;
-  let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.textContent='Irk Becerileri';sheet.after(b)}
+  let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.dataset.ccHardOwned='1';b.textContent='Irk Becerileri';sheet.after(b)}if(raceWanted)b.classList.add('on')
   return b;
 }
 let raceMode=false,raceWanted=false,sheetScrollY=0,raceScrollY=0;
@@ -250,7 +249,7 @@ function hardAbilityTargets(a,x){
 function abilitiesHtml(c,x){
   const rows=Array.isArray(x.abilities)?x.abilities:[];
   if(!rows.length)return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">GM tarafından atanmış aktif yetenek yok.</p></section>`;
-  return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">Bu alan karakterinin yetenek açıklamalarını gösterir. Kullanım ve hedef seçimi yalnız Savaş Odası'nda yapılır.</p><div class="grid">${rows.map(a=>{
+  return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">Karakterine ait sınıf, büyü ve özel yetenek açıklamaları burada tutulur. Kullanım ve hedef seçimi yalnız Savaş Odası'nda yapılır.</p><div class="grid">${rows.map(a=>{
     const finite=a.uses_per_combat!=null,uses=finite?`${num(a.uses_remaining)}/${num(a.uses_per_combat)}`:'∞';
     const type=String(a.ability_type||'skill').toUpperCase();
     const target=a.target_type==='enemy'?'Düşman':a.target_type==='ally'?'Müttefik':'Kendi';
@@ -307,9 +306,9 @@ function charHtml(raw,x){
   <aside class="cc-hard-right">
     ${equipmentHtml(c,x)}
     ${conditionsHtml(c,x)}
-    ${abilitiesHtml(c,x)}
     ${vampHtml(c)}${pathHtml(c,x)}
     <section class="card" data-cc-hard-race><div class="eyebrow">IRK BECERİLERİ</div><h2>Irk Güçleri</h2>${powersHtml(c,x)}${embeddedPowers(c)}</section>
+    ${abilitiesHtml(c,x)}
   </aside></div>`;
 }
 function applyLayers(){
@@ -513,7 +512,7 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();raceWanted=true;if(setRaceView(true))return;clearPlayerNavSelection(raceNav);recover(true).then(ok=>{if(ok)setRaceView(true);else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();raceWanted=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view'))){e.preventDefault();e.stopImmediatePropagation();raceWanted=false;setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
@@ -535,9 +534,11 @@ window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if
 new MutationObserver(()=>{
   if(!isPlayer())return;
   ensureRaceNav();
-  if(!sheetActive()||ready())return;
+  if(!sheetActive())return;
   const m=main();if(!m)return;
-  schedule(false,60);
+  if(raceWanted&&!m.classList.contains('cc-hard-race-view')){schedule(true,0);return}
+  if(ready())return;
+  schedule(false,20);
 }).observe(APP,{childList:true,subtree:true});
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
