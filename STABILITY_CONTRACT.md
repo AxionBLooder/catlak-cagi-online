@@ -70,3 +70,15 @@ Yeni bir değişiklik bu sözleşmeyi bozarsa önce düzeltme yapılır; eski ru
 ## Görsel Arşivi sözleşmesi
 
 Görsel Arşivi yalnız yükleme ekranıdır; daha önce yüklenen görseller burada listelenmez. Görseller Harita ekranındaki ilgili Harita / Yer-Sahne / NPC bölümlerinde görüntülenir.
+
+
+## İkinci optimizasyon katmanı
+
+- Oyuncu Masası ve Irk Becerileri dış sayfa kabuğu kullanmaz; ana içerik alanını doğrudan kullanır.
+- Savaş Odası girişinde eski/base savaş DOM'u kullanıcıya gösterilmez. Final görünüm hazır olana kadar owned transition kilidi aktif kalır.
+- Player Desk, Savaş Odası, GM Merkezi, Canlı Oyun Masası ve Zar Akışı için cache + stale-while-revalidate yaklaşımı kullanılır.
+- Realtime olayları tek tek tam render tetiklemek yerine kısa batch pencerelerinde birleştirilir.
+- Oyuncu combat realtime sahipliği room-system üzerindedir; battle-room-v3 aynı combat tablolarını ikinci kez dinlemez.
+- İlk Player Desk hazır olmadan battle preload ana girişle yarışmaz.
+- `window.__catlakRuntimePerformance.views()` ile yerel ekran geçiş süreleri incelenebilir; bu veri dışarı gönderilmez.
+- `Check Interaction Stress Contract` hızlı ardışık etkileşimlerde bu mimari kuralların geri bozulmasını engeller.
