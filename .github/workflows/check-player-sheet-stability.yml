@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v40-atomic-sheet' in html,
+            'sheet version':'player-hard-recovery-v41-legacy-owner-guard' in html,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
@@ -58,6 +58,7 @@ jobs:
             'canonical advanced owner':"if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true" in sheet and '8500' in html,
             'atomic advanced mount':'function atomicSheetMount' in sheet and "probe.content.querySelector('.cc-character-stack[data-cc-hard-stack] section.hero')" in sheet,
             'atomic rollback':'m.innerHTML=previous.html' in sheet and 'CATLAK_PLAYER_ATOMIC_MOUNT' in sheet,
+            'legacy intro scoped':'#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-desk-intro' in sheet and '#app.cc-player-hard-active main .cc-desk-intro{display:none!important}' not in sheet,
             'blank core fallback':'if(m&&!m.children.length)' in html and 'sheetBtn?.click()' in html,
             'core visible until advanced':"schedule(false,100)" in sheet and "window.addEventListener('pageshow'" in sheet,
             'hp amount control':'data-cc-hard-hp-amount' in sheet and 'data-mode="damage"' in sheet and 'data-mode="heal"' in sheet,
