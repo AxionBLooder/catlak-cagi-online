@@ -1,12 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Player Hard Recovery
 on:
-  push:
-    paths:
-      - 'player-sheet-hard-recovery.js'
-      - 'index.html'
-      - 'live_08.txt'
-      - 'browser-app.js'
-      - '.github/workflows/check-player-hard-recovery.yml'
   workflow_dispatch:
 
 jobs:
