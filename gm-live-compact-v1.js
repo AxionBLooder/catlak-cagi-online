@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmLiveCompactV9)return;
-window.__catlakGmLiveCompactV9=true;
+if(window.__catlakGmLiveCompactV10)return;
+window.__catlakGmLiveCompactV10=true;
 ['glc-style-v2','glc-style-v3','glc-style-v4','glc-style-v5','glc-style-v6','glc-style-v7'].forEach(id=>document.getElementById(id)?.remove());
 const APP=document.getElementById('app');if(!APP)return;
 
@@ -27,20 +27,13 @@ function cleanNav(){
 
 function decorateLive(){
  const main=APP.querySelector('main[data-cc-simple-live="1"]');if(!main)return;
- const wrap=main.querySelector('.cc-live-two');if(!wrap)return;
- if(APP.querySelector('.nav [data-tab="gm"].on')&&!main.querySelector('[data-lcc-board]'))setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},40);
- [...wrap.children].forEach((card,i)=>{
-  if(!card.classList?.contains('card'))return;
-  const text=String(card.textContent||'').toLocaleUpperCase('tr-TR');
-  let kind='other';
-  if(card.querySelector('.cc-simple-player')||/CANLI KARAKTER|OYUNCULAR/.test(text))kind='players';
-  else if(card.querySelector('.cc-simple-roll')||/ATILAN ZAR|ZAR AKIŞI|SON ZAR/.test(text))kind='rolls';
-  card.dataset.glcKind=kind;
-  card.style.order=kind==='players'?'10':kind==='rolls'?'20':String(30+i);
- });
+ const wrap=main.querySelector('.cc-live-two');
+ if(wrap)wrap.remove();
+ main.querySelectorAll('[data-glc-kind="players"],[data-glc-kind="rolls"]').forEach(x=>x.remove());
+ if(APP.querySelector('.nav [data-tab="gm"].on')&&!main.querySelector('[data-lcc-board]'))setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},0);
 }
 
-const st=document.createElement('style');st.id='glc-style-v8';st.textContent=`
+const st=document.createElement('style');st.id='glc-style-v10';st.textContent=`
 #app.gmc-gm .nav [data-gmc-open]{order:10!important}
 #app.gmc-gm .nav [data-prh-manager]{order:20!important}
 #app.gmc-gm .nav [data-cc-management-room]{order:30!important}
@@ -51,8 +44,8 @@ const st=document.createElement('style');st.id='glc-style-v8';st.textContent=`
 #app.gmc-gm .nav [data-tab="characters"]{display:none!important;order:900!important}
 #app.gmc-gm [data-gmc-route="characters"],#app.gmc-gm [data-gm2-route="characters"]{display:none!important}
 
-html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:14px 16px 30px!important}
-html body #app main[data-cc-simple-live="1"] .cc-live-two{display:grid!important;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr)!important;gap:14px!important;max-width:none!important;margin:8px auto 14px!important;align-items:start!important}
+html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
+html body #app main[data-cc-simple-live="1"] .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{width:100%!important;height:auto!important;overflow:auto!important;margin:0!important;padding:12px 14px!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card[data-glc-kind="players"]{max-height:520px!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card[data-glc-kind="rolls"]{max-height:520px!important}
@@ -72,7 +65,7 @@ html body #app main[data-cc-simple-live="1"] .cc-simple-roll small{display:none!
 html body #app main[data-cc-simple-live="1"] .cc-simple-roll button{min-height:24px!important;padding:4px 6px!important;font-size:.6rem!important;background:#191014!important}
 html body #app main[data-cc-simple-live="1"] .cc-clear-rolls{padding:5px 8px!important;font-size:.62rem!important;min-height:26px!important;background:#1b1014!important;border-color:#492630!important}
 
-html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:none!important;margin:0 auto!important}
+html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:none!important;margin:0 auto!important;padding-top:0!important}
 html body #app main[data-cc-simple-live="1"] .lcc-columns{display:grid!important;grid-template-columns:repeat(3,minmax(280px,1fr))!important;gap:14px!important;align-items:start!important}
 html body #app main[data-cc-simple-live="1"] .lcc-col,html body #app main[data-cc-simple-live="1"] .lcc-conditions{width:100%!important;max-height:none!important;overflow:visible!important;margin:0!important;padding:12px 14px!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .lcc-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
