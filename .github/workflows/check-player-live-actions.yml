@@ -1,13 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Player Live Actions
 on:
-  push:
-    paths:
-      - 'player-live-actions-patch.js'
-      - 'player-sheet-runtime-v4.js'
-      - 'item-system-patch.js'
-      - 'index.html'
-      - '.github/workflows/check-player-live-actions.yml'
   workflow_dispatch:
+
 jobs:
   player-live:
     runs-on: ubuntu-latest
