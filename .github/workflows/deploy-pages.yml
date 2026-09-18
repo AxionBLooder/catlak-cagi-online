@@ -68,7 +68,7 @@ jobs:
           sheet=Path('_site/player-sheet-hard-recovery.js').read_text(encoding='utf-8')
           live=Path('_site/live-combat-center-patch.js').read_text(encoding='utf-8')
           core=Path('_site/browser-app.js').read_text(encoding='utf-8')
-          if '__catlakPlayerSheetHardRecoveryV28' not in sheet: raise SystemExit('Oyuncu Masası owner sürümü yanlış')
+          if '__catlakPlayerSheetHardRecoveryV29' not in sheet: raise SystemExit('Oyuncu Masası owner sürümü yanlış')
           if 'grid-column:1!important;justify-self:start!important' not in sheet: raise SystemExit('Irk güçleri sol kolon sözleşmesi eksik')
           if 'grid-column:2!important;justify-self:end!important' not in sheet: raise SystemExit('Yetenekler sağ kolon sözleşmesi eksik')
           if 'cachedBoardHtml' not in live or 'restoreCachedBoard' not in live: raise SystemExit('Canlı masa cache sözleşmesi eksik')
