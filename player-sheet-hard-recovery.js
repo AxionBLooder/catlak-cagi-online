@@ -94,7 +94,7 @@ const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
 const coreSheetVisible=()=>{const m=main();return !!(m&&m.dataset.ccHardSheet!=='1'&&m.querySelector('[data-a="hp"][data-id]'))};
-const blankPlayerSurface=()=>{const m=main();if(!m)return true;return !ready()&&!coreSheetVisible()&&!m.querySelector('[data-cc-hard-sheet-retry]')};
+const blankPlayerSurface=()=>{const m=main();if(!m)return true;return !ready()&&!coreSheetVisible()&&!m.querySelector('[data-cc-hard-sheet-retry]')&&!m.querySelector('.cc-character-stack')};
 const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
 let sheetWantedUntil=0;
 const sheetActive=()=>isPlayer()&&(Date.now()<sheetWantedUntil||!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
@@ -129,7 +129,8 @@ function setRaceView(on){
 }
 const previousPreserve=window.__catlakShouldPreserveCurrentView;
 window.__catlakShouldPreserveCurrentView=function(){
-  if(sheetActive())return true;
+  const m=main();
+  if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true;
   try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
 };
 
@@ -611,7 +612,7 @@ window.addEventListener('catlak:player-fast-ready',()=>{
 window.addEventListener('catlak:data-refreshed',()=>{
   if(!sheetActive())return;
   if(main()?.dataset.ccHardSheet==='1'&&ready()){refreshStable('');return}
-  if(!coreSheetVisible()&&blankPlayerSurface())schedule(false,120);
+  schedule(false,100);
 });
 new MutationObserver(rs=>{
   if(!isPlayer())return;
@@ -646,6 +647,9 @@ setTimeout(()=>{
   ensureRaceNav();
   if(sheetActive()&&!ready())schedule(false,0);
 },260);
+window.addEventListener('pageshow',()=>{
+  if(sheetActive()&&!ready())setTimeout(()=>schedule(false,0),120);
+});
 realtime();
 window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();
