@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v31 -->
+<!-- clean-gm-runtime-v32 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -46,7 +46,7 @@
   })();
   </script>
 
-  <script src="./live-game-entry-guard.js?v=live-entry-v8"></script>
+  <script src="./live-game-entry-guard.js?v=live-entry-v9"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v7"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v4"></script>
@@ -91,13 +91,13 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v7','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v8','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
         }
         await loadParallel([
-          ['./player-sheet-bind-fix.js?v=player-bind-v3','player-bind'],
-          ['./player-sheet-runtime-v4.js?v=player-sheet-v5-clean','player-sheet'],
+          ['./player-sheet-bind-fix.js?v=player-bind-v4','player-bind'],
+          ['./player-sheet-runtime-v4.js?v=player-sheet-v6-stable','player-sheet'],
           ['./stat-roll-patch.js?v=player-sheet-v4c','stat-roll'],
           ['./item-system-patch.js?v=item-system-v4-route','items'],
           ['./player-sheet-support-runtime.js?v=player-support-v2c','player-support'],
