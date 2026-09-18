@@ -51,6 +51,7 @@
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v8-no-ghost"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
   <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
+  <script src="./app-action-stability.js?v=action-stability-v1"></script>
 
   <script>
   (function(){
@@ -91,7 +92,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v16-party-race-c','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v17-layout-race-rest','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -110,6 +111,7 @@
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
         ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
       ]);
+      await load('./battle-room-v3-patch.js?v=battle-v3-usability-v1','battle-room-v3');
     }
 
     async function loadGmCore(){
