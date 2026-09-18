@@ -4,6 +4,7 @@ if(window.__catlakGmUiPolishV6)return;
 window.__catlakGmUiPolishV6=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('gm-management','gm-ui-polish'))return;
 const inviteLinks=new Map();
 let managerOpen=false,busy=false,renderToken=0,navQueued=false,realtimeStarted=false,localActionUntil=0;
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
