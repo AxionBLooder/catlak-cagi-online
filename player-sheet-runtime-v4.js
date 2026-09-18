@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetRuntimeV5)return;
-window.__catlakPlayerSheetRuntimeV5=true;
+if(window.__catlakPlayerSheetRuntimeV6)return;
+window.__catlakPlayerSheetRuntimeV6=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
 const txt=e=>String(e?.textContent||'').trim();
@@ -54,8 +54,9 @@ function ensureRaceNav(){
  if(!b){b=document.createElement('button');b.type='button';b.dataset.psv4RaceNav='1';b.textContent='Irk Becerileri';const sheet=nav.querySelector('[data-tab="sheet"]');sheet?sheet.after(b):nav.prepend(b)}
  b.classList.toggle('on',raceOpen)
 }
-function apply(){scheduled=false;if(applying)return;applying=true;try{ensureRaceNav();const main=APP.querySelector('main');if(!main)return;if(isGM()||tab()!=='sheet'||raceOpen){main.classList.remove('psv4-sheet');return}main.classList.add('psv4-sheet');[...main.querySelectorAll('.cc-character-stack')].forEach(arrange)}finally{applying=false}}
-function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply)}
+function hardStable(main){return main?.dataset.ccHardSheet==='1'&&[...main.querySelectorAll('.cc-character-stack')].every(s=>s.dataset.psv4Ready==='1')}
+function apply(){scheduled=false;if(applying)return;applying=true;try{ensureRaceNav();const main=APP.querySelector('main');if(!main)return;if(isGM()||tab()!=='sheet'||raceOpen){main.classList.remove('psv4-sheet');return}main.classList.add('psv4-sheet');if(hardStable(main))return;[...main.querySelectorAll('.cc-character-stack')].forEach(arrange)}finally{applying=false}}
+function schedule(){if(scheduled)return;const main=APP.querySelector('main');if(hardStable(main))return;scheduled=true;requestAnimationFrame(apply)}
 async function editHp(el){
  const id=el.dataset.psv4Hp;if(!id)return;const m=txt(el).match(/(\d+)\s*\/\s*(\d+)/);if(!m)return;
  const cur=num(m[1]),max=num(m[2]),raw=prompt(`HP ${cur}/${max}\nDeğişim miktarını yaz. Örn: -5 veya +3`,'-1');if(raw==null)return;
@@ -89,7 +90,7 @@ async function renderRace(){
 function openRace(){if(isGM())return;raceOpen=true;ensureRaceNav();APP.querySelectorAll('.nav button.on').forEach(x=>{if(!x.hasAttribute('data-psv4-race-nav'))x.classList.remove('on')});renderRace()}
 function closeRace(){if(!raceOpen)return;raceOpen=false;raceGen++;ensureRaceNav()}
 document.addEventListener('click',e=>{const hp=e.target.closest?.('[data-psv4-hp]');if(hp){e.preventDefault();e.stopImmediatePropagation();editHp(hp);return}const race=e.target.closest?.('[data-psv4-race-nav]');if(race){e.preventDefault();e.stopImmediatePropagation();openRace();return}const nav=e.target.closest?.('#app .nav button[data-tab]');if(nav&&raceOpen)closeRace()},true);
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
+new MutationObserver(()=>{const main=APP.querySelector('main');if(hardStable(main))return;schedule()}).observe(APP,{childList:true,subtree:true});
 S.channel('psv4-race-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_species_powers'},()=>{if(raceOpen)renderRace()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(raceOpen)renderRace()}).subscribe();
 schedule();window.__catlakPlayerSheetTest={apply,arrange,openRace,editHp};
 })();
