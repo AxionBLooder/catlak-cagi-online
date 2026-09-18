@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV9)return;
-window.__catlakPlayerSheetHardRecoveryV9=true;
+if(window.__catlakPlayerSheetHardRecoveryV10)return;
+window.__catlakPlayerSheetHardRecoveryV10=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -41,6 +41,12 @@ const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const sheetActive=()=>isPlayer()&&!!sheetButton()?.classList.contains('on');
 const main=()=>APP.querySelector('main');
 const ready=()=>!!APP.querySelector('main section.hero [data-a="hp"][data-id]');
+const previousPreserve=window.__catlakShouldPreserveCurrentView;
+window.__catlakShouldPreserveCurrentView=function(){
+  const m=main();
+  if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true;
+  try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
+};
 
 function release(){
   document.documentElement.classList.remove('cc-player-critical-pending');
