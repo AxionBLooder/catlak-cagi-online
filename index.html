@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v42 -->
+<!-- clean-gm-runtime-v43 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -48,7 +48,7 @@
 
   <script src="./live-game-entry-guard.js?v=live-entry-v11-columns"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
-  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v7"></script>
+  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v8-no-ghost"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
   <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
 
@@ -91,7 +91,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v15-stable-actions','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v16-party-race','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -106,9 +106,9 @@
       await loadParallel([
         ['./presence-patch.js?v=player-bg-v4-single-owner','presence'],
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v4-single-owner','rooms'],
+        ['./room-system-patch.js?v=player-bg-v5-party-gate','rooms'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
-        ['./battle-party-membership-guard.js?v=player-bg-v4-single-owner','battle-party-guard']
+        ['./battle-party-membership-guard.js?v=player-bg-v5-party-only','battle-party-guard']
       ]);
     }
 
@@ -117,14 +117,14 @@
         ['./gm-tools-patch.js?v=clean-gm-tools-v3-fast','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
-        ['./party-room-stable-v2.js?v=party-room-clean-v5-fast','party-room-clean']
+        ['./party-room-stable-v2.js?v=party-room-clean-v6-party-source','party-room-clean']
       ]);
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v5-builder','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v9-columns','gm-live-compact']
       ]);
-      await load('./live-combat-center-loader.js?v=livecombat-loader-v7-fast','live-combat-loader');
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v8-party-library','live-combat-loader');
       await load('./gm-live-player-state.js?v=gm-live-player-state-v3','gm-live-player-state');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
@@ -140,9 +140,9 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-4-no-legacy-gm-room','rooms'],
+        ['./room-system-patch.js?v=recovery-5-party-gate','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./battle-party-membership-guard.js?v=battle-party-v2-safe-restore','battle-party-guard'],
+        ['./battle-party-membership-guard.js?v=battle-party-v3-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
     }
@@ -174,7 +174,7 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-14-no-player-realtime-reset';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-15-hard-projection-owner';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
