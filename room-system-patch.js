@@ -55,7 +55,8 @@ function ccrToast(x){
 function ccrNav(){return CCR_APP.querySelector('.nav')}
 function ccrBaseTab(){return ccrNav()?.querySelector('button.on[data-tab]')?.dataset.tab||''}
 function ccrSelectOnly(btn){const nav=ccrNav();if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));btn?.classList.add('on')}
-function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++}
+function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending')}
+function ccrCloseBattle(){ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');return true}
 
 function ccrEnsureHub(){
   const nav=ccrNav();if(!nav)return;
@@ -270,5 +271,5 @@ function ccrRealtimeRefresh(full=false){
 }
 new MutationObserver(ccrSchedule).observe(CCR_APP,{childList:true,subtree:true});
 if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrRealtimeRefresh(false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrRealtimeRefresh(false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrRealtimeRefresh(true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrRealtimeRefresh(true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrRealtimeRefresh(true)).subscribe();
-window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
+window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
 ccrEnsure();ccrRefreshPartyAccess();
