@@ -12,6 +12,8 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-desk-intro{display:none!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(320px,.95fr)!important;gap:16px!important;max-width:1220px!important;margin:0 auto!important;align-items:start!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1/-1!important;width:100%!important;margin:0!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>.cc-player-gm-note{grid-column:1/-1!important;width:100%!important;margin:0!important;box-sizing:border-box!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>.cc-player-gm-note{display:none!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{display:flex!important;flex-direction:column!important;gap:14px!important;min-width:0!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left{grid-column:1}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:2}
@@ -174,7 +176,7 @@ async function ownedRows(S,uid){
     }catch(_){}
   }
   try{
-    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),6500,'character owner query');
+    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).eq('play_status','active').order('created_at',{ascending:true}),6500,'character owner query');
     if(!r.error&&r.data?.length)return r.data;
   }catch(e){console.warn('CATLAK_CHARACTER_OWNER_QUERY',e?.message||e)}
   try{
@@ -212,7 +214,7 @@ async function extras(S,chars){
     safeRpc(S,'catlak_player_combat_snapshot',{}, {},4500),
     partyAllowed?safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,4500):Promise.resolve(null)
   ]);
-  return {inv,items,powers,paths,conditions,abilities,combat,partyVisual};
+  return {inv,items,powers,paths,conditions,abilities,combat,partyVisual,partyAllowed};
 }
 function derived(c,x){
   const stats={...(c.base_stats||{})};
@@ -306,13 +308,13 @@ function pathHtml(c,x){
   const key=c?.data?.special_path;if(!key)return'';
   const p=x.paths.find(p=>p.species_name===c.species_name&&String(p.path_key)===String(key));if(!p)return'';
   const fs=(p.data?.features||[]).filter(f=>num(f.level)<=num(c.level)).sort((a,b)=>num(a.level)-num(b.level));
-  return `<section class="card"><div class="section-title"><div><div class="eyebrow">ÖZEL YOL</div><h2>${esc(p.name)}</h2><p class="muted">${esc(p.data?.title||'')} ${p.data?.role?'• '+esc(p.data.role):''}</p></div></div><p>${esc(p.data?.summary||'')}</p>
+  return `<section class="card" data-cc-hard-path><div class="section-title"><div><div class="eyebrow">ÖZEL YOL</div><h2>${esc(p.name)}</h2><p class="muted">${esc(p.data?.title||'')} ${p.data?.role?'• '+esc(p.data.role):''}</p></div></div><p>${esc(p.data?.summary||'')}</p>
   <div class="grid">${fs.length?fs.map(f=>`<article class="power"><small>SEVİYE ${num(f.level)}</small><h3>${esc(f.name)}</h3><p>${esc(f.text||f.description||'')}</p></article>`).join(''):'<div class="empty">Henüz yol gücü açılmadı.</div>'}</div></section>`;
 }
 function vampHtml(c){
   if(String(c.species_name||'')!=='Vampir')return'';
   const max=3+(num(c.level)>=4?1:0)+(num(c.level)>=14?2:0),kp=Math.max(0,Math.min(max,num(c?.data?.vampire_kp??3)));
-  return `<section class="card vampire"><div class="section-title"><div><div class="eyebrow">VAMPİR • KIRMIZI PUANI</div><h2>KP ${kp}/${max}</h2></div><div class="actions"><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="-1">KP −</button><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="1">KP +</button></div></div></section>`;
+  return `<section class="card vampire" data-cc-hard-vampire><div class="section-title"><div><div class="eyebrow">VAMPİR • KIRMIZI PUANI</div><h2>KP ${kp}/${max}</h2></div><div class="actions"><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="-1">KP −</button><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="1">KP +</button></div></div></section>`;
 }
 function partyVisualHtml(c,x){
   const p=x?.partyVisual,allowed=c?.data?.cc_party_member===true&&p?.image_url;
@@ -371,10 +373,10 @@ function replaceStableSection(stack,fresh,selector){
   return false;
 }
 function stableSelectors(kinds){
-  if(kinds.has('all'))return ['section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]','[data-cc-hard-inventory]','[data-cc-hard-party-visual]'];
+  if(kinds.has('all'))return ['section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-path]','[data-cc-hard-vampire]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]','[data-cc-hard-inventory]','[data-cc-hard-party-visual]'];
   const out=new Set();
   const add=(...xs)=>xs.forEach(x=>out.add(x));
-  if(kinds.has('character'))add('section.hero','[data-cc-hard-party-visual]');
+  if(kinds.has('character'))add('section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-path]','[data-cc-hard-vampire]','[data-cc-hard-party-visual]');
   if(kinds.has('inventory'))add('section.hero','[data-cc-hard-stats]','[data-cc-hard-equipment]','[data-cc-hard-inventory]');
   if(kinds.has('visual'))add('[data-cc-hard-party-visual]');
   if(kinds.has('conditions'))add('[data-cc-hard-conditions]');
@@ -638,9 +640,12 @@ window.addEventListener('catlak:player-fast-ready',()=>{
   if(!sheetActive()||ready())return;
   setTimeout(()=>{if(sheetActive()&&!ready())schedule(false,0)},120);
 });
-window.addEventListener('catlak:data-refreshed',()=>{
+window.addEventListener('catlak:data-refreshed',e=>{
   if(!sheetActive())return;
-  if(main()?.dataset.ccHardSheet==='1'&&ready()){refreshStable('');return}
+  if(main()?.dataset.ccHardSheet==='1'&&ready()){
+    if(String(e?.detail?.source||'')==='core-fast')queueSheetSync('character');
+    return
+  }
   schedule(false,100);
 });
 new MutationObserver(rs=>{

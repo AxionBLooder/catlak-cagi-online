@@ -112,7 +112,7 @@ function ccHRenderPlayerNotes(){
   main.querySelectorAll('[data-cc-player-note-for]').forEach(el=>{const id=el.dataset.ccPlayerNoteFor;if(!ccHNotesCache.get(id))el.remove()});
   const heroes=[...main.querySelectorAll('section.hero')];
   for(const hero of heroes){
-    const id=hero.querySelector('[data-a="hp"][data-id]')?.dataset.id;
+    const id=hero.dataset.ccHardRecoveryHero||hero.querySelector('[data-a="hp"][data-id],[data-cc-hard-hp][data-id]')?.dataset.id;
     if(!id)continue;
     const note=ccHNotesCache.get(String(id));
     let card=main.querySelector(`[data-cc-player-note-for="${id}"]`);
