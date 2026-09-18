@@ -1,10 +1,10 @@
 (function(){
 'use strict';
-if(window.__catlakLiveGameEntryGuardV8)return;
-window.__catlakLiveGameEntryGuardV8=true;
+if(window.__catlakLiveGameEntryGuardV9)return;
+window.__catlakLiveGameEntryGuardV9=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
-let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0;
+let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0,liveStartedAt=0;
 const oldStyle=document.getElementById('cc-live-entry-guard-style');if(oldStyle)oldStyle.remove();
 const style=document.createElement('style');style.id='cc-live-entry-guard-style';style.textContent=`
 html.cc-live-entry-pending #app main{visibility:hidden!important}
@@ -45,8 +45,27 @@ function removeLiveHeading(){const main=APP.querySelector('main[data-cc-simple-l
 function combatExpected(){return !!window.__catlakLiveCombatCenter||!!document.querySelector('script[data-live-combat-center-runtime]')}
 function decorateLive(){const main=APP.querySelector('main');if(!isGM()||!gmActive()||!main||main.dataset.ccSimpleLive!=='1'||!main.querySelector('.cc-live-two'))return false;removeLiveHeading();const input=main.querySelector('#lcc-char-init');if(input){const label=input.closest('label');if(label)label.style.display='none';const toolbar=input.closest('.lcc-toolbar');if(toolbar&&!toolbar.querySelector('[data-cc-dex-init-note]')){const n=document.createElement('div');n.dataset.ccDexInitNote='1';n.textContent='Oyuncu inisiyatifi otomatik: d20 + DEX bonusu';toolbar.appendChild(n)}}if(combatExpected()&&!main.querySelector('[data-lcc-board]')){clearTimeout(combatKick);combatKick=setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},35);return false}main.dataset.ccLiveV7Ready='1';return true}
 function clearLivePending(){clearTimeout(liveFallback);liveFallback=0;if(liveRaf){cancelAnimationFrame(liveRaf);liveRaf=0}ROOT.classList.remove('cc-live-entry-pending')}
-function watchLive(){if(!ROOT.classList.contains('cc-live-entry-pending'))return;if(!isGM()||!gmActive()){clearLivePending();return}if(decorateLive()){requestAnimationFrame(()=>requestAnimationFrame(()=>{if(decorateLive())clearLivePending()}));return}liveRaf=requestAnimationFrame(watchLive)}
-function beginLive(){if(!isGM())return;clearTimeout(liveFallback);if(liveRaf)cancelAnimationFrame(liveRaf);APP.querySelector('main')?.removeAttribute('data-cc-live-v7-ready');ROOT.classList.add('cc-live-entry-pending');liveFallback=setTimeout(()=>{decorateLive();clearLivePending()},5000);liveRaf=requestAnimationFrame(watchLive)}
+function watchLive(){
+ if(!ROOT.classList.contains('cc-live-entry-pending'))return;
+ if(!isGM()){clearLivePending();return}
+ if(!gmActive()){
+   if(Date.now()-liveStartedAt<900){liveRaf=requestAnimationFrame(watchLive);return}
+   clearLivePending();return
+ }
+ if(decorateLive()){
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(decorateLive())clearLivePending()}));return
+ }
+ liveRaf=requestAnimationFrame(watchLive)
+}
+function beginLive(){
+ if(!isGM())return;
+ liveStartedAt=Date.now();
+ clearTimeout(liveFallback);if(liveRaf)cancelAnimationFrame(liveRaf);
+ APP.querySelector('main')?.removeAttribute('data-cc-live-v7-ready');
+ ROOT.classList.add('cc-live-entry-pending');
+ liveFallback=setTimeout(()=>{decorateLive();clearLivePending()},5000);
+ liveRaf=requestAnimationFrame(watchLive)
+}
 async function getDex(characterId){const S=window.__catlakSupabase;if(!S)throw new Error('Veri bağlantısı hazır değil.');const r=await S.from('catlak_characters').select('id,name,base_stats').eq('id',characterId).maybeSingle();if(r.error)throw r.error;if(!r.data)throw new Error('Karakter bulunamadı.');const dex=num(r.data.base_stats?.DEX);return{name:r.data.name||'Karakter',dex,mod:Math.floor((dex-10)/2)}}
 function rollDex(d){const die=1+Math.floor(Math.random()*20);return{die,total:die+d.mod}}
 async function addCharacterWithDex(){if(initiativeBusy)return;initiativeBusy=true;try{const S=window.__catlakSupabase,cid=APP.querySelector('#lcc-add-char')?.value;if(!S||!cid)throw new Error('Eklenecek oyuncu yok.');const d=await getDex(cid),r=rollDex(d),q=await S.rpc('catlak_gm_combat_add_character',{p_character_id:cid,p_initiative:r.total});if(q.error)throw q.error;toast(`${d.name} • İnisiyatif ${r.total} (d20 ${r.die} ${d.mod>=0?'+':'−'} ${Math.abs(d.mod)} DEX)`);setTimeout(()=>window.__catlakLiveCombatCenter?.render?.(),20)}catch(e){toast('İnisiyatif hesaplanamadı: '+(e?.message||String(e)))}finally{initiativeBusy=false}}
