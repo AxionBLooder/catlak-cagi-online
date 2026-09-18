@@ -110,7 +110,7 @@ window.addEventListener('click',e=>{
 },true);
 
 const toastObserver=new MutationObserver(ensureA11y);
-if(TOAST)toastObserver.observe(TOAST,{attributes:true,childList:true,characterData:true,subtree:true});
+if(TOAST)toastObserver.observe(TOAST,{childList:true,characterData:true,subtree:true});
 
 window.__catlakRuntimeExperience={
   state:()=>({online:navigator.onLine,realtime:realtimeStatus,hadConnectionIssue}),
