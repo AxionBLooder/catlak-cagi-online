@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v32-full-desk-batched' in html,
+            'sheet version':'player-hard-recovery-v32-full-desk-atomic' in html,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
