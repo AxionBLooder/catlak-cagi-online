@@ -258,6 +258,11 @@ function ccrBattleEnhancedReady(main){
 async function ccrBattleRender(force=false){
   if(!ccrBattleOpen||!ccrIsPlayer()||ccrBattleBusy)return;
   const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));if(!main)return;
+  // Once canonical BR3 owns the room, Room System may never replace the full <main>.
+  // All subsequent refreshes (including legacy force=true callers) are delegated.
+  if(main.dataset.ccrBattle==='1'&&main.querySelector('[data-br3-abilities]')&&window.__catlakBattleRoomV3Test?.render){
+    return await window.__catlakBattleRoomV3Test.render(!!force)
+  }
   if(!force&&main.dataset.ccrBattle==='1')return;
   const gen=++ccrBattleGen,oldY=window.scrollY;ccrBattleBusy=true;
   try{
