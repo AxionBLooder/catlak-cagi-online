@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v38-canonical-advanced' in html,
+            'sheet version':'player-hard-recovery-v39-core-fallback-advanced' in html,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
@@ -55,7 +55,8 @@ jobs:
             'guest query tolerant':"6500,'character owner query'" in sheet and "5000,'character dom handoff'" in sheet,
             'guest no auto retry':"setTimeout(()=>schedule(true,0),900)" not in sheet and "if(queued)return" in sheet,
             'waiting card stable':'data-cc-hard-wait-text' in sheet,
-            'canonical advanced owner':"if(sheetActive())return true" in sheet and '8500' in html,
+            'canonical advanced owner':"if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true" in sheet and '8500' in html,
+            'core visible until advanced':"schedule(false,100)" in sheet and "window.addEventListener('pageshow'" in sheet,
             'hp amount control':'data-cc-hard-hp-amount' in sheet and 'data-mode="damage"' in sheet and 'data-mode="heal"' in sheet,
             'weapon slots visible':'1. Yuvaya Ata' in sheet and '2. Yuvaya Ata' in sheet and 'ws-slot-controls' in sheet,
             'large roll result':'font-size:4.2rem' in sheet and 'setTimeout(()=>box.remove(),3600)' in sheet,

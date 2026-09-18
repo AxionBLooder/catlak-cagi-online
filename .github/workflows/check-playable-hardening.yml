@@ -117,7 +117,8 @@ jobs:
           ok('safety.battle.single.owner','window.__catlakBattleRoomV3Test?.render' in rooms and 'ccrBattleRender(true);return' in rooms)
           ok('safety.sheet.core.fallback','coreSheetVisible' in sheet and "window.addEventListener('catlak:player-fast-ready'" in sheet)
           ok('safety.sheet.guest.no.loop',"6500,'character owner query'" in sheet and "setTimeout(()=>schedule(true,0),900)" not in sheet and 'data-cc-hard-wait-text' in sheet)
-          ok('safety.sheet.canonical.advanced',"if(sheetActive())return true" in sheet and 'player-hard-recovery-v38-canonical-advanced' in html and '8500' in html)
+          ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v39-core-fallback-advanced' in html and '8500' in html)
+          ok('safety.sheet.core.until.advanced',"if(sheetActive()&&m?.dataset.ccHardSheet==='1'&&ready())return true" in sheet and "schedule(false,100)" in sheet)
           ok('safety.sheet.hp.amount','data-cc-hard-hp-amount' in sheet and 'data-mode="damage"' in sheet and 'data-mode="heal"' in sheet)
           ok('safety.sheet.slots','1. Yuvaya Ata' in sheet and '2. Yuvaya Ata' in sheet and 'ws-slot-controls' in sheet)
           ok('safety.sheet.roll.large','font-size:4.2rem' in sheet and 'setTimeout(()=>box.remove(),3600)' in sheet)
@@ -150,7 +151,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v38-canonical-advanced' in html)
+          ok('version.sheet','player-hard-recovery-v39-core-fallback-advanced' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
           ok('version.action','action-stability-v9-global-scroll' in html)
 
