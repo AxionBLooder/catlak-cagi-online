@@ -3,13 +3,7 @@ on:
   push:
     paths:
       - 'player-sheet-hard-recovery.js'
-      - 'player-sheet-runtime-v4.js'
-      - 'player-sheet-bind-fix.js'
-      - 'player-sheet-support-runtime.js'
-      - 'player-live-actions-patch.js'
-      - 'player-sheet-equipment-abilities-patch.js'
       - 'browser-app.js'
-      - 'live-game-entry-guard.js'
       - 'index.html'
       - '.github/workflows/check-player-sheet-stability.yml'
   workflow_dispatch:
@@ -20,22 +14,25 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
-      - name: Static checks
+      - name: Static single-owner checks
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          node --check player-sheet-runtime-v4.js
-          node --check player-sheet-bind-fix.js
-          grep -Fq 'player-hard-recovery-v10' index.html
-          grep -Fq 'player-sheet-v7-hard-owned' index.html
-          grep -Fq 'player-bind-v5' index.html
-          grep -Fq 'live-entry-v10' index.html
-          grep -Fq 'recovery-core-12-stable-player-sheet' index.html
+          node --check browser-app.js
+          grep -Fq 'player-hard-recovery-v11' index.html
+          grep -Fq 'recovery-core-13-single-player-owner' index.html
           grep -Fq 'g.dataset.ccDesk==="1"||g.dataset.ccHardSheet==="1"' browser-app.js
-          grep -Fq 'function hardSheetOwned()' live-game-entry-guard.js
+          grep -Fq 'source:"core-hard-sheet"' browser-app.js
+          ! grep -Fq "'player-bind'" index.html
+          ! grep -Fq "'player-sheet'" index.html
+          ! grep -Fq "'player-support'" index.html
+          ! grep -Fq "'player-actions'" index.html
+          ! grep -Fq "'player-equip'" index.html
+          ! grep -Fq "'weapon-slot'" index.html
+          ! grep -Fq "'stat-roll'" index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
-      - name: Verify stat card does not rerender or jump
+      - name: Verify no repeated player rerender
         run: |
           cat > player-sheet-stability-smoke.cjs <<'JS'
           const {chromium}=require('playwright-core');
@@ -84,40 +81,44 @@ jobs:
                 };
               });
               await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
-              await page.waitForSelector('[data-cc-hard-stat="DEX"]');
-              await page.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
-              await page.addScriptTag({path:path.resolve('player-sheet-bind-fix.js')});
-              await page.addScriptTag({path:path.resolve('player-sheet-support-runtime.js')});
-              await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
-              await page.addScriptTag({path:path.resolve('player-sheet-equipment-abilities-patch.js')});
-              await page.waitForTimeout(350);
+              await page.waitForSelector('main[data-cc-hard-sheet="1"] [data-cc-hard-stat="DEX"]');
               const before=await page.evaluate(()=>{
-                const el=document.querySelector('[data-cc-hard-stat="DEX"]');
-                window.__stableStat=el;
-                const inv=document.querySelector('[data-cc-hard-inventory]');
-                return {top:el.getBoundingClientRect().top,parent:el.closest('section')?.parentElement?.className||'',statTop:el.closest('section').getBoundingClientRect().top,invTop:inv?.getBoundingClientRect().top,title:document.querySelector('section.hero .eyebrow')?.textContent||'',loading:document.body.textContent.includes('Envanter yükleniyor'),psv4:document.querySelector('main')?.classList.contains('psv4-sheet')};
+                window.__stableMain=document.querySelector('main');
+                window.__stableStack=document.querySelector('.cc-character-stack');
+                window.__stableStat=document.querySelector('[data-cc-hard-stat="DEX"]');
+                return {
+                  top:window.__stableStat.getBoundingClientRect().top,
+                  text:document.body.innerText,
+                  owner:window.__stableMain.dataset.ccHardSheet
+                };
               });
+              for(let i=0;i<8;i++)await page.evaluate(()=>window.dispatchEvent(new CustomEvent('catlak:data-refreshed',{detail:{source:'test'}})));
+              await page.waitForTimeout(400);
+              const mid=await page.evaluate(()=>({
+                sameMain:window.__stableMain===document.querySelector('main'),
+                sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),
+                sameStat:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
+                connected:window.__stableStat.isConnected,
+                top:document.querySelector('[data-cc-hard-stat="DEX"]').getBoundingClientRect().top,
+                text:document.body.innerText
+              }));
               await page.locator('[data-cc-hard-stat="DEX"]').click();
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'));
-              await page.waitForFunction(()=>document.body.textContent.includes('DEX Testi'));
-              await page.waitForTimeout(450);
-              const afterRoll=await page.evaluate(()=>({
-                same:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
-                connected:window.__stableStat?.isConnected,
-                top:document.querySelector('[data-cc-hard-stat="DEX"]')?.getBoundingClientRect().top
+              await page.waitForFunction(()=>document.body.innerText.includes('DEX Testi'));
+              await page.waitForTimeout(300);
+              const after=await page.evaluate(()=>({
+                sameMain:window.__stableMain===document.querySelector('main'),
+                sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),
+                sameStat:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
+                connected:window.__stableStat.isConnected,
+                top:document.querySelector('[data-cc-hard-stat="DEX"]').getBoundingClientRect().top,
+                text:document.body.innerText
               }));
-              await page.evaluate(()=>{window.__db.catlak_characters[0].hp_current=19;window.__fire('catlak_characters')});
-              await page.waitForFunction(()=>document.querySelector('section.hero .vital b')?.textContent==='19/22');
-              await page.waitForTimeout(350);
-              const afterHp=await page.evaluate(()=>({
-                same:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
-                connected:window.__stableStat?.isConnected,
-                top:document.querySelector('[data-cc-hard-stat="DEX"]')?.getBoundingClientRect().top
-              }));
-              const drift1=Math.abs((afterRoll.top??0)-before.top),drift2=Math.abs((afterHp.top??0)-before.top);
-              if(before.loading||before.psv4||before.title.includes('CANLI KARAKTER KAĞIDI')||!(before.statTop<before.invTop)||!afterRoll.same||!afterRoll.connected||!afterHp.same||!afterHp.connected||drift1>2||drift2>2)
-                throw new Error('PLAYER_SHEET_JUMP '+JSON.stringify({before,afterRoll,afterHp,drift1,drift2}));
-              console.log('PLAYER_SHEET_STABLE_OK',JSON.stringify({before,afterRoll,afterHp}));
+              const bad=/Canlı Karakterlerim|Envanter yükleniyor|Zarlar yükleniyor/i;
+              const driftMid=Math.abs(mid.top-before.top),driftAfter=Math.abs(after.top-before.top);
+              if(before.owner!=='1'||bad.test(before.text)||bad.test(mid.text)||bad.test(after.text)||!mid.sameMain||!mid.sameStack||!mid.sameStat||!mid.connected||!after.sameMain||!after.sameStack||!after.sameStat||!after.connected||driftMid>2||driftAfter>2)
+                throw new Error('PLAYER_RESET_LOOP '+JSON.stringify({before,mid,after,driftMid,driftAfter}));
+              console.log('PLAYER_SHEET_SINGLE_OWNER_OK');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
