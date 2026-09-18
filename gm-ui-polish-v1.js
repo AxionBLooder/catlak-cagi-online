@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmUiPolishV2)return;
-window.__catlakGmUiPolishV2=true;
+if(window.__catlakGmUiPolishV3)return;
+window.__catlakGmUiPolishV3=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
 const inviteLinks=new Map();
@@ -15,13 +15,27 @@ const oldStyle=document.getElementById('cc-gm-ui-polish-style');if(oldStyle)oldS
 const s=document.createElement('style');s.id='cc-gm-ui-polish-style';s.textContent=`
 html body #app.gmc-gm .nav [data-tab="characters"],html body #app .nav [data-tab="characters"]{display:none!important}
 html body #app [data-gmc-centerbar] [data-gmc-route="characters"],html body #app [data-gm2-centerbar] [data-gm2-route="characters"]{display:none!important}
-#app .nav [data-cc-management-room]{display:inline-flex!important}
+#app .nav [data-gmc-open],#app .nav [data-cc-management-room]{display:inline-flex!important}
 #app main[data-cc-management-v2="1"]{max-width:1540px!important;margin:0 auto!important;padding:14px!important}
 #app .cc-mrv2-page{max-width:1500px;margin:0 auto}.cc-mrv2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.cc-mrv2-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#081522}.cc-mrv2-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.cc-mrv2-meta{font-size:.8rem;color:var(--muted);line-height:1.45}.cc-mrv2-pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:.68rem;white-space:nowrap}.cc-mrv2-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.cc-mrv2-actions button{padding:6px 8px;font-size:.72rem}.cc-mrv2-invite{margin-top:10px;padding:9px;border:1px solid #496781;border-radius:10px;background:#091827}.cc-mrv2-invite input{width:100%;margin-top:6px;box-sizing:border-box}.cc-mrv2-note textarea{min-height:66px}
 `;
 document.head.appendChild(s);
 function cleanupLegacy(){ROOT.classList.remove('cc-ext-management-pending');document.getElementById('glc-style-v2')?.remove();APP.querySelectorAll('[data-gmc-route="characters"],[data-gm2-route="characters"]').forEach(x=>x.style.display='none');const main=APP.querySelector('main');if(main&&!managerOpen){delete main.dataset.ccExternalManagement;delete main.dataset.ccManagementV2}}
-function ensureNav(){if(!isGM())return;const nav=APP.querySelector('.nav');if(!nav)return;let b=nav.querySelector('[data-cc-management-room]');nav.querySelectorAll('[data-cc-management-room]').forEach((x,i)=>{if(i)x.remove()});if(!b){b=document.createElement('button');b.type='button';b.dataset.ccManagementRoom='1';b.textContent='Yönetim Odası'}const party=nav.querySelector('[data-prh-manager]');if(party){if(party.nextElementSibling!==b)party.after(b)}else if(!b.isConnected){const gm=nav.querySelector('[data-gmc-open]');gm?gm.after(b):nav.prepend(b)}b.classList.toggle('on',managerOpen);const native=nav.querySelector('[data-tab="characters"]');if(native){native.hidden=true;native.setAttribute('aria-hidden','true');native.setAttribute('tabindex','-1')}cleanupLegacy()}
+function ensureNav(){if(!isGM())return;const nav=APP.querySelector('.nav');if(!nav)return;
+ let gm=nav.querySelector('[data-gmc-open]');
+ nav.querySelectorAll('[data-gmc-open]').forEach((x,i)=>{if(i)x.remove()});
+ if(!gm){gm=document.createElement('button');gm.type='button';gm.dataset.gmcOpen='1';gm.textContent='GM Merkezi';nav.prepend(gm)}
+ gm.hidden=false;gm.style.display='inline-flex';gm.removeAttribute('aria-hidden');gm.removeAttribute('tabindex');
+ let b=nav.querySelector('[data-cc-management-room]');
+ nav.querySelectorAll('[data-cc-management-room]').forEach((x,i)=>{if(i)x.remove()});
+ if(!b){b=document.createElement('button');b.type='button';b.dataset.ccManagementRoom='1';b.textContent='Yönetim Odası'}
+ const party=nav.querySelector('[data-prh-manager]');
+ if(nav.firstElementChild!==gm)nav.prepend(gm);
+ if(party){if(gm.nextElementSibling!==party)gm.after(party);if(party.nextElementSibling!==b)party.after(b)}
+ else if(gm.nextElementSibling!==b)gm.after(b);
+ b.classList.toggle('on',managerOpen);
+ const native=nav.querySelector('[data-tab="characters"]');if(native){native.hidden=true;native.style.display='none';native.setAttribute('aria-hidden','true');native.setAttribute('tabindex','-1')}
+ cleanupLegacy()}
 function closeForeign(){try{window.__catlakGmCleanRouter?.close?.()}catch(_){}try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){}try{window.__catlakGmTools?.close?.()}catch(_){}try{window.__catlakCampaignStateTest?.close?.()}catch(_){}try{window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.()}catch(_){}window.__catlakPartyRoomOwnsMain=false;APP.querySelector('[data-gmc-centerbar]')?.remove()}
 function activateManagement(){if(!isGM())return false;closeForeign();managerOpen=true;window.__catlakPreparedOwner=true;const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));ensureNav();nav?.querySelector('[data-cc-management-room]')?.classList.add('on');return true}
 function closeManagement(){managerOpen=false;renderToken++;APP.querySelector('.nav [data-cc-management-room]')?.classList.remove('on');const main=APP.querySelector('main');if(main){delete main.dataset.ccManagementV2;delete main.dataset.ccExternalManagement}ROOT.classList.remove('cc-ext-management-pending')}
