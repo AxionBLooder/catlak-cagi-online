@@ -1,16 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Restored GM Rooms
 on:
-  push:
-    paths:
-      - 'index.html'
-      - 'gm-hub-v2-patch.js'
-      - 'gm-campaign-state-patch.js'
-      - 'seal-character-controls-patch.js'
-      - 'live-combat-anchor-safety.js'
-      - 'live-combat-center-loader.js'
-      - 'live-combat-center-patch.js'
-      - 'party-eeliot-runtime-hotfix.js'
-      - '.github/workflows/check-restored-gm-rooms.yml'
   workflow_dispatch:
 
 jobs:
