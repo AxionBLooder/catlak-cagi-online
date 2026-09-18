@@ -11,8 +11,10 @@ const ccrNum=x=>Number(x||0);
 const ccrMod=x=>Math.floor((ccrNum(x)-10)/2);
 const ccrSigned=x=>ccrNum(x)>=0?'+'+ccrNum(x):String(ccrNum(x));
 const ccrManagedTabs=new Set(['characters','rules','account']);
+const CCR_PKEY='cc_party_member';
 let ccrHubOpen=false,ccrHubTab='characters',ccrProgrammatic=false;
 let ccrBattleOpen=false,ccrBattleBusy=false,ccrBattleGen=0,ccrScheduled=false;
+let ccrPartyKnown=false,ccrPartyMember=false,ccrPartyBusy=false;
 
 if(!document.querySelector('#ccr-style')){
   const s=document.createElement('style');
@@ -96,13 +98,39 @@ function ccrSwitchHub(tab){
 function ccrEnsureBattleNav(){
   const nav=ccrNav();if(!nav)return;
   let b=nav.querySelector('[data-ccr-battle]');
-  if(ccrIsPlayer()){
+  const allowed=ccrIsPlayer()&&ccrPartyKnown&&ccrPartyMember;
+  if(allowed){
     if(!b){
       b=document.createElement('button');b.type='button';b.dataset.ccrBattle='1';b.textContent='⚔ Savaş Odası';
-      const sheet=nav.querySelector('[data-tab="sheet"]');sheet?sheet.after(b):nav.prepend(b);
+      const race=nav.querySelector('[data-cc-hard-race-nav]'),sheet=nav.querySelector('[data-tab="sheet"]');
+      race?race.before(b):sheet?sheet.after(b):nav.prepend(b);
     }
     if(ccrBattleOpen)ccrSelectOnly(b);
-  }else b?.remove();
+  }else{
+    b?.remove();
+    if(ccrIsPlayer()&&!ccrPartyMember){
+      nav.querySelectorAll('[data-cc-map-tab],[data-cc-world-tab]').forEach(x=>x.remove());
+      CCR_APP.querySelectorAll('[data-cc-party-visual-card]').forEach(x=>x.remove());
+    }
+  }
+}
+async function ccrRefreshPartyAccess(){
+  if(!ccrIsPlayer()){ccrPartyKnown=true;ccrPartyMember=false;ccrEnsureBattleNav();return false}
+  if(ccrPartyBusy)return ccrPartyMember;ccrPartyBusy=true;
+  try{
+    const ses=(await CCR_S.auth.getSession()).data?.session,uid=ses?.user?.id;
+    if(!uid){ccrPartyKnown=true;ccrPartyMember=false;return false}
+    const r=await CCR_S.from('catlak_characters').select('id,data,play_status').eq('owner_id',uid).eq('play_status','active');
+    if(r.error)throw r.error;
+    ccrPartyMember=(r.data||[]).some(c=>c.data?.[CCR_PKEY]===true);ccrPartyKnown=true;
+    if(!ccrPartyMember&&ccrBattleOpen){
+      ccrCloseRooms();
+      const sheet=ccrNav()?.querySelector('[data-tab="sheet"]');ccrSelectOnly(sheet);
+      requestAnimationFrame(()=>{try{sheet?.click()}catch(_){}});
+    }
+    return ccrPartyMember;
+  }catch(e){console.warn('CCR_PARTY_ACCESS',e);ccrPartyKnown=true;ccrPartyMember=false;return false}
+  finally{ccrPartyBusy=false;ccrEnsureBattleNav()}
 }
 function ccrDerived(c,inv,items){
   const stats={...(c?.base_stats||{})};let ac=ccrNum(c?.base_ac),hp=ccrNum(c?.hp_max),speed=ccrNum(c?.base_speed),sets=[],bonus=0;
@@ -120,10 +148,14 @@ function ccrDerived(c,inv,items){
   return{stats,ac:ac+bonus,hp,speed};
 }
 async function ccrBattleData(){
+  if(!ccrPartyKnown)await ccrRefreshPartyAccess();
+  if(!ccrPartyMember)throw new Error('Savaş Odası yalnız aktif parti üyelerine açık.');
   const snap=await CCR_S.rpc('catlak_player_combat_snapshot');if(snap.error)throw snap.error;const s=snap.data||{};
-  const chars=await CCR_S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_speed,base_stats,data,play_status').eq('play_status','active').order('created_at',{ascending:true});
+  const ses=(await CCR_S.auth.getSession()).data?.session,uid=ses?.user?.id;if(!uid)throw new Error('Oyuncu oturumu bulunamadı.');
+  const chars=await CCR_S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_speed,base_stats,data,play_status').eq('owner_id',uid).eq('play_status','active').order('created_at',{ascending:true});
   if(chars.error)throw chars.error;
-  const c=(chars.data||[]).find(x=>x.id===s.character_id)||(chars.data||[])[0]||null;
+  const own=(chars.data||[]).filter(x=>x.data?.[CCR_PKEY]===true);
+  const c=own.find(x=>x.id===s.character_id)||own[0]||null;
   if(!c)return{snap:s,char:null,inv:[],items:[],conditions:[],rolls:[],derived:null};
   const [ir,kr,rr]=await Promise.all([
     CCR_S.from('catlak_inventory').select('id,character_id,item_id,quantity,equipped,equipped_slot,player_note').eq('character_id',c.id).order('granted_at',{ascending:true}),
@@ -204,6 +236,7 @@ async function ccrBattleRollStat(stat){
   ccrToast(`${r.data?.label||stat}: ${r.data?.total}`);await ccrBattleRender(true);
 }
 function ccrOpenBattle(){
+  if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
   ccrHubOpen=false;ccrBattleOpen=true;window.__catlakBattleRoomOpen=true;
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
   const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
@@ -231,6 +264,6 @@ document.addEventListener('click',e=>{
 
 function ccrRealtimeRefresh(){if(!ccrBattleOpen)return;const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true)}
 new MutationObserver(ccrSchedule).observe(CCR_APP,{childList:true,subtree:true});
-if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},ccrRealtimeRefresh).subscribe();
-window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh};
-ccrEnsure();
+if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess();ccrRealtimeRefresh()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},ccrRealtimeRefresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},ccrRealtimeRefresh).subscribe();
+window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
+ccrEnsure();ccrRefreshPartyAccess();
