@@ -4,7 +4,7 @@ if(!GMS_S||!GMS_APP)throw new Error('Çatlak Çağı GM eşya dağıtım katman�
 
 const gmsTxt=e=>String(e?.textContent||'').trim();
 const gmsIsGM=()=>gmsTxt(GMS_APP.querySelector('.role'))==='GM';
-const gmsTab=()=>GMS_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
+const gmsTab=()=>String(window.__catlakGmCleanRoute||GMS_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'');
 const gmsToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gmsToast.t);gmsToast.t=setTimeout(()=>t.classList.add('hidden'),4300)};
 const gmsN=x=>Number(x||0);
 let gmsBusy=false,gmsTimer=null,gmsSyncToken=0;
@@ -82,10 +82,10 @@ async function gmsSyncSlotControl(){
   if(!iid){select.value='';select.disabled=true;if(help)help.textContent='Önce verilecek kaydı seç.';return}
   try{
     const item=await gmsItem(iid);if(token!==gmsSyncToken)return;
-    const allowed=new Set(gmsAllowedSlots(item));
-    [...select.options].forEach(o=>o.disabled=!allowed.has(o.value));
-    if(!allowed.has(select.value))select.value='';
-    select.disabled=allowed.size<=1;
+    const allowed=gmsAllowedSlots(item),keep=allowed.includes(select.value)?select.value:'';
+    select.innerHTML=allowed.map(v=>`<option value="${v}">${gmsSlotLabel(v)}</option>`).join('');
+    select.value=keep;
+    select.disabled=false;
     if(help)help.textContent=gmsSlotHelp(item);
   }catch(e){select.value='';select.disabled=true;if(help)help.textContent='Kayıt türü okunamadı.'}
 }
