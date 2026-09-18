@@ -410,24 +410,23 @@ function br3RepairIfNeeded(){
   const main=BR3_APP.querySelector('main');
   const active=main?.dataset.br3CombatActive==='1';if(!main?.querySelector('[data-br3-abilities]')||(active&&(!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]'))))br3Soon(false,0);
 }
-window.addEventListener('focus',br3RepairIfNeeded);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')br3RepairIfNeeded()});
+window.addEventListener('focus',()=>{br3RepairIfNeeded();br3VerifyCombatState()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){br3RepairIfNeeded();br3VerifyCombatState()}});
 setTimeout(()=>{if(br3BattleView())br3Soon(true,0)},80);
 window.addEventListener('catlak:player-fast-ready',()=>{
   const run=()=>{if(!br3BattleView())br3PreloadData()};
   if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1200});else setTimeout(run,180);
 });
-let br3HeartbeatBusy=false;
-async function br3Heartbeat(){
-  if(br3HeartbeatBusy||!br3BattleView()||document.visibilityState!=='visible'||br3ActionBusy||br3InteractionLocked())return;
-  br3HeartbeatBusy=true;
+let br3StateCheckBusy=false;
+async function br3VerifyCombatState(){
+  if(br3StateCheckBusy||!br3BattleView()||document.visibilityState!=='visible'||br3ActionBusy||br3InteractionLocked())return;
+  br3StateCheckBusy=true;
   try{
     const r=await BR3_S.rpc('catlak_player_combat_snapshot');if(r.error)return;
     const active=!!r.data?.active,last=!!br3LastSnap?.active;
     if(active!==last){br3Preload=null;br3Sig='';br3Soon(true,0)}
   }catch(_){}
-  finally{br3HeartbeatBusy=false}
+  finally{br3StateCheckBusy=false}
 }
-setInterval(br3Heartbeat,3000);
-window.addEventListener('catlak:realtime-status',e=>{if(String(e.detail?.status||'').toUpperCase()==='SUBSCRIBED'&&br3BattleView())br3Soon(true,0)});
+window.addEventListener('catlak:realtime-status',e=>{if(String(e.detail?.status||'').toUpperCase()==='SUBSCRIBED'&&br3BattleView()){br3Soon(true,0);setTimeout(br3VerifyCombatState,120)}});
 window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,preload:br3PreloadData,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
