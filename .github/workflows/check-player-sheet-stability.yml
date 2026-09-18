@@ -50,8 +50,8 @@ jobs:
             'battle route owner':'closeBattle:ccrCloseBattle' in rooms,
             'battle atomic transition':"begin?.('player-battle')" in rooms and 'ccrQueueRealtime' in rooms,
             'battle duplicate realtime removed':"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle,
-  'sheet fail-open core':'const coreX=' in sheet and 'CATLAK_PLAYER_SHEET_HYDRATE' in sheet,
-  'battle fixed geometry':'ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle,
+            'sheet fail-open core':'const coreX=' in sheet and 'CATLAK_PLAYER_SHEET_HYDRATE' in sheet,
+            'battle fixed geometry':'ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle,
           }
           bad=[name for name,ok in checks.items() if not ok]
           if bad: raise SystemExit('PLAYER_STABILITY_FAIL: '+', '.join(bad))
