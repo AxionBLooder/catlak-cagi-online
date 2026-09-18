@@ -34,7 +34,7 @@ function plaClaimInventory(){
   if(!plaIsSheet())return;
   PLA_APP.querySelectorAll('main .cc-character-stack section.card').forEach(sec=>{
     if(!plaIsInventory(sec))return;
-    const e=sec.querySelector(':scope > .eyebrow');if(e)e.textContent='ENVANTER';
+    const e=sec.querySelector(':scope > .eyebrow');if(e&&plaTxt(e)!=='ENVANTER')e.textContent='ENVANTER';
     const h=sec.querySelector(':scope > h2');if(h&&/silah\s*[•·-]\s*zırh\s*[•·-]\s*eşya/i.test(plaTxt(h)))h.remove();
     sec.dataset.iwPlayerInventory='1';sec.dataset.plaInventoryOwner='1';
   });
@@ -45,7 +45,7 @@ function plaStaticStats(){
     if(plaEyebrow(sec)!=='D20 TESTLERİ'&&!sec.classList.contains('ps-stat-card')&&!sec.hasAttribute('data-cc-hard-stats'))return;
     sec.classList.add('pla-static-stats');
     const eye=sec.querySelector(':scope > .eyebrow,.section-title .eyebrow');if(eye&&/D20 TESTLERİ/i.test(plaTxt(eye)))eye.remove();
-    const h=sec.querySelector('.section-title h2, :scope > h2');if(h)h.textContent='Statlar';
+    const h=sec.querySelector('.section-title h2, :scope > h2');if(h&&plaTxt(h)!=='Statlar')h.textContent='Statlar';
     sec.querySelectorAll('.stat').forEach(b=>{
       b.classList.remove('static');b.removeAttribute('aria-disabled');b.tabIndex=0;
       const sm=b.querySelector('small');if(sm){const t=plaTxt(sm).replace(/\s*•\s*d20(?:\s*at)?\s*$/i,'').trim();if(sm.textContent!==t)sm.textContent=t}
