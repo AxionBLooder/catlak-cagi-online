@@ -111,8 +111,15 @@ document.addEventListener('click',e=>{
   crgRunAction(el);
 },true);
 
-new MutationObserver(crgSchedule).observe(CRG_APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+  if(!crgIsGM())return;
+  const nav=CRG_APP.querySelector('.nav');
+  const relevant=rs.some(r=>{
+    if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+    return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.nav,.role')||n.querySelector?.('.nav,.role')));
+  });
+  if(relevant)crgSchedule();
+}).observe(CRG_APP,{childList:true,subtree:true});
 crgOrderNav();
-setTimeout(crgOrderNav,250);
-setTimeout(crgOrderNav,900);
+setTimeout(crgOrderNav,300);
 window.__catlakRoomGuardTest={orderNav:crgOrderNav,plan:[...CRG_NAV_PLAN],runAction:crgRunAction,battleSuppressed:()=>0};
