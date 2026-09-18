@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV12)return;
-window.__catlakPlayerSheetHardRecoveryV12=true;
+if(window.__catlakPlayerSheetHardRecoveryV13)return;
+window.__catlakPlayerSheetHardRecoveryV13=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -9,24 +9,31 @@ APP.classList.add('cc-player-hard-active');
 if(!document.getElementById('cc-player-hard-ui-style')){
   const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
   #app.cc-player-hard-active main .cc-desk-intro{display:none!important}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr)!important;gap:14px!important;max-width:1180px!important;margin:0 auto!important;align-items:start!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(320px,.95fr)!important;gap:16px!important;max-width:1220px!important;margin:0 auto!important;align-items:start!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1/-1!important;width:100%!important;margin:0!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{display:flex!important;flex-direction:column!important;gap:14px!important;min-width:0!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left{grid-column:1}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:2}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left>section,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right>section{width:100%!important;margin:0!important}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-stats]{order:20}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-inventory]{order:30}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-rolls]{order:40}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-left>section,#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-hard-right>section{width:100%!important;margin:0!important;box-sizing:border-box!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-stats]{order:10}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-inventory]{order:20}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-rolls]{order:30}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-equipment]{order:10}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-conditions]{order:20}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{order:30}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-hard-race]{order:40}
-  @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}}
   #app.cc-player-hard-active [data-cc-hard-stats] .eyebrow{display:none!important}
   #app.cc-player-hard-active [data-cc-hard-stats] .stat{cursor:pointer!important;pointer-events:auto!important}
-  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
-  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot:last-child{border-bottom:0}
-  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot b{color:var(--gold)}
+  #app.cc-player-hard-active [data-cc-hard-equipment]{position:sticky!important;top:12px!important;overflow:hidden!important}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-deck{display:grid;gap:9px;margin-top:10px}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid!important;grid-template-columns:58px minmax(0,1fr)!important;gap:11px!important;align-items:center!important;padding:10px!important;border:1px solid var(--line)!important;border-radius:10px!important;background:linear-gradient(135deg,rgba(12,29,43,.94),rgba(8,18,29,.94))!important}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot.is-filled{border-color:#4c708a!important;box-shadow:inset 0 0 0 1px rgba(104,187,230,.07)}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-mark{display:grid;place-items:center;height:42px;border:1px solid #36536e;border-radius:8px;color:var(--gold);font-size:.68rem;font-weight:900;letter-spacing:.08em;background:#091724}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy{min-width:0}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy b{display:block;color:#f2d284;font-size:.76rem;letter-spacing:.04em}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span.muted{color:var(--muted)}
+  @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}}
   `;document.head.appendChild(st)
 }
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
@@ -128,9 +135,12 @@ function inventoryHtml(c,x){
   const rows=x.inv.filter(r=>String(r.character_id)===String(c.id)).map(r=>({...r,it:itemMap.get(String(r.item_id))})).filter(r=>r.it);
   if(!rows.length)return '<div class="empty">Envanter boş.</div>';
   return '<div class="grid">'+rows.map(r=>{
-    const i=r.it,weapon=i.item_type==='weapon',armor=i.item_type==='armor',manual=weapon&&!i.damage_formula;
+    const i=r.it,weapon=i.item_type==='weapon',armor=i.item_type==='armor',accessory=i.item_type==='item'&&String(i.effects?.item_mode||'')==='accessory',manual=weapon&&!i.damage_formula;
     const mainOn=!!r.equipped&&String(r.equipped_slot||'')==='main_weapon';
     const offOn=!!r.equipped&&String(r.equipped_slot||'')==='off_weapon';
+    const armorOn=!!r.equipped&&String(r.equipped_slot||'')==='armor';
+    const acc1On=!!r.equipped&&String(r.equipped_slot||'')==='accessory_1';
+    const acc2On=!!r.equipped&&String(r.equipped_slot||'')==='accessory_2';
     return `<article class="item iw-player-item ${r.equipped?'on':''}" data-pla-inv-row="${esc(r.id)}">
       <span class="tag">${weapon?'SİLAH':armor?'ZIRH':'EŞYA'}</span>
       <h3>${esc(i.name||'Eşya')} ${num(r.quantity)>1?'×'+num(r.quantity):''}</h3>
@@ -141,10 +151,9 @@ function inventoryHtml(c,x){
           <button type="button" class="${mainOn?'ws-active':''}" data-ws-slot="main_weapon">${mainOn?'✓ 1. Yuvaya Atandı':'1. Yuvaya Ata'}</button>
           <button type="button" class="${offOn?'ws-active':''}" data-ws-slot="off_weapon">${offOn?'✓ 2. Yuvaya Atandı':'2. Yuvaya Ata'}</button>
         </div>
-        <button type="button" data-a="equip" data-cc-hard-equip="1" data-pla-equip-kind="weapon" data-id="${esc(r.id)}" data-v="1">Kuşan</button>
-        <button type="button" data-ws-remove="${esc(r.id)}">Çıkar</button>
+        <button type="button" data-ws-remove="${esc(r.id)}">Yuvadan Çıkar</button>
         <button type="button" data-a="weapon" data-cc-hard-weapon="attack" data-id="${esc(r.id)}" data-k="attack">Saldırı At</button>
-        <button type="button" data-a="weapon" data-cc-hard-weapon="damage" data-id="${esc(r.id)}" data-k="damage">${manual?'Hasar • DM Kararı':'Hasar At'}</button>`:armor?`<button type="button" data-a="equip" data-cc-hard-equip="1" data-id="${esc(r.id)}" data-v="${r.equipped?'0':'1'}">${r.equipped?'Çıkar':'Kuşan'}</button>`:''}
+        <button type="button" data-a="weapon" data-cc-hard-weapon="damage" data-id="${esc(r.id)}" data-k="damage">${manual?'Hasar • DM Kararı':'Hasar At'}</button>`:armor?`<div class="ws-slot-controls" data-ws-controls="1"><button type="button" class="${armorOn?'ws-active':''}" data-ws-slot="armor">${armorOn?'✓ Zırha Takıldı':'Zırha Tak'}</button>${armorOn?`<button type="button" data-ws-remove="${esc(r.id)}">Yuvadan Çıkar</button>`:''}</div>`:accessory?`<div class="ws-slot-controls" data-ws-controls="1"><button type="button" class="${acc1On?'ws-active':''}" data-ws-slot="accessory_1">${acc1On?'✓ Aksesuar 1':'Aksesuar 1'}</button><button type="button" class="${acc2On?'ws-active':''}" data-ws-slot="accessory_2">${acc2On?'✓ Aksesuar 2':'Aksesuar 2'}</button>${(acc1On||acc2On)?`<button type="button" data-ws-remove="${esc(r.id)}">Yuvadan Çıkar</button>`:''}</div>`:''}
       </div>
     </article>`;
   }).join('')+'</div>';
@@ -220,15 +229,17 @@ function vampHtml(c){
 function equipmentHtml(c,x){
   const itemMap=new Map((x.items||[]).map(i=>[String(i.id),i]));
   const rows=(x.inv||[]).filter(r=>String(r.character_id)===String(c.id)&&r.equipped);
-  const slot=(key)=>{const hit=rows.find(r=>String(r.equipped_slot||'')===key),it=hit&&itemMap.get(String(hit.item_id));return it?.name||'Boş'};
+  const slot=(key)=>{const hit=rows.find(r=>String(r.equipped_slot||'')===key),it=hit&&itemMap.get(String(hit.item_id));return {name:it?.name||'Boş',filled:!!it}};
+  const row=(key,label,mark)=>{const v=slot(key);return `<div class="gmt-slot ${v.filled?'is-filled':''}" data-gmt-slot="${key}"><span class="cc-slot-mark">${mark}</span><div class="cc-slot-copy"><b>${label}</b><span class="${v.filled?'':'muted'}">${esc(v.name)}</span></div></div>`};
   return `<section class="card gmt-player-panel" data-gmt-player-panel="${esc(c.id)}" data-cc-hard-equipment>
-    <div class="gmt-player-two"><div data-gmt-equip-pane><div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Silah Yuvaları</h2><div data-pssr-slots>
-      <div class="gmt-slot" data-gmt-slot="main_weapon"><b>1. Silah</b><span class="${slot('main_weapon')==='Boş'?'muted':''}">${esc(slot('main_weapon'))}</span></div>
-      <div class="gmt-slot" data-gmt-slot="off_weapon"><b>2. Silah</b><span class="${slot('off_weapon')==='Boş'?'muted':''}">${esc(slot('off_weapon'))}</span></div>
-      <div class="gmt-slot" data-gmt-slot="armor"><b>Zırh</b><span class="${slot('armor')==='Boş'?'muted':''}">${esc(slot('armor'))}</span></div>
-      <div class="gmt-slot" data-gmt-slot="accessory_1"><b>Aksesuar 1</b><span class="${slot('accessory_1')==='Boş'?'muted':''}">${esc(slot('accessory_1'))}</span></div>
-      <div class="gmt-slot" data-gmt-slot="accessory_2"><b>Aksesuar 2</b><span class="${slot('accessory_2')==='Boş'?'muted':''}">${esc(slot('accessory_2'))}</span></div>
-    </div></div></div>
+    <div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Slotlar</h2><p class="muted">Envanterdeki ekipmanı uygun yuvaya atayabilirsin.</p>
+    <div class="cc-slot-deck" data-pssr-slots>
+      ${row('main_weapon','1. Silah','I')}
+      ${row('off_weapon','2. Silah','II')}
+      ${row('armor','Zırh','ZR')}
+      ${row('accessory_1','Aksesuar 1','A1')}
+      ${row('accessory_2','Aksesuar 2','A2')}
+    </div>
   </section>`;
 }
 function charHtml(raw,x){
@@ -345,10 +356,11 @@ async function hardEquip(btn){
   });
 }
 async function hardSlot(btn){
-  const card=btn.closest('.iw-player-item[data-pla-inv-row]'),id=card?.dataset.plaInvRow,slot=btn.dataset.wsSlot||null;if(!id)return;
+  const card=btn.closest('.iw-player-item[data-pla-inv-row]'),id=btn.dataset.wsRemove||card?.dataset.plaInvRow,slot=btn.hasAttribute('data-ws-remove')?null:(btn.dataset.wsSlot||null);if(!id)return;
   return withAction('slot:'+id,btn,async()=>{
     const S=await getRuntime(),r=await S.rpc('catlak_set_equipped_slot',{p_inventory_id:id,p_slot:slot});if(r.error)throw r.error;
-    toast(slot==='main_weapon'?'Silah 1. yuvaya atandı.':slot==='off_weapon'?'Silah 2. yuvaya atandı.':'Silah çıkarıldı.');
+    const label=slot==='main_weapon'?'1. Silah':slot==='off_weapon'?'2. Silah':slot==='armor'?'Zırh':slot==='accessory_1'?'Aksesuar 1':slot==='accessory_2'?'Aksesuar 2':'Envanter';
+    toast(slot?label+' yuvasına takıldı.':'Eşya yuvadan çıkarıldı.');
     setTimeout(()=>refreshStable('inventory'),50);
   });
 }
@@ -425,7 +437,7 @@ document.addEventListener('click',e=>{
     const stat=e.target.closest?.('[data-cc-hard-stat]');if(stat){e.preventDefault();e.stopImmediatePropagation();hardStat(stat);return}
     const weapon=e.target.closest?.('[data-cc-hard-weapon][data-id]');if(weapon){e.preventDefault();e.stopImmediatePropagation();hardWeapon(weapon);return}
     const equip=e.target.closest?.('[data-cc-hard-equip][data-id]');if(equip){e.preventDefault();e.stopImmediatePropagation();hardEquip(equip);return}
-    const slot=e.target.closest?.('[data-ws-slot]');if(slot){e.preventDefault();e.stopImmediatePropagation();hardSlot(slot);return}
+    const slot=e.target.closest?.('[data-ws-slot],[data-ws-remove]');if(slot){e.preventDefault();e.stopImmediatePropagation();hardSlot(slot);return}
     const vkp=e.target.closest?.('[data-cc-hard-vkp][data-id]');if(vkp){e.preventDefault();e.stopImmediatePropagation();hardVkp(vkp);return}
     const ability=e.target.closest?.('[data-cc-hard-ability]');if(ability){e.preventDefault();e.stopImmediatePropagation();hardAbility(ability);return}
   }
