@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetBindFixV4)return;
-window.__catlakPlayerSheetBindFixV4=true;
+if(window.__catlakPlayerSheetBindFixV5)return;
+window.__catlakPlayerSheetBindFixV5=true;
 const APP=document.getElementById('app');if(!APP)return;
 let busy=false,queued=false,lastKick=0,realtimeStarted=false;
 const txt=e=>String(e?.textContent||'').trim();
@@ -15,7 +15,11 @@ const sheetActive=()=>isPlayer()&&!!sheetButton()?.classList.contains('on');
 const sheetReady=()=>!!APP.querySelector('main .cc-character-stack > section.hero');
 const oldPreserve=window.__catlakShouldPreserveCurrentView;
 window.__catlakShouldPreserveCurrentView=function(){
- if(sheetActive())return false;
+ if(sheetActive()){
+   const m=APP.querySelector('main');
+   if(m?.dataset.ccHardSheet==='1'&&sheetReady())return true;
+   return false;
+ }
  try{return typeof oldPreserve==='function'?!!oldPreserve():false}catch(_){return false}
 };
 function clearStaleDesk(){
