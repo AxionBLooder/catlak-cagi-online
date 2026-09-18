@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmViewStabilityV1)return;
-window.__catlakGmViewStabilityV1=true;
+if(window.__catlakGmViewStabilityV2)return;
+window.__catlakGmViewStabilityV2=true;
 const APP=document.getElementById('app');
 if(!APP)return;
 const ROOT=document.documentElement;
@@ -34,35 +34,7 @@ window.__catlakShouldPreserveCurrentView=function(){
 };
 
 const old=document.getElementById('cc-gm-view-stability-style');if(old)old.remove();
-const style=document.createElement('style');style.id='cc-gm-view-stability-style';style.textContent=`
-html.cc-gm-nav-transition body #app main{visibility:hidden!important}
-html.cc-gm-nav-transition body #app{min-height:calc(100vh - 100px)}
-`;
-document.head.appendChild(style);
-
-function finish(token=navToken){
-  if(token!==navToken)return;
-  clearTimeout(clearTimer);cancelAnimationFrame(raf1);cancelAnimationFrame(raf2);
-  raf1=requestAnimationFrame(()=>{raf2=requestAnimationFrame(()=>{if(token===navToken)ROOT.classList.remove('cc-gm-nav-transition')})});
-}
-function begin(){
-  if(!isGM())return;
-  const token=++navToken;
-  ROOT.classList.add('cc-gm-nav-transition');
-  clearTimeout(clearTimer);
-  clearTimer=setTimeout(()=>finish(token),280);
-}
-window.addEventListener('pointerdown',e=>{
-  if(e.button!=null&&e.button!==0)return;
-  const target=e.target?.closest?.('#app .nav button,[data-gmc-route]');
-  if(target&&isGM())begin();
-},true);
-new MutationObserver(rs=>{
-  if(!ROOT.classList.contains('cc-gm-nav-transition'))return;
-  const main=APP.querySelector('main');
-  if(!main)return;
-  if(rs.some(r=>r.type==='childList'&&(r.target===main||main.contains(r.target))))finish(navToken);
-}).observe(APP,{childList:true,subtree:true});
-
+function finish(){ROOT.classList.remove('cc-gm-nav-transition')}
+function begin(){finish()}
 window.__catlakGmViewStability={begin,finish,preserve:customOwnsMain};
 })();
