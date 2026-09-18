@@ -38,15 +38,12 @@ function gmtRange(r){return r.min_roll===r.max_roll?String(r.min_roll):`${r.min_
 function gmtRuleText(rows,key){return rows.filter(r=>r.table_key===key).sort((a,b)=>a.sort_order-b.sort_order||a.min_roll-b.min_roll).map(r=>`${gmtRange(r)} ${r.outcome}`).join(' · ')}
 
 async function gmtLoad(sub=gmtSub,force=false){
-  const key=(sub==='events'||sub==='logs')?sub:'combat';
+  const key=sub==='events'?'events':'combat';
   if(!force&&gmtDataCache[key]&&Date.now()-gmtDataAt[key]<GMT_CACHE_MS)return gmtDataCache[key];
   const base={state:{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:[],chars:[],conditions:[],rules:[],logs:[]};
   if(key==='events'){
     const er=await GMT_S.from('catlak_event_rules').select('*').order('table_key',{ascending:true}).order('sort_order',{ascending:true});
     if(er.error)throw er.error;base.rules=er.data||[];gmtRuleCache=base.rules;gmtRuleAt=Date.now();
-  }else if(key==='logs'){
-    const lr=await GMT_S.from('catlak_session_log').select('*').order('created_at',{ascending:false}).limit(120);
-    if(lr.error)throw lr.error;base.logs=lr.data||[];
   }else{
     const [sr,br,cr,kr]=await Promise.all([
       GMT_S.from('catlak_combat_state').select('*').eq('id',1).maybeSingle(),
@@ -74,7 +71,7 @@ function gmtEventsHtml(d){
 }
 function gmtLogsHtml(d){return `<div class="gmt-grid"><section class="card"><div class="eyebrow">OTURUM GÜNLÜĞÜ</div><h2>GM Kayıt Defteri</h2><p class="muted">Savaş, tur, durum etkileri ve olay zarları otomatik kaydolur. İstersen kendi notunu da ekleyebilirsin.</p><label>Oturum Notu<textarea id="gmt-log-note" placeholder="Örn. Parti eski kulede büyücünün mührünü kırdı."></textarea></label><div class="actions"><button type="button" class="primary" data-gmt-log-add>Not Ekle</button><button type="button" class="danger" data-gmt-log-clear>Günlüğü Temizle</button></div></section><section class="card"><div class="eyebrow">SON KAYITLAR</div>${d.logs.length?d.logs.map(x=>`<div class="gmt-log"><b>${gmtH(x.kind.toUpperCase())}</b><div>${gmtH(x.message)}</div><time>${gmtTime(x.created_at)}</time></div>`).join(''):'<div class="muted">Henüz kayıt yok.</div>'}</section></div>`}
 
-function gmtValidSub(x){return x==='combat'||x==='events'||x==='logs'}
+function gmtValidSub(x){return x==='combat'||x==='events'}
 function gmtOpenSub(sub='combat'){
   if(!gmtIsGM()||!gmtValidSub(sub))return false;
   gmtOpen=true;gmtSub=sub;gmtGen++;window.__catlakGmToolsOpen=true;window.__catlakGmHubOwnsMain=false;gmtSetNavOn();
@@ -92,7 +89,7 @@ async function gmtRender(force=false){
     const d=await gmtLoad(sub,force);
     if(!gmtOpen||gen!==gmtGen||gmtSub!==sub||window.__catlakGmHubOwnsMain===true||GMT_APP.querySelector('main')!==main)return;
     gmtSetNavOn();
-    main.innerHTML=`<div class="gmt-shell"><section class="card" data-gmt-legacy-header hidden><div class="eyebrow">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class="gmt-tabs"><button type="button" class="${sub==='combat'?'on':''}" data-gmt-sub="combat">Savaş & Durumlar</button><button type="button" class="${sub==='events'?'on':''}" data-gmt-sub="events">Olay Atölyesi</button><button type="button" class="${sub==='logs'?'on':''}" data-gmt-sub="logs">Oturum Günlüğü</button></div></section>${sub==='combat'?gmtCombatHtml(d):sub==='events'?gmtEventsHtml(d):gmtLogsHtml(d)}</div>`;
+    main.innerHTML=`<div class="gmt-shell"><section class="card" data-gmt-legacy-header hidden><div class="eyebrow">GM • GÜVENLİ ARAÇLAR</div><h1>Oyun Yönetimi</h1><div class="gmt-tabs"><button type="button" class="${sub==='combat'?'on':''}" data-gmt-sub="combat">Savaş & Durumlar</button><button type="button" class="${sub==='events'?'on':''}" data-gmt-sub="events">Olay Atölyesi</button></div></section>${sub==='combat'?gmtCombatHtml(d):gmtEventsHtml(d)}</div>`;
     main.dataset.gmtTools='1';main.dataset.gmtSub=sub;
   }catch(e){gmtToast('GM Araçları yüklenemedi: '+(e?.message||String(e)))}finally{
     gmtBusy=false;
