@@ -59,7 +59,7 @@ jobs:
               if not cond: failures.append(name)
 
           # 1. Single renderer / screen ownership
-          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV30' in sheet)
+          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV31' in sheet)
           ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
           ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
           ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
@@ -99,6 +99,8 @@ jobs:
           ok('player.sheet.cache','cachedSheetHtml' in sheet)
           ok('player.race.left','[data-cc-hard-race]{display:block!important;grid-column:1!important;grid-row:1!important;justify-self:stretch!important' in sheet)
           ok('player.abilities.right','[data-cc-hard-abilities]{display:block!important;grid-column:2!important;grid-row:1!important;justify-self:stretch!important' in sheet)
+          ok('player.race.full.width','main.cc-hard-race-view[data-cc-hard-sheet="1"]{width:100%!important;max-width:none!important' in sheet)
+          ok('player.race.no.shell','border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important' in sheet)
           ok('player.single.roll',"showRollFlash(cid,roll);\n    toast(" not in sheet)
           ok('player.battle.preload','br3PreloadData' in battle)
 
@@ -121,7 +123,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v30-race-fullwidth' in html)
+          ok('version.sheet','player-hard-recovery-v31-race-no-shell' in html)
           ok('version.health','runtime-health-v4-ownership' in html)
           ok('version.action','action-stability-v7-canonical-router' in html)
 
