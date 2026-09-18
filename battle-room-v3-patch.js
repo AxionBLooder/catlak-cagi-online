@@ -38,7 +38,7 @@ const br3AbilityType=x=>x==='spell'?'BÜYÜ':x==='special'?'ÖZEL':'YETENEK';
 const br3Effect=x=>x==='heal'?'İYİLEŞTİRME':x==='utility'?'DESTEK':'HASAR';
 const br3TargetLabel=x=>x==='self'?'KENDİ':x==='ally'?'MÜTTEFİK':'DÜŞMAN';
 function br3Enemies(s){return (s?.order||[]).filter(x=>x.kind==='enemy')}
-function br3LivingEnemies(s){return br3Enemies(s).filter(x=>br3Num(x.hp_current)>0)}
+function br3LivingEnemies(s){return br3Enemies(s).filter(x=>x.hp_current==null||br3Num(x.hp_current)>0)}
 function br3NormalizeTarget(s){const live=br3LivingEnemies(s);if(br3TargetId&&!live.some(x=>String(x.id)===String(br3TargetId)))br3TargetId='';return live}
 
 async function br3Load(){
@@ -156,7 +156,7 @@ async function br3Render(force=false){
     if(gen!==br3Gen||BR3_APP.querySelector('main')!==main||!br3BattleView())return;
     br3NormalizeTarget(d.snap);br3LastSnap=d.snap;br3LastData=d;
     const sig=JSON.stringify([d.snap?.active,d.snap?.round,d.snap?.current_combatant_id,d.snap?.in_combat,d.snap?.is_my_turn,(d.snap?.order||[]).map(x=>[x.id,x.name,x.kind,x.hp_current,x.hp_max,x.ac,x.is_current,x.creature_type]),d.abilities.map(a=>[a.assignment_id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.uses_per_combat,a.uses_remaining,a.description]),d.warnings]);
-    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3EnhanceWeapons(d.snap);return}
+    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
     br3Sig=sig;br3Insert(d);
   }catch(e){if(force)br3Toast('Savaş Odası v3 yüklenemedi: '+(e?.message||String(e)))}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
 }
