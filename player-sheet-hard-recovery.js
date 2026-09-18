@@ -88,6 +88,7 @@ const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
 const coreSheetVisible=()=>{const m=main();return !!(m&&m.dataset.ccHardSheet!=='1'&&m.querySelector('[data-a="hp"][data-id]'))};
+const blankPlayerSurface=()=>{const m=main();if(!m)return true;return !ready()&&!coreSheetVisible()&&!m.querySelector('[data-cc-hard-sheet-retry]')};
 const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
 let sheetWantedUntil=0;
 const sheetActive=()=>isPlayer()&&(Date.now()<sheetWantedUntil||!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
@@ -197,14 +198,14 @@ async function extras(S,chars){
   const species=[...new Set(chars.map(c=>c.species_name).filter(Boolean))];
   const partyAllowed=chars.some(c=>c?.data?.cc_party_member===true);
   const [inv,items,powers,paths,conditions,abilities,combat,partyVisual]=await Promise.all([
-    ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true}),[],1800):[],
-    safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true}),[],1800),
-    species.length?safeQuery(S.from('catlak_species_powers').select('*').in('species_name',species).order('unlock_level',{ascending:true}),[],1800):[],
-    species.length?safeQuery(S.from('catlak_special_paths').select('*').in('species_name',species).order('sort_order',{ascending:true}),[],1800):[],
-    ids.length?safeQuery(S.from('catlak_character_conditions').select('*').in('character_id',ids).eq('active',true).order('created_at',{ascending:true}),[],1800):[],
-    safeRpc(S,'catlak_player_abilities',{},[],1800),
-    safeRpc(S,'catlak_player_combat_snapshot',{}, {},1800),
-    partyAllowed?safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,1800):Promise.resolve(null)
+    ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true}),[],4500):[],
+    safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true}),[],4500),
+    species.length?safeQuery(S.from('catlak_species_powers').select('*').in('species_name',species).order('unlock_level',{ascending:true}),[],4500):[],
+    species.length?safeQuery(S.from('catlak_special_paths').select('*').in('species_name',species).order('sort_order',{ascending:true}),[],4500):[],
+    ids.length?safeQuery(S.from('catlak_character_conditions').select('*').in('character_id',ids).eq('active',true).order('created_at',{ascending:true}),[],4500):[],
+    safeRpc(S,'catlak_player_abilities',{},[],4500),
+    safeRpc(S,'catlak_player_combat_snapshot',{}, {},4500),
+    partyAllowed?safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,4500):Promise.resolve(null)
   ]);
   return {inv,items,powers,paths,conditions,abilities,combat,partyVisual};
 }
@@ -516,12 +517,17 @@ async function recover(force=false){
   if(busy)return hadReady;
   const now=Date.now();if(!force&&now-lastRun<500)return hadReady;lastRun=now;busy=true;
   try{
-    const S=await getRuntime();if(!S)return hadReady;
-    const ses=await getSession(S);if(!ses?.user?.id)return hadReady;
-    // Never replace a working/core player sheet with a loading card.
+    const S=await getRuntime();if(!S){if(!hadReady&&blankPlayerSurface())showWaiting('Oyun bağlantısı hazırlanıyor…');return hadReady}
+    const ses=await getSession(S);if(!ses?.user?.id){if(!hadReady&&blankPlayerSurface())showWaiting('Oyuncu oturumu hazırlanıyor…');return hadReady}
+    // Keep a working core sheet visible. Only show one stable loading card when the surface is truly blank.
+    if(!hadReady&&!coreSheetVisible())showWaiting('Karakter bilgileri yükleniyor…');
     const chars=await ownedRows(S,ses.user.id);
-    if(!chars.length)return hadReady;
+    if(!chars.length){
+      if(!hadReady&&!coreSheetVisible())showWaiting('Karakter bağlantısı bulunamadı. Tekrar Dene ile yeniden yükleyebilirsin.');
+      return hadReady||coreSheetVisible();
+    }
     if(!sheetActive())return false;
+    if(!hadReady&&!coreSheetVisible())showWaiting('Envanter, yetenekler ve karakter ayrıntıları yükleniyor…');
     const x=await extras(S,chars);
     if(!sheetActive())return false;
     window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
@@ -566,7 +572,8 @@ document.addEventListener('click',e=>{
       if(restoreCachedSheet(false))return;
     }
     // No hard sheet yet: allow the core app's own tab handler to render first.
-    setTimeout(()=>schedule(false,120),120);
+    setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},260);
+    setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},900);
     return
   }
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
@@ -581,10 +588,14 @@ document.addEventListener('click',e=>{
   }
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
 },true);
-window.addEventListener('catlak:player-fast-ready',()=>{if(!ready())schedule(false,160)});
+window.addEventListener('catlak:player-fast-ready',()=>{
+  if(!sheetActive()||ready())return;
+  setTimeout(()=>{if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0)},160);
+});
 window.addEventListener('catlak:data-refreshed',()=>{
   if(!sheetActive())return;
-  if(main()?.dataset.ccHardSheet==='1'&&ready())refreshStable('');
+  if(main()?.dataset.ccHardSheet==='1'&&ready()){refreshStable('');return}
+  if(!coreSheetVisible()&&blankPlayerSurface())schedule(false,120);
 });
 new MutationObserver(rs=>{
   if(!isPlayer())return;
@@ -615,7 +626,10 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>queueSheetSync('visual'))
     .subscribe();
 }
-setTimeout(()=>ensureRaceNav(),80);
+setTimeout(()=>{
+  ensureRaceNav();
+  if(sheetActive()&&!ready()&&!coreSheetVisible())schedule(false,0);
+},420);
 realtime();
 window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();
