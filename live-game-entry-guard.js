@@ -1,13 +1,15 @@
 (function(){
 'use strict';
-if(window.__catlakLiveGameEntryGuardV12)return;
-window.__catlakLiveGameEntryGuardV12=true;
+if(window.__catlakLiveGameEntryGuardV13)return;
+window.__catlakLiveGameEntryGuardV13=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
 let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0,liveStartedAt=0;
 const oldStyle=document.getElementById('cc-live-entry-guard-style');if(oldStyle)oldStyle.remove();
 const style=document.createElement('style');style.id='cc-live-entry-guard-style';style.textContent=`
 html.cc-live-entry-pending #app main{visibility:hidden!important}
+html body #app:has(.nav [data-tab="gm"].on) main:has(.cc-live-two)>.card:not(.cc-party-show){display:none!important}
+html body #app:has(.nav [data-tab="gm"].on) main .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{box-sizing:border-box!important;width:100%!important;margin:0!important;padding:12px 14px!important;height:auto!important;max-height:340px!important;overflow:auto!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
