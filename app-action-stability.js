@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV4)return;
-window.__catlakActionStabilityV4=true;
+if(window.__catlakActionStabilityV5)return;
+window.__catlakActionStabilityV5=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -16,7 +16,11 @@ const previousPreserve=window.__catlakShouldPreserveCurrentView;
 function isCommitButton(el){
   const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b))return null;
   const label=txt(b).toLocaleLowerCase('tr-TR');
-  if(!/(^|\s)(kaydet|güncelle|guncelle|uygula|onayla)(\s|$)/i.test(label))return null;
+  const core=String(b.dataset?.a||'').toLowerCase();
+  const custom=String(b.dataset?.gmcAction||b.dataset?.gmtAction||'').toLowerCase();
+  const known=new Set(['itemsave','pathsave','powersave','speciessave','charnote','ruling']);
+  if(known.has(core)||b.hasAttribute('data-cux-save')||/save|note/.test(custom))return b;
+  if(!/(^|\s)(kaydet|güncelle|guncelle|uygula|onayla|tamam)(\s|$)/i.test(label))return null;
   return b;
 }
 function managedViewActive(){
