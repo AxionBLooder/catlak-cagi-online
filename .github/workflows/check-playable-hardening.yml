@@ -151,6 +151,9 @@ jobs:
           ok('perf.live.dedup','liveSig' in live)
           ok('perf.battle.single.realtime',"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle)
           ok('perf.room.batch','ccrQueueRealtime' in rooms and 'ccr-battle-live-v2' in rooms)
+          stability=read('stability-patch.js')
+          ok('gm.map.roll.no.invalidate',"table:'catlak_rolls'" in stability and "if(ccMapActive)return;const m=CC_APP.querySelector('main')" in stability and "m.dataset.ccMapPage=''" not in stability.split("table:'catlak_rolls'",1)[1].split("table:'catlak_characters'",1)[0])
+          ok('gm.map.scroll.preserve','const oldMapY=preserveMapScroll?window.scrollY:null' in stability and "window.scrollTo({left:window.scrollX,top:oldMapY,behavior:'auto'})" in stability)
           ok('perf.gm.batch','queueGmcLive' in gm and 'gmc-clean-live-v2' in gm)
           ok('perf.sheet.cache','cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet)
 
