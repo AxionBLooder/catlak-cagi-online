@@ -15,7 +15,7 @@ const br3BattleView=()=>{
   return window.__catlakBattleRoomOpen===true||btn?.classList.contains('on')||main?.dataset.ccrBattle==='1';
 };
 const br3Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(br3Toast.t);br3Toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false,br3CachedHtml='';
+let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false,br3CachedHtml='',br3Preload=null,br3PreloadAt=0,br3PreloadBusy=null;
 
 if(!document.querySelector('#br3-style')){
   const s=document.createElement('style');s.id='br3-style';s.textContent=`
@@ -41,7 +41,7 @@ function br3Enemies(s){return (s?.order||[]).filter(x=>x.kind==='enemy')}
 function br3LivingEnemies(s){return br3Enemies(s).filter(x=>x.hp_current==null||br3Num(x.hp_current)>0)}
 function br3NormalizeTarget(s){const live=br3LivingEnemies(s);if(br3TargetId&&!live.some(x=>String(x.id)===String(br3TargetId)))br3TargetId='';return live}
 
-async function br3Load(){
+async function br3Fetch(){
   const [sr,ar]=await Promise.allSettled([
     BR3_S.rpc('catlak_player_combat_snapshot'),
     BR3_S.rpc('catlak_player_abilities')
@@ -52,11 +52,16 @@ async function br3Load(){
   const abilityRes=ar.status==='fulfilled'?ar.value:null;
   const warnings=[];
   if(!abilityRes||abilityRes.error)warnings.push('Yetenek listesi geçici olarak alınamadı.');
-  return{
-    snap:snapRes.data||{},
-    abilities:abilityRes&&!abilityRes.error?(abilityRes.data||[]):[],
-    warnings
-  };
+  return{snap:snapRes.data||{},abilities:abilityRes&&!abilityRes.error?(abilityRes.data||[]):[],warnings};
+}
+async function br3PreloadData(){
+  if(br3PreloadBusy)return br3PreloadBusy;
+  br3PreloadBusy=br3Fetch().then(d=>{br3Preload=d;br3PreloadAt=Date.now();return d}).catch(()=>null).finally(()=>{br3PreloadBusy=null});
+  return br3PreloadBusy;
+}
+async function br3Load(){
+  if(br3Preload&&Date.now()-br3PreloadAt<2500){const d=br3Preload;br3Preload=null;return d}
+  return br3Fetch();
 }
 function br3CreatureCard(x){
   const hp=br3Num(x.hp_current),max=br3Num(x.hp_max),dead=max>0&&hp<=0,selected=String(x.id)===String(br3TargetId);
@@ -131,11 +136,23 @@ function br3CacheCurrent(){
 function br3RestoreCached(){
   if(!br3CachedHtml||!br3IsPlayer())return false;
   const main=BR3_APP.querySelector('main');if(!main)return false;
-  main.innerHTML=br3CachedHtml;main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');
+  main.innerHTML=br3CachedHtml;main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');main.classList.remove('ccr-base-building');
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
   requestAnimationFrame(()=>br3Render(false));
   return true;
+}
+function br3WaitReady(ms=1800){
+  const start=Date.now();
+  return new Promise(resolve=>{
+    const tick=()=>{
+      const main=BR3_APP.querySelector('main');
+      if(!br3Busy&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]'))return resolve(true);
+      if(Date.now()-start>=ms)return resolve(false);
+      setTimeout(tick,20);
+    };
+    tick();
+  });
 }
 function br3Node(html){const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
 function br3ReplaceIfChanged(current,next){
@@ -171,19 +188,22 @@ function br3Insert(d){
   br3SyncHeroVitals(d.snap);
   br3EnhanceWeapons(d.snap);
   br3CacheCurrent();
+  main.classList.remove('ccr-base-building');
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
 }
 async function br3Render(force=false){
-  if(!br3IsPlayer()||!br3BattleView())return;if(br3Busy){br3Queued=true;return}const main=BR3_APP.querySelector('main');if(!main)return;const gen=++br3Gen;br3Busy=true;
+  if(!br3IsPlayer()||!br3BattleView())return false;
+  if(br3Busy){br3Queued=true;return br3WaitReady()}
+  const main=BR3_APP.querySelector('main');if(!main)return false;const gen=++br3Gen;br3Busy=true;
   try{
     const d=await br3Load();
     if(gen!==br3Gen||BR3_APP.querySelector('main')!==main||!br3BattleView())return;
     br3NormalizeTarget(d.snap);br3LastSnap=d.snap;br3LastData=d;
     const sig=JSON.stringify([d.snap?.active,d.snap?.round,d.snap?.current_combatant_id,d.snap?.in_combat,d.snap?.is_my_turn,(d.snap?.order||[]).map(x=>[x.id,x.name,x.kind,x.hp_current,x.hp_max,x.ac,x.is_current,x.creature_type]),d.abilities.map(a=>[a.assignment_id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.uses_per_combat,a.uses_remaining,a.description]),d.warnings]);
     if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3SyncHeroVitals(d.snap);br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
-    br3Sig=sig;br3Insert(d);
-  }catch(e){if(force)br3Toast('Savaş Odası v3 yüklenemedi: '+(e?.message||String(e)))}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
+    br3Sig=sig;br3Insert(d);return true;
+  }catch(e){if(force)br3Toast('Savaş Odası yüklenemedi: '+(e?.message||String(e)));return false}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
 }
 async function br3MaybeAutoEndCombat(beforeSnap){
   if(br3AutoEndBusy||!beforeSnap?.active||!br3Enemies(beforeSnap).length)return false;
@@ -246,7 +266,6 @@ document.addEventListener('click',e=>{
   if(e.target.closest?.('[data-br3-end-turn]')){e.preventDefault();e.stopImmediatePropagation();br3EndTurn().catch(x=>br3Toast(x?.message||String(x)));return}
   if(e.target.closest?.('[data-br3-clear-log]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş Canlı Akışı temizlensin mi?'))br3ClearBattleLog().catch(x=>br3Toast(x?.message||String(x)));return}
 },true);
-window.addEventListener('pointerup',e=>{if(e.target?.closest?.('[data-ccr-battle]'))setTimeout(()=>br3Soon(true,0),20)},true);
 new MutationObserver(()=>{
   if(br3IsGM()){br3Soon(false,80);return}
   if(!br3BattleView())return;
@@ -260,5 +279,5 @@ BR3_S.channel('cc-battle-room-v3-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))
  .subscribe();
 setInterval(()=>{if(br3IsGM())br3EnsureGmClear();else if(br3BattleView()){const main=BR3_APP.querySelector('main');if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0)}},5000);
-setTimeout(()=>br3Soon(true,0),80);
-window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
+setTimeout(()=>{br3PreloadData();if(br3BattleView())br3Soon(true,0)},80);
+window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,preload:br3PreloadData,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
