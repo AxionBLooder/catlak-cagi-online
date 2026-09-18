@@ -20,7 +20,7 @@ jobs:
           node --check player-sheet-hard-recovery.js
           node --check player-live-actions-patch.js
           grep -Fq 'player-hard-recovery-v7' index.html
-          grep -Fq 'player-actions-v3-idempotent' index.html
+          grep -Fq 'player-actions-v4-slots' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify cleaned interactive player sheet
