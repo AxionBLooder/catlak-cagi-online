@@ -58,7 +58,14 @@ function ccrNav(){return CCR_APP.querySelector('.nav')}
 function ccrBaseTab(){return ccrNav()?.querySelector('button.on[data-tab]')?.dataset.tab||''}
 function ccrSelectOnly(btn){const nav=ccrNav();if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));btn?.classList.add('on')}
 function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending')}
-function ccrCloseBattle(){ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');return true}
+function ccrCloseBattle(){
+  ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;
+  document.documentElement.classList.remove('cc-battle-entry-pending');
+  const main=CCR_APP.querySelector('main');
+  if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout')}
+  ccrNav()?.querySelector('[data-ccr-battle]')?.classList.remove('on');
+  return true
+}
 
 function ccrEnsureHub(){
   const nav=ccrNav();if(!nav)return;
