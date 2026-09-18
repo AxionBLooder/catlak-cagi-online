@@ -5,7 +5,7 @@ if(!WS_S||!WS_APP)throw new Error('Çatlak Çağı silah slot katmanı başlatı
 const wsTxt=e=>String(e?.textContent||'').trim();
 const wsIsGM=()=>wsTxt(WS_APP.querySelector('.role'))==='GM';
 const wsTab=()=>WS_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
-const wsIsSheet=()=>!wsIsGM()&&wsTab()==='sheet';
+const wsIsSheet=()=>!wsIsGM()&&wsTab()==='sheet'&&WS_APP.querySelector('main')?.dataset.ccHardSheet!=='1';
 const wsToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(wsToast.t);wsToast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
 let wsBusy=false,wsTimer=null,wsCache=new Map(),wsCacheAt=0;
 
