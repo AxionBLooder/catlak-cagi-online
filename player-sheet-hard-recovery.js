@@ -512,9 +512,9 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();raceWanted=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view'))){e.preventDefault();e.stopImmediatePropagation();raceWanted=false;setRaceView(false);return}
+  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view'))){e.preventDefault();e.stopImmediatePropagation();try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=false;window.__catlakRaceWantedEarly=false;setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
   if(root){
     const hp=e.target.closest?.('[data-cc-hard-hp][data-id]');if(hp){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
