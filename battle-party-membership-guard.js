@@ -5,7 +5,7 @@ window.__catlakBattlePartyGuardV2=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
-const PKEY='cc_party_member',BKEY='cc_battle_member';
+const PKEY='cc_party_member';
 const txt=e=>String(e?.textContent||'').trim();
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
@@ -37,7 +37,6 @@ async function reconcile(){
    S.from('catlak_combat_state').select('active').eq('id',1).maybeSingle()
   ]);for(const r of[cr,br,sr])if(r.error)throw r.error;
   const chars=cr.data||[],combatants=br.data||[];
-  for(const c of chars){if(c.data?.[BKEY]===true&&c.data?.[PKEY]!==true){const data={...(c.data||{}),[BKEY]:false};const u=await S.from('catlak_characters').update({data}).eq('id',c.id).select('id');if(u.error)throw u.error;c.data=data}}
   eligible=new Set(chars.filter(c=>c.play_status==='active'&&c.data?.[PKEY]===true).map(c=>String(c.id)));loaded=true;
   if(sr.data?.active){
    const existing=new Map();
