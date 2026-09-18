@@ -57,12 +57,12 @@ function ccrToast(x){
 function ccrNav(){return CCR_APP.querySelector('.nav')}
 function ccrBaseTab(){return ccrNav()?.querySelector('button.on[data-tab]')?.dataset.tab||''}
 function ccrSelectOnly(btn){const nav=ccrNav();if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));btn?.classList.add('on')}
-function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending')}
+function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');CCR_APP.querySelector('main')?.classList.remove('ccr-base-building')}
 function ccrCloseBattle(){
   ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;
   document.documentElement.classList.remove('cc-battle-entry-pending');
   const main=CCR_APP.querySelector('main');
-  if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout')}
+  if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout','ccr-base-building')}
   ccrNav()?.querySelector('[data-ccr-battle]')?.classList.remove('on');
   return true
 }
@@ -134,7 +134,7 @@ async function ccrRefreshPartyAccess(){
     if(!uid){ccrPartyKnown=true;ccrPartyMember=false;return false}
     const r=await CCR_S.from('catlak_characters').select('id,data,play_status').eq('owner_id',uid).eq('play_status','active');
     if(r.error)throw r.error;
-    ccrPartyMember=(r.data||[]).some(c=>c.data?.[CCR_PKEY]===true);ccrPartyKnown=true;
+    ccrPartyMember=(r.data||[]).some(c=>c.data?.[CCR_PKEY]===true);ccrPartyKnown=true;if(ccrPartyMember)try{window.__catlakBattleRoomV3Test?.preload?.()}catch(_){}
     if(!ccrPartyMember&&ccrBattleOpen){
       ccrCloseRooms();
       const sheet=ccrNav()?.querySelector('[data-tab="sheet"]');ccrSelectOnly(sheet);
@@ -231,16 +231,24 @@ async function ccrBattleRender(force=false){
     if(!ccrBattleOpen||gen!==ccrBattleGen||CCR_APP.querySelector('main')!==main)return;
     ccrEnsureBattleNav();main.classList.add('ccr-base-building');main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
     if(document.documentElement.classList.contains('cc-battle-entry-pending')){
-      for(let i=0;i<40&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
-      if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
-      for(let i=0;i<30;i++){
-        if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))break;
-        await new Promise(r=>setTimeout(r,10));
+      for(let i=0;i<60&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
+      let enhanced=false;
+      for(let attempt=0;attempt<3&&!enhanced;attempt++){
+        if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
+        for(let i=0;i<40;i++){
+          enhanced=!!(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]'));
+          if(enhanced)break;
+          await new Promise(r=>setTimeout(r,15));
+        }
       }
-      if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
+      if(enhanced){
         document.documentElement.classList.remove('cc-battle-entry-pending');
         main.classList.remove('ccr-base-building');
         try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+      }else{
+        main.classList.remove('ccr-base-building');
+        document.documentElement.classList.remove('cc-battle-entry-pending');
+        main.innerHTML='<section class="card"><div class="eyebrow">⚔ SAVAŞ ODASI</div><h2>Savaş Odası yeniden hazırlanıyor</h2><p class="muted">Görünüm tamamlanamadı. Bir kez daha açmayı dene.</p><button type="button" data-ccr-battle-retry>Yeniden Dene</button></section>';
       }
     }else if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
       main.classList.remove('ccr-base-building');
@@ -284,6 +292,8 @@ document.addEventListener('click',e=>{
   if(ht){e.preventDefault();e.stopImmediatePropagation();ccrSwitchHub(ht.dataset.ccrHubTab);return}
   const battle=e.target.closest?.('[data-ccr-battle]');
   if(battle){e.preventDefault();e.stopImmediatePropagation();ccrOpenBattle();return}
+  const retry=e.target.closest?.('[data-ccr-battle-retry]');
+  if(retry){e.preventDefault();e.stopImmediatePropagation();document.documentElement.classList.add('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true);return}
   const wr=e.target.closest?.('[data-ccr-weapon]');
   if(wr&&ccrBattleOpen){e.preventDefault();e.stopImmediatePropagation();ccrBattleRollWeapon(wr.dataset.ccrWeapon,wr.dataset.kind).catch(x=>ccrToast(x?.message||x));return}
   const sr=e.target.closest?.('[data-ccr-stat]');
