@@ -89,6 +89,8 @@ jobs:
           ok('battle.idle.turn.hidden',"function br3TurnSection(s){if(!s?.active)return''" in battle)
           ok('battle.idle.creatures.hidden',"function br3CreaturesSection(s){if(!s?.active)return''" in battle)
           ok('battle.live.state.transition','br3SyncBattleShell' in battle and 'data-br3-base-order' in battle and 'stateFlip' in battle)
+          ok('battle.idle.ready.no.turn',"function ccrBattleEnhancedReady(main)" in rooms and "main.dataset.br3CombatActive==='0'" in rooms and "enhanced=ccrBattleEnhancedReady(main)" in rooms)
+          ok('battle.pending.released.idle',"document.documentElement.classList.remove('cc-battle-entry-pending')" in rooms and "finishBattleEntry?.()" in rooms)
           ok('battle.enemy.add',('catlak_gm_combat_add_enemy' in live or 'catlak_gm_combat_add_creature' in live or 'catlak_gm_combat_add_template' in live) and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
 
           # 5. GM flow contract.
