@@ -86,7 +86,7 @@ jobs:
                   raise SystemExit('Eski/çakışan runtime yeniden yüklenmiş: '+name)
 
           # Canonical screen ownership.
-          if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' not in core:
+          if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm"' not in core:
               raise SystemExit('Legacy GM canlı masa rendererı halen yeni masayı tetikleyebilir')
           if '__catlakPlayerSheetHardRecoveryV32' not in sheet:
               raise SystemExit('Oyuncu Masası canonical recovery sürümü beklenenden farklı')
