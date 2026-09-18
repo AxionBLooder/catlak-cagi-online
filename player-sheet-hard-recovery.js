@@ -270,14 +270,16 @@ function hardAbilityTargets(a,x){
   if(a.target_type==='ally')return rows.filter(r=>r.kind==='player'&&num(r.hp_current)>0);
   return [];
 }
+function ccAbilityRule(a){const raw=String(a?.description||''),m=raw.match(/\[\[CC_FIXED_AC:(\d+)\]\]/i);return{fixed:m?Math.max(1,num(m[1])):0,description:raw.replace(/\s*\[\[CC_FIXED_AC:\d+\]\]\s*/ig,' ').trim()}}
 function abilitiesHtml(c,x){
   const rows=Array.isArray(x.abilities)?x.abilities:[];
   if(!rows.length)return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">GM tarafından atanmış aktif yetenek yok.</p></section>`;
   return `<section class="card" data-cc-hard-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>Karakter Yetenekleri</h2><p class="muted">Karakterine ait sınıf, büyü ve özel yetenek açıklamaları burada tutulur. Kullanım ve hedef seçimi yalnız Savaş Odası'nda yapılır.</p><div class="grid">${rows.map(a=>{
     const finite=a.uses_per_combat!=null,uses=finite?`${num(a.uses_remaining)}/${num(a.uses_per_combat)}`:'∞';
-    const type=String(a.ability_type||'skill').toUpperCase();
+    const type=String(a.ability_type||'skill').toUpperCase(),rule=ccAbilityRule(a);
     const target=a.target_type==='enemy'?'Düşman':a.target_type==='ally'?'Müttefik':'Kendi';
-    return `<article class="power"><small>${esc(type)}</small><h3>${esc(a.name||'Yetenek')}</h3><p>${esc(a.description||'Açıklama bulunmuyor.')}</p><div class="muted">${a.formula?'Formül: '+esc(a.formula)+' • ':''}Hedef: ${esc(target)} • Kullanım: ${esc(uses)}${a.requires_attack?' • AC karşılaştırmalı saldırı':''}</div></article>`;
+    const acText=rule.fixed?' • Sabit AC: d20'+(num(a.attack_bonus)>=0?'+':'')+num(a.attack_bonus)+' > '+rule.fixed:(a.requires_attack?' • Hedef AC karşılaştırmalı':'');
+    return `<article class="power"><small>${esc(type)}</small><h3>${esc(a.name||'Yetenek')}</h3><p>${esc(rule.description||'Açıklama bulunmuyor.')}</p><div class="muted">${a.formula?'Formül: '+esc(a.formula)+' • ':''}Hedef: ${esc(target)} • Kullanım: ${esc(uses)}${acText}</div></article>`;
   }).join('')}</div></section>`;
 }
 function pathHtml(c,x){
