@@ -31,7 +31,12 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v41-legacy-owner-guard' in html,
+            'sheet version':'player-hard-recovery-v42-sheet-audit' in html,
+            'active character scope':".eq('owner_id',uid).eq('play_status','active')" in sheet,
+            'party access carried':'partyVisual,partyAllowed' in sheet,
+            'character derived refresh':"'[data-cc-hard-stats]'" in sheet and "'[data-cc-hard-path]'" in sheet and "'[data-cc-hard-vampire]'" in sheet and "'[data-cc-hard-race]'" in sheet,
+            'core fast character refresh':"source||'')==='core-fast'" in sheet and "queueSheetSync('character')" in sheet,
+            'advanced gm note layout':'.cc-character-stack>.cc-player-gm-note{grid-column:1/-1!important' in sheet,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
