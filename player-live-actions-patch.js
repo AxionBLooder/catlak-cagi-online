@@ -8,7 +8,7 @@ const plaEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const plaNum=x=>Number(x||0);
 const plaIsGM=()=>plaTxt(PLA_APP.querySelector('.role'))==='GM';
 const plaTab=()=>PLA_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
-const plaIsSheet=()=>!plaIsGM()&&plaTab()==='sheet';
+const plaIsSheet=()=>!plaIsGM()&&plaTab()==='sheet'&&PLA_APP.querySelector('main')?.dataset.ccHardSheet!=='1';
 const plaToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(plaToast.t);plaToast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
 let plaRefreshTimer=null,plaRefreshDue=0,plaPendingForce=false,plaRefreshing=false,plaLastRefresh=0;
 const plaBusy=new Set();
