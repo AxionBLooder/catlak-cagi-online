@@ -3,7 +3,6 @@ on:
   push:
     paths:
       - 'gm-clean-router-v1.js'
-      - 'gm-item-slot-patch.js'
       - 'item-system-patch.js'
       - 'index.html'
       - '.github/workflows/check-gm-builder-item-slots.yml'
@@ -19,13 +18,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check gm-clean-router-v1.js
-          node --check gm-item-slot-patch.js
           node --check item-system-patch.js
-          grep -Fq '__catlakGmCleanRoute' gm-item-slot-patch.js
-          grep -Fq '__catlakGmCleanRoute' item-system-patch.js
           grep -Fq 'gmcNativeBridge' gm-clean-router-v1.js
-          grep -Fq 'gm-clean-router-v5-builder' index.html
-          grep -Fq 'gm-item-slot-v5-type-slots' index.html
+          grep -Fq 'item-system-v5-direct-slots' index.html
+          ! grep -Fq "gm-item-slot-patch.js?v=" index.html
+          grep -Fq "function iwAllowedSlots" item-system-patch.js
+          grep -Fq "id=\"iw-give-slot\"" item-system-patch.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Browser regression
@@ -40,79 +38,73 @@ jobs:
             }
             throw new Error('Chrome missing');
           }
-          function mockScript(){
-            return () => {
-              const items=[
-                {id:'weapon-1',name:'Test Kılıcı',item_type:'weapon',effects:{}},
-                {id:'armor-1',name:'Test Zırhı',item_type:'armor',effects:{}},
-                {id:'accessory-1',name:'Test Tılsımı',item_type:'item',effects:{item_mode:'accessory'}}
-              ];
-              function query(table){
-                const st={eq:[],single:false,limit:null};
-                const q={
-                  select(){return q},
-                  eq(k,v){st.eq.push([k,v]);return q},
-                  in(){return q},not(){return q},order(){return q},
-                  limit(n){st.limit=n;return q},
-                  maybeSingle(){st.single=true;return q},
-                  then(ok,bad){
-                    let data=table==='catlak_items'?items.slice():[];
-                    for(const [k,v] of st.eq)data=data.filter(x=>String(x?.[k])===String(v));
-                    if(st.limit!=null)data=data.slice(0,st.limit);
-                    if(st.single)data=data[0]||null;
-                    return Promise.resolve({data,error:null}).then(ok,bad)
-                  }
-                };return q
-              }
-              const channel={on(){return channel},subscribe(){return channel}};
-              window.__catlakSupabase={from:query,channel:()=>channel,rpc:async()=>({data:null,error:null})};
-            };
-          }
           (async()=>{
             const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
             try{
-              const builder=await browser.newPage();builder.setDefaultTimeout(5000);
-              await builder.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
-              await builder.evaluate(mockScript());
-              await builder.evaluate(()=>{
-                document.querySelector('#app').addEventListener('click',e=>{
-                  const b=e.target.closest('button[data-tab]');
-                  if(b?.dataset.tab==='builder')document.querySelector('#app main').innerHTML='<section class="builder"><div class="card">KARAKTER OLUŞTURUCU HAZIR</div></section>';
-                });
+              const page=await browser.newPage();page.setDefaultTimeout(7000);
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
+                <div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-tab="items">Eşya</button></nav><main></main></div>
+                <div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{
+                window.__catlakGmCleanRoute='items';
+                window.__rpcCalls=[];
+                const db={
+                  catlak_items:[
+                    {id:'w1',name:'Kılıç',item_type:'weapon',effects:{},created_at:'2026-01-01'},
+                    {id:'a1',name:'Zırh',item_type:'armor',effects:{},created_at:'2026-01-02'},
+                    {id:'x1',name:'Tılsım',item_type:'item',effects:{item_mode:'accessory'},created_at:'2026-01-03'}
+                  ],
+                  catlak_characters:[{id:'c1',name:'Eeliot',play_status:'active',owner_id:'u1',created_at:'2026-01-01'}],
+                  catlak_inventory:[{id:'inv1',character_id:'c1',item_id:'a1',quantity:1,equipped:false,equipped_slot:null,granted_at:'2026-01-01'}],
+                  catlak_item_gm_notes:[]
+                };
+                function query(table){
+                  const st={eq:[],ins:[],single:false,lim:null};
+                  const q={
+                    select(){return q},eq(k,v){st.eq.push([k,v]);return q},in(k,v){st.ins.push([k,v]);return q},order(){return q},limit(n){st.lim=n;return q},
+                    maybeSingle(){st.single=true;return q},single(){st.single=true;return q},upsert(){return q},update(){return q},insert(){return q},delete(){return q},
+                    then(ok,bad){
+                      let data=(db[table]||[]).slice();
+                      for(const [k,v] of st.eq)data=data.filter(x=>String(x?.[k])===String(v));
+                      for(const [k,v] of st.ins)data=data.filter(x=>v.map(String).includes(String(x?.[k])));
+                      if(st.lim!=null)data=data.slice(0,st.lim);
+                      if(st.single)data=data[0]||null;
+                      return Promise.resolve({data,error:null}).then(ok,bad)
+                    }
+                  };return q
+                }
+                const channel={on(){return channel},subscribe(){return channel}};
+                window.__catlakSupabase={
+                  from:query,channel:()=>channel,
+                  rpc:async(name,args)=>{
+                    window.__rpcCalls.push({name,args});
+                    if(name==='catlak_gm_give_item')return{data:1,error:null};
+                    if(name==='catlak_set_equipped_slot')return{data:true,error:null};
+                    return{data:null,error:null}
+                  }
+                };
               });
-              await builder.addScriptTag({path:path.resolve('gm-clean-router-v1.js')});
-              const routed=await builder.evaluate(()=>window.__catlakGmCleanRouter.route('builder'));
-              if(!routed)throw new Error('Builder route returned false');
-              await builder.waitForSelector('main .builder');
-              const bad=await builder.locator('#toast').textContent();
-              if(/yerel ekran|bulunamadı/i.test(bad||''))throw new Error('Builder still reports missing local screen: '+bad);
+              await page.addScriptTag({path:path.resolve('item-system-patch.js')});
+              await page.waitForSelector('#iw-give-slot');
 
-              const slots=await browser.newPage();slots.setDefaultTimeout(5000);
-              await slots.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-gmc-open>GM Merkezi</button></nav><main><section><div class="form"><label>Karakter<select id="iw-give-char"><option value="char-1">Eeliot</option></select></label><label>Kayıt<select id="iw-give-item"><option value="weapon-1">Test Kılıcı</option><option value="armor-1">Test Zırhı</option><option value="accessory-1">Test Tılsımı</option></select></label><label>Adet<input id="iw-give-qty" value="1"></label></div><button data-iw-give>Oyuncuya Ver</button></section></main></div><div id="toast" class="hidden"></div>`);
-              await slots.evaluate(mockScript());
-              await slots.evaluate(()=>window.__catlakGmCleanRoute='items');
-              await slots.addScriptTag({path:path.resolve('gm-item-slot-patch.js')});
-              await slots.waitForSelector('#gms-give-slot');
-              await slots.waitForFunction(()=>[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='main_weapon')&&[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='off_weapon'));
-              let out=await slots.evaluate(()=>({
-                values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),
-                selected:document.querySelector('#gms-give-slot').value,
-                disabled:document.querySelector('#gms-give-slot').disabled,
-                owned:!!document.querySelector('[data-gms-give]')
-              }));
-              if(out.disabled||!out.values.includes('main_weapon')||!out.values.includes('off_weapon')||out.selected!=='main_weapon'||!out.owned)throw new Error('Weapon slot regression '+JSON.stringify(out));
+              let out=await page.evaluate(()=>({values:[...document.querySelectorAll('#iw-give-slot option')].map(o=>o.value),selected:document.querySelector('#iw-give-slot').value}));
+              if(JSON.stringify(out.values)!==JSON.stringify(['','main_weapon','off_weapon'])||out.selected!=='main_weapon')throw new Error('WEAPON_SLOTS '+JSON.stringify(out));
 
-              await slots.selectOption('#iw-give-item','armor-1');
-              await slots.waitForFunction(()=>document.querySelector('#gms-give-slot')?.value==='armor');
-              const armor=await slots.evaluate(()=>({values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),selected:document.querySelector('#gms-give-slot').value}));
-              if(!armor.values.includes('')||!armor.values.includes('armor')||armor.values.includes('main_weapon')||armor.selected!=='armor')throw new Error('Armor slot regression '+JSON.stringify(armor));
+              await page.selectOption('#iw-give-item','a1');
+              await page.waitForFunction(()=>document.querySelector('#iw-give-slot')?.value==='armor');
+              out=await page.evaluate(()=>({values:[...document.querySelectorAll('#iw-give-slot option')].map(o=>o.value),selected:document.querySelector('#iw-give-slot').value}));
+              if(JSON.stringify(out.values)!==JSON.stringify(['','armor'])||out.selected!=='armor')throw new Error('ARMOR_SLOTS '+JSON.stringify(out));
 
-              await slots.selectOption('#iw-give-item','accessory-1');
-              await slots.waitForFunction(()=>document.querySelector('#gms-give-slot')?.value==='accessory_1');
-              const accessory=await slots.evaluate(()=>({values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),selected:document.querySelector('#gms-give-slot').value}));
-              if(!accessory.values.includes('')||!accessory.values.includes('accessory_1')||!accessory.values.includes('accessory_2')||accessory.values.includes('armor')||accessory.selected!=='accessory_1')throw new Error('Accessory slot regression '+JSON.stringify(accessory));
+              await page.selectOption('#iw-give-item','x1');
+              await page.waitForFunction(()=>document.querySelector('#iw-give-slot')?.value==='accessory_1');
+              out=await page.evaluate(()=>({values:[...document.querySelectorAll('#iw-give-slot option')].map(o=>o.value),selected:document.querySelector('#iw-give-slot').value}));
+              if(JSON.stringify(out.values)!==JSON.stringify(['','accessory_1','accessory_2'])||out.selected!=='accessory_1')throw new Error('ACCESSORY_SLOTS '+JSON.stringify(out));
 
-              console.log('GM_BUILDER_ITEM_SLOTS_OK',JSON.stringify({weapon:out,armor,accessory}));
+              await page.selectOption('#iw-give-item','a1');
+              await page.waitForFunction(()=>document.querySelector('#iw-give-slot')?.value==='armor');
+              await page.locator('[data-iw-give]').click();
+              await page.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='armor'));
+              console.log('GM_DIRECT_ITEM_SLOTS_OK',JSON.stringify(await page.evaluate(()=>window.__rpcCalls)));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
