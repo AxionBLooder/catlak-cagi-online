@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV10)return;
-window.__catlakPlayerSheetHardRecoveryV10=true;
+if(window.__catlakPlayerSheetHardRecoveryV11)return;
+window.__catlakPlayerSheetHardRecoveryV11=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -342,8 +342,10 @@ async function hardAbility(btn){
 }
 function showWaiting(message){
   const m=main();if(!m||!sheetActive())return;
-  m.dataset.ccHardSheet='waiting';
-  m.innerHTML=`<section class="card"><div class="eyebrow">OYUNCU MASASI</div><h2>Karakter kağıdı hazırlanıyor…</h2><p class="muted">${esc(message||'Davet bağlantısı tamamlandı. Karakter verisi bekleniyor.')}</p><button type="button" data-cc-hard-sheet-retry>Tekrar Dene</button></section>`;
+  const msg=String(message||'Davet bağlantısı tamamlandı. Karakter verisi bekleniyor.');
+  if(m.dataset.ccHardSheet==='waiting'&&m.dataset.ccHardWait===msg)return;
+  m.dataset.ccHardSheet='waiting';m.dataset.ccHardWait=msg;
+  m.innerHTML=`<section class="card"><div class="eyebrow">OYUNCU MASASI</div><h2>Karakter kağıdı hazırlanıyor…</h2><p class="muted">${esc(msg)}</p><button type="button" data-cc-hard-sheet-retry>Tekrar Dene</button></section>`;
   release();
 }
 async function recover(force=false){
@@ -368,23 +370,16 @@ async function recover(force=false){
     }
     if(!chars.length){if(!hadReady)showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return hadReady}
     if(!sheetActive())return false;
+    const x=await extras(S,chars);
+    if(!sheetActive())return false;
     const m=main();if(!m)return false;
-    const base={inv:[],items:[],rolls:[],powers:[],paths:[],conditions:[],abilities:[],combat:{}};
     m.className='';
     m.dataset.ccHardSheet='1';
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
-    delete m.dataset.ccDesk;delete m.dataset.ccPage;
-    m.innerHTML=chars.map(c=>charHtml(c,base)).join('');
-    try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
+    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
+    m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
     applyLayers();release();
-    const baseReady=ready();
-    extras(S,chars).then(x=>{
-      if(!sheetActive())return;
-      const cur=main();if(!cur||cur.dataset.ccHardSheet!=='1')return;
-      patchStable(chars,x,new Set(['all']));
-      release();
-    }).catch(e=>console.warn('CATLAK_PLAYER_SHEET_EXTRAS',e));
-    return baseReady;
+    return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
     showWaiting(e?.message||'Karakter verisi yüklenemedi.');
