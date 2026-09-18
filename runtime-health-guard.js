@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakRuntimeHealthGuardV2)return;
-window.__catlakRuntimeHealthGuardV2=true;
+if(window.__catlakRuntimeHealthGuardV3)return;
+window.__catlakRuntimeHealthGuardV3=true;
 const ROOT=document.documentElement,APP=document.getElementById('app');
 if(!APP)return;
 
@@ -63,10 +63,23 @@ new MutationObserver(rs=>{
   if(rs.some(r=>r.attributeName==='class'))scan();
 }).observe(ROOT,{attributes:true,attributeFilter:['class']});
 
+const diagnostics=[];
+function report(kind,error,context='runtime'){
+  const message=String(error?.message||error||'Bilinmeyen hata');
+  const entry={at:new Date().toISOString(),kind:String(kind||'error'),context:String(context||'runtime'),message:message.slice(0,500)};
+  diagnostics.push(entry);if(diagnostics.length>30)diagnostics.shift();
+  console.error('CATLAK_RUNTIME',entry,error);
+  window.dispatchEvent(new CustomEvent('catlak:runtime-error',{detail:entry}));
+  return entry;
+}
+window.__catlakReportError=(context,error)=>report('handled',error,context);
+window.addEventListener('error',e=>{if(e?.message)report('error',e.error||e.message,'window')});
+window.addEventListener('unhandledrejection',e=>report('promise',e?.reason,'promise'));
 window.addEventListener('catlak:data-refreshed',finishNavSwitch);
 window.addEventListener('pageshow',()=>{finishNavSwitch();scan()});
 window.addEventListener('focus',scan);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scan()});
 scan();
+window.__catlakRuntimeDiagnostics={list:()=>diagnostics.slice(),clear:()=>{diagnostics.length=0},report};
 window.__catlakRuntimeHealthGuard={scan,clear:clearClass,finishNavSwitch};
 })();
