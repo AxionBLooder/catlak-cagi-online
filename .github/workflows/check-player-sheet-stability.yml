@@ -1,0 +1,110 @@
+name: Check Player Sheet Stability
+on:
+  push:
+    paths:
+      - 'player-sheet-hard-recovery.js'
+      - 'player-sheet-runtime-v4.js'
+      - 'player-sheet-bind-fix.js'
+      - 'index.html'
+      - '.github/workflows/check-player-sheet-stability.yml'
+  workflow_dispatch:
+
+jobs:
+  player-stability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check player-sheet-hard-recovery.js
+          node --check player-sheet-runtime-v4.js
+          node --check player-sheet-bind-fix.js
+          grep -Fq 'player-hard-recovery-v8' index.html
+          grep -Fq 'player-sheet-v6-stable' index.html
+          grep -Fq 'player-bind-v4' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify stat card does not rerender or jump
+        run: |
+          cat > player-sheet-stability-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
+            try{
+              const page=await browser.newPage();page.setDefaultTimeout(7000);
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
+                <div id="app"><header><span class="role">MİSAFİR</span></header>
+                <nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav>
+                <main></main></div><div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{
+                window.__handlers={};window.__calls=[];
+                window.__db={
+                  catlak_characters:[{id:'c1',name:'Eeliot',owner_id:'u1',play_status:'active',species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:22,hp_max:22,base_ac:13,base_speed:30,base_stats:{STR:8,DEX:14,CON:14,INT:16,WIS:15,CHA:12},data:{},created_at:'2026-01-01'}],
+                  catlak_inventory:[],catlak_items:[],catlak_rolls:[],catlak_species_powers:[],catlak_special_paths:[],catlak_character_conditions:[]
+                };
+                function rows(t,f,ins){let a=(window.__db[t]||[]).slice();for(const[k,v]of f)a=a.filter(x=>String(x[k])===String(v));for(const[k,v]of ins)a=a.filter(x=>v.map(String).includes(String(x[k])));return a}
+                function q(t){const st={f:[],ins:[],single:false,lim:null};const o={
+                  select(){return o},eq(k,v){st.f.push([k,v]);return o},in(k,v){st.ins.push([k,v]);return o},order(){return o},limit(n){st.lim=n;return o},maybeSingle(){st.single=true;return o},
+                  then(ok,bad){let d=rows(t,st.f,st.ins);if(st.lim!=null)d=d.slice(0,st.lim);if(st.single)d=d[0]||null;return Promise.resolve({data:d,error:null}).then(ok,bad)}
+                };return o}
+                const ch={on(_e,f,cb){(window.__handlers[f.table]??=[]).push(cb);return ch},subscribe(){return ch}};
+                window.__fire=t=>(window.__handlers[t]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
+                window.__catlakSupabase={
+                  auth:{getSession:async()=>({data:{session:{user:{id:'u1'}}}})},
+                  from:q,channel:()=>ch,
+                  rpc:async(name,args={})=>{
+                    window.__calls.push({name,args});
+                    if(name==='catlak_player_combat_snapshot')return{data:{active:false,order:[]},error:null};
+                    if(name==='catlak_player_abilities')return{data:[],error:null};
+                    if(name==='catlak_roll_stat'){
+                      const r={id:'r'+(window.__db.catlak_rolls.length+1),character_id:'c1',label:args.p_stat+' Testi',roll_kind:'stat',formula:'1d20',modifier:2,total:16,dice:[14],created_at:new Date().toISOString()};
+                      window.__db.catlak_rolls.unshift(r);window.__fire('catlak_rolls');return{data:r,error:null};
+                    }
+                    return{data:null,error:null}
+                  }
+                };
+              });
+              await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
+              await page.waitForSelector('[data-cc-hard-stat="DEX"]');
+              await page.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
+              await page.waitForFunction(()=>document.querySelector('.cc-character-stack')?.dataset.psv4Ready==='1');
+              const before=await page.evaluate(()=>{
+                const el=document.querySelector('[data-cc-hard-stat="DEX"]');
+                window.__stableStat=el;
+                return {top:el.getBoundingClientRect().top,parent:el.closest('section')?.parentElement?.className||''};
+              });
+              await page.locator('[data-cc-hard-stat="DEX"]').click();
+              await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'));
+              await page.waitForFunction(()=>document.body.textContent.includes('DEX Testi'));
+              await page.waitForTimeout(450);
+              const afterRoll=await page.evaluate(()=>({
+                same:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
+                connected:window.__stableStat?.isConnected,
+                top:document.querySelector('[data-cc-hard-stat="DEX"]')?.getBoundingClientRect().top
+              }));
+              await page.evaluate(()=>{window.__db.catlak_characters[0].hp_current=19;window.__fire('catlak_characters')});
+              await page.waitForFunction(()=>document.querySelector('section.hero .vital b')?.textContent==='19/22');
+              await page.waitForTimeout(350);
+              const afterHp=await page.evaluate(()=>({
+                same:window.__stableStat===document.querySelector('[data-cc-hard-stat="DEX"]'),
+                connected:window.__stableStat?.isConnected,
+                top:document.querySelector('[data-cc-hard-stat="DEX"]')?.getBoundingClientRect().top
+              }));
+              const drift1=Math.abs((afterRoll.top??0)-before.top),drift2=Math.abs((afterHp.top??0)-before.top);
+              if(!afterRoll.same||!afterRoll.connected||!afterHp.same||!afterHp.connected||drift1>2||drift2>2)
+                throw new Error('PLAYER_SHEET_JUMP '+JSON.stringify({before,afterRoll,afterHp,drift1,drift2}));
+              console.log('PLAYER_SHEET_STABLE_OK',JSON.stringify({before,afterRoll,afterHp}));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node player-sheet-stability-smoke.cjs
