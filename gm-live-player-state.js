@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmLivePlayerStateV2)return;
-window.__catlakGmLivePlayerStateV2=true;
+if(window.__catlakGmLivePlayerStateV3)return;
+window.__catlakGmLivePlayerStateV3=true;
 const APP=document.getElementById('app'),S=window.__catlakSupabase;if(!APP||!S)return;
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18,13 +18,14 @@ if(!document.getElementById('glps-style')){
  `;document.head.appendChild(st)
 }
 async function load(){
- const [cr,kr,br]=await Promise.all([
+ const [cr,kr,br,rr]=await Promise.all([
   S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,play_status').eq('play_status','active').order('created_at',{ascending:true}),
   S.from('catlak_character_conditions').select('id,character_id,name,remaining_rounds,note,active').eq('active',true).order('created_at',{ascending:true}),
-  S.from('catlak_combatants').select('id,character_id,kind,hp_current,hp_max').eq('kind','player')
+  S.from('catlak_combatants').select('id,character_id,kind,hp_current,hp_max').eq('kind','player'),
+  S.from('catlak_rolls').select('*').order('created_at',{ascending:false}).limit(40)
  ]);
- for(const r of [cr,kr,br])if(r.error)throw r.error;
- return {chars:cr.data||[],conds:kr.data||[],combatants:br.data||[]};
+ for(const r of [cr,kr,br,rr])if(r.error)throw r.error;
+ return {chars:cr.data||[],conds:kr.data||[],combatants:br.data||[],rolls:rr.data||[]};
 }
 function paint(d){
  if(!active())return false;
@@ -38,11 +39,26 @@ function paint(d){
   const hpCur=combat?.hp_current!=null?Number(combat.hp_current):Number(c.hp_current||0),hpMax=combat?.hp_max!=null?Number(combat.hp_max):Number(c.hp_max||0);
   box.innerHTML=`<span class="glps-hp">HP ${hpCur}/${hpMax}</span> • AC ${Number(c.base_ac||0)}${cs.length?`<div class="glps-conds">${cs.map(x=>`<span class="glps-cond">${esc(x.name||'Durum')}${x.remaining_rounds==null?'':' • '+Number(x.remaining_rounds)+'r'}</span>`).join('')}</div>`:''}`;
  }
+ const wrap=APP.querySelector('main[data-cc-simple-live="1"] .cc-live-two');
+ if(wrap){
+  const rollCard=[...wrap.children].find(c=>txt(c.querySelector('.eyebrow')).includes('ZAR AKIŞI')||!!c.querySelector('.cc-simple-roll'));
+  if(rollCard){
+   rollCard.querySelectorAll('.glps-roll-fallback').forEach(x=>x.remove());
+   const existing=new Set([...rollCard.querySelectorAll('[data-cc-roll-id]')].map(x=>String(x.dataset.ccRollId||'')));
+   const names=new Map(d.chars.map(c=>[String(c.id),c.name]));
+   for(const r of d.rolls.slice(0,16)){
+    if(existing.has(String(r.id)))continue;
+    const row=document.createElement('div');row.className='cc-simple-roll glps-roll-fallback';row.dataset.ccRollId=String(r.id);
+    row.innerHTML=`<div class="cc-simple-total">${r.total==null?'?':esc(r.total)}</div><div><b>${esc(names.get(String(r.character_id))||r.label||'Oyuncu')}</b><br><span>${esc(r.label||r.roll_kind||r.formula||'Zar')}</span></div>`;
+    rollCard.appendChild(row);
+   }
+  }
+ }
  return true;
 }
 async function refresh(force=false){
  if(!active()||busy)return false;busy=true;
- try{const d=await load();const sig=JSON.stringify([d.chars.map(c=>[c.id,c.hp_current,c.hp_max,c.base_ac]),d.conds.map(c=>[c.id,c.character_id,c.name,c.remaining_rounds,c.active]),d.combatants.map(c=>[c.id,c.character_id,c.hp_current,c.hp_max])]);if(force||sig!==last){last=sig;paint(d)}return true}catch(e){console.warn('GLPS_REFRESH',e);return false}finally{busy=false}
+ try{const d=await load();const sig=JSON.stringify([d.chars.map(c=>[c.id,c.hp_current,c.hp_max,c.base_ac]),d.conds.map(c=>[c.id,c.character_id,c.name,c.remaining_rounds,c.active]),d.combatants.map(c=>[c.id,c.character_id,c.hp_current,c.hp_max]),d.rolls.map(r=>[r.id,r.character_id,r.total,r.label,r.roll_kind])]);if(force||sig!==last){last=sig;paint(d)}return true}catch(e){console.warn('GLPS_REFRESH',e);return false}finally{busy=false}
 }
 function schedule(ms=30){clearTimeout(timer);timer=setTimeout(()=>refresh(true),ms)}
 new MutationObserver(()=>{if(active())schedule(70)}).observe(APP,{childList:true,subtree:true});
@@ -50,6 +66,7 @@ S.channel('cc-gm-live-player-state-v1')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>schedule(20))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>schedule(20))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>schedule(20))
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>schedule(20))
  .subscribe();
 setInterval(()=>{if(active())refresh(false)},1200);
 setTimeout(()=>schedule(0),180);
