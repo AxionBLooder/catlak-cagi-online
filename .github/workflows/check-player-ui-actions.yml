@@ -17,7 +17,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-hard-recovery-v13' index.html
+          grep -Fq 'player-hard-recovery-v14-owner-race' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify cleaned interactive player sheet
