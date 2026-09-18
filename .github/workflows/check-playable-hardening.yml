@@ -74,7 +74,7 @@ jobs:
           # 3. Canonical routing and view restoration.
           ok('route.gm.canonical','window.__catlakGmCleanRouter?.current?.()' in action and 'window.__catlakGmCleanRouter.route' in action)
           ok('route.player.sheet.cache','restoreCachedSheet' in sheet and 'setRaceView' in sheet)
-          ok('route.player.battle.cache','window.__catlakBattleRoomV3Test?.restore?.()' in rooms)
+          ok('route.player.battle.clean.entry','main.replaceChildren()' in rooms and 'window.__catlakBattleRoomV3Test?.restore?.()' not in rooms)
           ok('route.atomic.runtime','__catlakViewRuntime' in health and 'viewMount' in health and 'viewBatch' in health)
           ok('route.gm.atomic',"gmViewBegin" in gm and "gmViewReady" in gm)
 
