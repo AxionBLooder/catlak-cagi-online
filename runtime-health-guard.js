@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakRuntimeHealthGuardV3)return;
-window.__catlakRuntimeHealthGuardV3=true;
+if(window.__catlakRuntimeHealthGuardV4)return;
+window.__catlakRuntimeHealthGuardV4=true;
 const ROOT=document.documentElement,APP=document.getElementById('app');
 if(!APP)return;
 
@@ -63,7 +63,13 @@ new MutationObserver(rs=>{
   if(rs.some(r=>r.attributeName==='class'))scan();
 }).observe(ROOT,{attributes:true,attributeFilter:['class']});
 
-const diagnostics=[];
+const diagnostics=[],owners=new Map();
+function claim(surface,owner){
+  const key=String(surface||''),value=String(owner||'');if(!key||!value)return false;
+  const current=owners.get(key);
+  if(current&&current!==value){report('ownership',new Error(key+' zaten '+current+' tarafından yönetiliyor'),value);return false}
+  owners.set(key,value);return true
+}
 function report(kind,error,context='runtime'){
   const message=String(error?.message||error||'Bilinmeyen hata');
   const entry={at:new Date().toISOString(),kind:String(kind||'error'),context:String(context||'runtime'),message:message.slice(0,500)};
@@ -81,5 +87,6 @@ window.addEventListener('focus',scan);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scan()});
 scan();
 window.__catlakRuntimeDiagnostics={list:()=>diagnostics.slice(),clear:()=>{diagnostics.length=0},report};
+window.__catlakRuntimeOwnership={claim,owner:surface=>owners.get(String(surface||''))||'',owns:(surface,owner)=>owners.get(String(surface||''))===String(owner||''),list:()=>Object.fromEntries(owners)};
 window.__catlakRuntimeHealthGuard={scan,clear:clearClass,finishNavSwitch};
 })();
