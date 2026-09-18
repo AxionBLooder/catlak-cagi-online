@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v35 -->
+<!-- clean-gm-runtime-v36 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -91,35 +91,11 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v10','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v11','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),1800)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+          try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+          await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
         }
-        await loadParallel([
-          ['./player-sheet-bind-fix.js?v=player-bind-v5','player-bind'],
-          ['./player-sheet-runtime-v4.js?v=player-sheet-v7-hard-owned','player-sheet'],
-          ['./stat-roll-patch.js?v=stat-roll-v2-hard-owned','stat-roll'],
-          ['./item-system-patch.js?v=item-system-v4-route','items'],
-          ['./player-sheet-support-runtime.js?v=player-support-v3-hard-owned','player-support'],
-          ['./player-live-actions-patch.js?v=player-actions-v5-hard-owned','player-actions'],
-          ['./player-sheet-equipment-abilities-patch.js?v=player-equip-v5-hard-owned','player-equip'],
-          ['./weapon-slot-patch.js?v=weapon-slot-v2-hard-owned','weapon-slot']
-        ]);
-        if(app.querySelector('.nav [data-tab="sheet"].on')){
-          try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
-          try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_READY',e)}
-          await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1200)})]);
-        }
-        try{await awaitMaybe(window.__catlakPlayerSheetSupport?.refresh?.(true))}catch(e){console.warn('CATLAK_PLAYER_SUPPORT_READY',e)}
-        var jobs=[];
-        try{var p1=window.__catlakPlayerLiveTest?.refresh?.(true);if(p1&&typeof p1.then==='function')jobs.push(p1)}catch(_){}
-        try{var p2=window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true);if(p2&&typeof p2.then==='function')jobs.push(p2)}catch(_){}
-        if(jobs.length)await Promise.allSettled(jobs);
-        try{await awaitLimited(window.__catlakPlayerSheetSupport?.refresh?.(false),900)}catch(_){}
-        try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
-        try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
-        try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(_){}
-        try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
         await twoFrames();
       }finally{
         document.documentElement.classList.remove('cc-player-critical-pending');
@@ -200,7 +176,7 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-12-stable-player-sheet';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-13-single-player-owner';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
