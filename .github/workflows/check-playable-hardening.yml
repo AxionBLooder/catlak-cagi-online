@@ -162,7 +162,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v41-legacy-owner-guard' in html)
+          ok('version.sheet','player-hard-recovery-v42-sheet-audit' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
           ok('version.action','action-stability-v9-global-scroll' in html)
 
