@@ -89,7 +89,8 @@
       try{
         await Promise.all([
           load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v25-optimized-observer','player-hard-recovery'),
-          load('./battle-room-v3-patch.js?v=battle-v10-no-polling','battle-room-v3')
+          load('./battle-room-v3-patch.js?v=battle-v10-no-polling','battle-room-v3'),
+          load('./room-system-patch.js?v=player-bg-v15-light-observer','rooms')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -100,8 +101,7 @@
             return recovered;
           })();
         }
-        var roomPromise=load('./room-system-patch.js?v=player-bg-v15-light-observer','rooms');
-        await Promise.all([recoverPromise,roomPromise]);
+        await recoverPromise;
         await twoFrames();
       }finally{
         document.documentElement.classList.remove('cc-player-critical-pending');
@@ -120,19 +120,17 @@
         ['./live-game-entry-guard.js?v=live-entry-v14-light-observer','live-entry-guard'],
         ['./gm-view-stability.js?v=gm-view-stability-v2-no-cloak','gm-view-stability'],
         ['./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge','gm-clean-click'],
-        ['./gm-ui-polish-v1.js?v=gm-ui-polish-v5','gm-ui-polish'],
+        ['./gm-ui-polish-v1.js?v=gm-ui-polish-v6-stable-local','gm-ui-polish'],
         ['./gm-nav-canonical.js?v=gm-nav-canonical-v1','gm-nav-canonical'],
         ['./gm-tools-patch.js?v=clean-gm-tools-v4-center-embedded','gm-tools'],
-        ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
+        ['./quality-of-life-patch.js?v=clean-qol-v4-no-polling','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
-        ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean']
-      ]);
-      await loadParallel([
+        ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean'],
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v9-embedded-refresh','gm-clean-router'],
-        ['./gm-live-compact-v1.js?v=gm-live-compact-v12-light-observer','gm-live-compact']
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v12-light-observer','gm-live-compact'],
+        ['./live-combat-center-patch.js?v=livecombat-v8-light-observer','live-combat-center-runtime']
       ]);
-      await load('./live-combat-center-patch.js?v=livecombat-v8-light-observer','live-combat-center-runtime');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
