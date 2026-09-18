@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV23)return;
-window.__catlakPlayerSheetHardRecoveryV23=true;
+if(window.__catlakPlayerSheetHardRecoveryV24)return;
+window.__catlakPlayerSheetHardRecoveryV24=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -527,7 +527,17 @@ document.addEventListener('click',e=>{
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
   if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();const wasBattle=window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1';try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}if(wasBattle)restoreCachedSheet(true);raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view')||window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1')){e.preventDefault();e.stopImmediatePropagation();const wasBattle=window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1';try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=false;window.__catlakRaceWantedEarly=false;if(wasBattle&&restoreCachedSheet(false))return;setRaceView(false);return}
+  if(sheetNav&&isPlayer()){
+    const alreadyClean=sheetNav.classList.contains('on')&&main()?.dataset.ccHardSheet==='1'&&!main()?.classList.contains('cc-hard-race-view')&&ready();
+    if(alreadyClean)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}
+    raceWanted=false;window.__catlakRaceWantedEarly=false;
+    clearPlayerNavSelection(sheetNav);
+    if(restoreCachedSheet(false))return;
+    recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(false)}else toast('Oyuncu Masası yüklenemedi. Tekrar dene.')});
+    return
+  }
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
   if(root){
     const hp=e.target.closest?.('[data-cc-hard-hp][data-id]');if(hp){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
