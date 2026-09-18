@@ -132,14 +132,21 @@ function br3SyncHeroVitals(s){
 function br3CacheCurrent(){
   const main=BR3_APP.querySelector('main');
   if(!main||!br3BattleView()||!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-abilities]'))return false;
-  br3CachedHtml=main.innerHTML;return true;
+  br3CachedHtml=main.innerHTML;
+  try{window.__catlakViewRuntime?.cache?.('player-battle',br3CachedHtml)}catch(_){}
+  return true;
 }
 function br3RestoreCached(){
-  if(!br3CachedHtml||!br3IsPlayer())return false;
+  if(!br3IsPlayer())return false;
   const main=BR3_APP.querySelector('main');if(!main)return false;
-  main.innerHTML=br3CachedHtml;main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');main.classList.remove('ccr-base-building');
+  let restored=false;
+  if(br3CachedHtml){main.innerHTML=br3CachedHtml;restored=true}
+  else try{restored=!!window.__catlakViewRuntime?.restore?.('player-battle',main)}catch(_){}
+  if(!restored)return false;
+  main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');main.classList.remove('ccr-base-building');
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+  try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}
   requestAnimationFrame(()=>br3Render(false));
   return true;
 }
@@ -192,6 +199,7 @@ function br3Insert(d){
   main.classList.remove('ccr-base-building');
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+  try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}
 }
 async function br3Render(force=false){
   if(!br3IsPlayer()||!br3BattleView())return false;
@@ -279,9 +287,7 @@ new MutationObserver(rs=>{
   if(!structural&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))return;
   if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,25);
 }).observe(BR3_APP,{childList:true,subtree:true});
-BR3_S.channel('cc-battle-room-v3-live')
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>br3Soon(false,75))
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>br3Soon(false,75))
+BR3_S.channel('cc-battle-room-v4-abilities')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>br3Soon(false,90))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))
  .subscribe();
