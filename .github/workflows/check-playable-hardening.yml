@@ -46,13 +46,16 @@ jobs:
           gmui=read('gm-ui-polish-v1.js')
           presence=read('presence-patch.js')
           qol=read('quality-of-life-patch.js')
+          rolls=read('event-rolls-patch.js')
+          visuals=read('visual-archive-map-flow-patch.js')
+          nav=read('gm-nav-canonical.js')
 
           failures=[]
           def ok(name,cond):
               if not cond: failures.append(name)
 
           # 1. Single renderer / screen ownership
-          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV29' in sheet)
+          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV30' in sheet)
           ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
           ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
           ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
@@ -77,17 +80,21 @@ jobs:
           ok('battle.enemy.add','catlak_gm_combat_add_enemy' in live and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
 
           # 5. GM flow contract.
-          for route in ['ability','items','stats','races','builder','events','logs','creatures','reputation','seals','rules','account']:
+          for route in ['ability','items','stats','races','builder','events','creatures','reputation','seals','rules','account']:
               ok('gm.route.'+route,("['"+route+"'," in gm) or ("'"+route+"'" in gm))
           ok('gm.live.battle.only','cc-live-battle-only' in compact)
           ok('gm.management.local.hp','data-cc-mrv2-hp' in gmui)
           ok('gm.management.local.level','data-cc-mrv2-level' in gmui)
           ok('gm.presence','catlak:presence-changed' in gmui and 'window.__catlakPresence' in presence)
+          ok('gm.no.session.log',"['logs','Oturum Günlüğü']" not in gm)
+          ok('gm.roll.flow','__catlakUnifiedRollFlowV1' in rolls and 'Tüm Zarları Sil' in rolls and 'catlak_clear_roll_log' in rolls)
+          ok('gm.live.roll.adjacent',"live.after(rolls)" in nav)
+          ok('gm.visual.upload.only','__catlakVisualArchiveMapFlowV2' in visuals and 'sw-gallery-head' in visuals)
 
           # 6. Player flow contract.
           ok('player.sheet.cache','cachedSheetHtml' in sheet)
-          ok('player.race.left','[data-cc-hard-race]{display:block!important;grid-column:1!important;justify-self:start!important' in sheet)
-          ok('player.abilities.right','[data-cc-hard-abilities]{display:block!important;grid-column:2!important;justify-self:end!important' in sheet)
+          ok('player.race.left','[data-cc-hard-race]{display:block!important;grid-column:1!important;grid-row:1!important;justify-self:stretch!important' in sheet)
+          ok('player.abilities.right','[data-cc-hard-abilities]{display:block!important;grid-column:2!important;grid-row:1!important;justify-self:stretch!important' in sheet)
           ok('player.single.roll',"showRollFlash(cid,roll);\n    toast(" not in sheet)
           ok('player.battle.preload','br3PreloadData' in battle)
 
@@ -110,7 +117,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v29-race-columns-stable' in html)
+          ok('version.sheet','player-hard-recovery-v30-race-fullwidth' in html)
           ok('version.health','runtime-health-v4-ownership' in html)
           ok('version.action','action-stability-v7-canonical-router' in html)
 
@@ -119,6 +126,6 @@ jobs:
           print('PLAYABLE_HARDENING_OK')
           PY
 
-          for f in browser-app.js runtime-health-guard.js app-action-stability.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js gm-live-compact-v1.js live-combat-center-patch.js gm-ui-polish-v1.js presence-patch.js quality-of-life-patch.js; do
+          for f in browser-app.js runtime-health-guard.js app-action-stability.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js gm-live-compact-v1.js live-combat-center-patch.js gm-ui-polish-v1.js presence-patch.js quality-of-life-patch.js event-rolls-patch.js visual-archive-map-flow-patch.js gm-nav-canonical.js; do
             node --check "$f"
           done
