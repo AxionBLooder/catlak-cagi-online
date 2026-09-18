@@ -11,7 +11,7 @@ const limits={
   'cc-live-entry-pending':5200,
   'cc-gm-nav-transition':1200,
   'cc-player-critical-pending':6500,
-  'cc-fast-nav-switch':1400
+  'cc-fast-nav-switch':5200
 };
 
 if(!document.getElementById('cc-fast-nav-style')){
