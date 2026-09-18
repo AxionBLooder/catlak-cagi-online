@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV19)return;
-window.__catlakPlayerSheetHardRecoveryV19=true;
+if(window.__catlakPlayerSheetHardRecoveryV20)return;
+window.__catlakPlayerSheetHardRecoveryV20=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
