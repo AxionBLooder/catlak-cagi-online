@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v11 -->
+<!-- clean-gm-runtime-v12 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -27,9 +27,8 @@
   <div id="app"><main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><p>Uygulama açılıyor…</p></div></main></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="./invite-join-repair.js?v=invite-join-v1"></script>
   <script src="./live-game-entry-guard.js?v=live-entry-v8"></script>
-  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v5"></script>
+  <script src="./gm-clean-click-guard.js?v=gm-clean-click-v6"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v3"></script>
 
   <script>
@@ -79,9 +78,6 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
-        if(window.__catlakInviteJoinRepair?.pending?.()){
-          try{await awaitMaybe(window.__catlakInviteJoinRepair?.repair?.())}catch(e){console.warn('CATLAK_INVITE_JOIN_READY',e)}
-        }
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitMaybe(window.__catlakPlayerSheetBindFix?.repair?.())}catch(_){}
           await waitForPlayerSheet();
@@ -122,7 +118,7 @@
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v4-fast','gm-clean-router'],
-        ['./gm-live-compact-v1.js?v=gm-live-compact-v6','gm-live-compact']
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v7','gm-live-compact']
       ]);
       await load('./live-combat-center-loader.js?v=livecombat-loader-v7-fast','live-combat-loader');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
