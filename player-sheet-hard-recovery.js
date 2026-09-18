@@ -133,7 +133,7 @@ function restoreCachedSheet(wantRace=false){
   if(!cachedSheetHtml)return false;
   const m=main();if(!m)return false;
   m.className='';m.dataset.ccHardSheet='1';delete m.dataset.ccrBattle;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
-  m.innerHTML=cachedSheetHtml;
+  if(!window.__catlakViewRuntime?.mount?.('player-sheet',m,cachedSheetHtml))m.innerHTML=cachedSheetHtml;
   ensureRaceNav();
   raceMode=false;raceWanted=!!wantRace;window.__catlakRaceWantedEarly=raceWanted;
   setRaceView(raceWanted);
@@ -518,10 +518,12 @@ async function recover(force=false){
     m.dataset.ccHardSheet='1';
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
     delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
-    m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
+    const html=chars.map(c=>charHtml(c,x)).join('');
+    if(!window.__catlakViewRuntime?.mount?.('player-sheet',m,html))m.innerHTML=html;
     ensureRaceNav();setRaceView(raceWanted);
     applyLayers();cacheSheet();release();
     try{window.__catlakViewRuntime?.ready?.('player-sheet')}catch(_){}
+    window.dispatchEvent(new CustomEvent('catlak:player-fast-ready'));
     return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
