@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v44 -->
+<!-- clean-gm-runtime-v45 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -91,7 +91,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v16-party-race-b','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v16-party-race-c','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -108,7 +108,7 @@
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
         ['./room-system-patch.js?v=player-bg-v5-party-gate','rooms'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
-        ['./battle-party-membership-guard.js?v=player-bg-v5-party-only','battle-party-guard']
+        ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
       ]);
     }
 
@@ -117,7 +117,7 @@
         ['./gm-tools-patch.js?v=clean-gm-tools-v3-fast','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v3-fast','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
-        ['./party-room-stable-v2.js?v=party-room-clean-v6-party-source','party-room-clean']
+        ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean']
       ]);
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
@@ -142,7 +142,7 @@
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
         ['./room-system-patch.js?v=recovery-5-party-gate','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./battle-party-membership-guard.js?v=battle-party-v3-party-only','battle-party-guard'],
+        ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
     }
