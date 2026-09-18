@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmUiPolishV3)return;
-window.__catlakGmUiPolishV3=true;
+if(window.__catlakGmUiPolishV4)return;
+window.__catlakGmUiPolishV4=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
 const inviteLinks=new Map();
@@ -22,19 +22,21 @@ html body #app [data-gmc-centerbar] [data-gmc-route="characters"],html body #app
 document.head.appendChild(s);
 function cleanupLegacy(){ROOT.classList.remove('cc-ext-management-pending');document.getElementById('glc-style-v2')?.remove();APP.querySelectorAll('[data-gmc-route="characters"],[data-gm2-route="characters"]').forEach(x=>x.style.display='none');const main=APP.querySelector('main');if(main&&!managerOpen){delete main.dataset.ccExternalManagement;delete main.dataset.ccManagementV2}}
 function ensureNav(){if(!isGM())return;const nav=APP.querySelector('.nav');if(!nav)return;
+ const norm=x=>String(x?.textContent||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr-TR').replace(/^[^a-z0-9çğıöşü]+/i,'');
  let gm=nav.querySelector('[data-gmc-open]');
  nav.querySelectorAll('[data-gmc-open]').forEach((x,i)=>{if(i)x.remove()});
  if(!gm){gm=document.createElement('button');gm.type='button';gm.dataset.gmcOpen='1';gm.textContent='GM Merkezi';nav.prepend(gm)}
  gm.hidden=false;gm.style.display='inline-flex';gm.removeAttribute('aria-hidden');gm.removeAttribute('tabindex');
  let b=nav.querySelector('[data-cc-management-room]');
- nav.querySelectorAll('[data-cc-management-room]').forEach((x,i)=>{if(i)x.remove()});
+ nav.querySelectorAll('[data-cc-management-room]').forEach(x=>{if(x!==b)x.remove()});
  if(!b){b=document.createElement('button');b.type='button';b.dataset.ccManagementRoom='1';b.textContent='Yönetim Odası'}
+ [...nav.querySelectorAll('button')].forEach(x=>{if(x!==b&&norm(x).includes('yönetim odası'))x.remove()});
+ nav.querySelectorAll('[data-tab="characters"]').forEach(x=>x.remove());
  const party=nav.querySelector('[data-prh-manager]');
  if(nav.firstElementChild!==gm)nav.prepend(gm);
  if(party){if(gm.nextElementSibling!==party)gm.after(party);if(party.nextElementSibling!==b)party.after(b)}
  else if(gm.nextElementSibling!==b)gm.after(b);
  b.classList.toggle('on',managerOpen);
- const native=nav.querySelector('[data-tab="characters"]');if(native){native.hidden=true;native.style.display='none';native.setAttribute('aria-hidden','true');native.setAttribute('tabindex','-1')}
  cleanupLegacy()}
 function closeForeign(){try{window.__catlakGmCleanRouter?.close?.()}catch(_){}try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){}try{window.__catlakGmTools?.close?.()}catch(_){}try{window.__catlakCampaignStateTest?.close?.()}catch(_){}try{window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.()}catch(_){}window.__catlakPartyRoomOwnsMain=false;APP.querySelector('[data-gmc-centerbar]')?.remove()}
 function activateManagement(){if(!isGM())return false;closeForeign();managerOpen=true;window.__catlakPreparedOwner=true;const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));ensureNav();nav?.querySelector('[data-cc-management-room]')?.classList.add('on');return true}
@@ -45,7 +47,7 @@ async function renderManagement(force=true){if(!activateManagement())return fals
 async function action(b){if(busy||!managerOpen)return;const S=window.__catlakSupabase;if(!S)return toast('Veri bağlantısı hazır değil.');busy=true;try{const type=b.dataset.ccMrv2Action||'',id=b.dataset.id;if(type==='builder'){closeManagement();const api=window.__catlakGmCleanRouter;if(api?.route)api.route('builder');else APP.querySelector('.nav [data-tab="builder"]')?.click();return}if(type==='level'){const q=await S.from('catlak_characters').select('id,level').eq('id',id).maybeSingle();if(q.error)throw q.error;const level=Math.max(1,Math.min(20,num(q.data?.level)+num(b.dataset.d))),r=await S.rpc('catlak_set_character_level',{p_character_id:id,p_level:level});if(r.error)throw r.error;toast(`Seviye ${level} oldu.`);await renderManagement(true);return}if(type==='hp'){const q=await S.from('catlak_characters').select('id,hp_current,hp_max').eq('id',id).maybeSingle();if(q.error)throw q.error;const hp=Math.max(0,Math.min(num(q.data?.hp_max),num(q.data?.hp_current)+num(b.dataset.d))),r=await S.from('catlak_characters').update({hp_current:hp}).eq('id',id);if(r.error)throw r.error;await renderManagement(true);return}if(type==='note'){const q=await S.from('catlak_characters').select('id,data').eq('id',id).maybeSingle();if(q.error)throw q.error;const note=APP.querySelector(`[data-cc-mrv2-note="${CSS.escape(String(id))}"]`)?.value||'',data={...(q.data?.data||{}),gm_note:note},r=await S.from('catlak_characters').update({data}).eq('id',id);if(r.error)throw r.error;toast('Karakter notu kaydedildi.');return}if(type==='delete'){if(!confirm(`${b.dataset.name||'Karakter'} kalıcı olarak silinsin mi?`))return;const r=await S.from('catlak_characters').delete().eq('id',id);if(r.error)throw r.error;inviteLinks.delete(String(id));toast('Karakter silindi.');await renderManagement(true);return}if(type==='invite'){const owned=b.dataset.owned==='1',fn=owned?'catlak_generate_character_reconnect':'catlak_generate_character_claim',r=await S.rpc(fn,{p_character_id:id});if(r.error)throw r.error;const raw=r.data?.token??r.data?.code??r.data?.invite??r.data;if(raw==null||String(raw).trim()==='')throw new Error('Davet anahtarı üretilemedi.');const link=BASE+'?join='+encodeURIComponent(String(raw));inviteLinks.set(String(id),link);try{await navigator.clipboard.writeText(link)}catch(_){}toast((owned?'Yeniden bağlama':'Karakter davet')+' linki oluşturuldu ve kopyalandı.');await renderManagement(true);return}if(type==='copy'){const link=inviteLinks.get(String(id));if(!link)throw new Error('Önce bağlantı oluştur.');try{await navigator.clipboard.writeText(link);toast('Link kopyalandı.')}catch(_){prompt('Bağlantı:',link)}}}catch(e){toast(e?.message||String(e))}finally{busy=false}}
 function scheduleNav(){if(navQueued)return;navQueued=true;requestAnimationFrame(()=>{navQueued=false;ensureNav()})}
 window.addEventListener('click',e=>{const room=e.target?.closest?.('[data-cc-management-room]');if(room&&isGM()){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();renderManagement(true);return}const a=e.target?.closest?.('[data-cc-mrv2-action]');if(a&&isGM()){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();action(a);return}const nav=e.target?.closest?.('#app .nav button');if(nav&&isGM()&&!nav.matches('[data-cc-management-room]')){if(managerOpen)closeManagement();ROOT.classList.remove('cc-ext-management-pending');setTimeout(scheduleNav,0);setTimeout(scheduleNav,120)}},true);
-new MutationObserver(rs=>{if(rs.some(r=>r.type==='childList'||r.type==='attributes'))scheduleNav()}).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+new MutationObserver(rs=>{if(rs.some(r=>r.type==='childList'&&[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.nav,.role')||n.querySelector?.('.nav,.role')))))scheduleNav()}).observe(APP,{childList:true,subtree:true});
 async function startRealtime(){if(realtimeStarted)return;for(let i=0;i<160&&!window.__catlakSupabase;i++)await new Promise(r=>setTimeout(r,50));const S=window.__catlakSupabase;if(!S||realtimeStarted)return;realtimeStarted=true;S.channel('cc-management-room-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(managerOpen&&!busy)renderManagement(false)}).subscribe()}
 setTimeout(scheduleNav,0);setTimeout(scheduleNav,300);setTimeout(scheduleNav,1000);startRealtime();
 window.__catlakGmUiPolish={maintain:scheduleNav,openManagement:()=>renderManagement(true),closeManagement,isManagementOpen:()=>managerOpen};
