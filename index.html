@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v46 -->
+<!-- clean-gm-runtime-v47 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -45,7 +45,7 @@
   })();
   </script>
 
-  <script src="./runtime-health-guard.js?v=runtime-health-v5-atomic-views"></script>
+  <script src="./runtime-health-guard.js?v=runtime-health-v5-owned-wait"></script>
   <script src="./app-action-stability.js?v=action-stability-v8-clean-css"></script>
 
   <script>
@@ -89,7 +89,7 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v32-full-desk-batched','player-hard-recovery'),
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v32-full-desk-atomic','player-hard-recovery'),
           load('./battle-room-v3-patch.js?v=battle-v12-deferred-preload','battle-room-v3'),
           load('./room-system-patch.js?v=player-bg-v17-atomic-batched','rooms')
         ]);
@@ -123,7 +123,7 @@
         ['./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge','gm-clean-click'],
         ['./gm-ui-polish-v1.js?v=gm-ui-polish-v7-single-owner','gm-ui-polish'],
         ['./gm-nav-canonical.js?v=gm-nav-canonical-v2-live-roll-adjacent','gm-nav-canonical'],
-        ['./event-rolls-patch.js?v=roll-flow-v3-classic-ui','roll-flow'],
+        ['./event-rolls-patch.js?v=roll-flow-v4-atomic-mount','roll-flow'],
         ['./visual-archive-map-flow-patch.js?v=visual-flow-v4-upload-only','visual-map-flow'],
         ['./gm-tools-patch.js?v=clean-gm-tools-v6-session-log-removed','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v4-no-polling','qol'],
