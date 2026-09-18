@@ -223,10 +223,10 @@ jobs:
               await gm.selectOption('#lcc-cond-char','char-1');
               await gm.selectOption('#lcc-cond-preset','Yanıyor');
               await gm.locator('[data-lcc-cond-add]').click();
-              await gm.waitForFunction(()=>document.querySelector('[data-lcc-board]')?.textContent.includes('Yanıyor'),null,{timeout:5000});
+              await gm.waitForFunction(()=>[...document.querySelectorAll('.lcc-cond')].some(x=>x.textContent.includes('Yanıyor')),null,{timeout:5000});
               const yan=gm.locator('.lcc-cond').filter({hasText:'Yanıyor'}).locator('[data-lcc-cond-remove]');
               await yan.click();
-              await gm.waitForFunction(()=>!document.querySelector('[data-lcc-board]')?.textContent.includes('Yanıyor'),null,{timeout:5000});
+              await gm.waitForFunction(()=>![...document.querySelectorAll('.lcc-cond')].some(x=>x.textContent.includes('Yanıyor')),null,{timeout:5000});
 
               await gm.locator('[data-lcc-hp="cmb-1"][data-d="-5"]').click();
               await gm.waitForFunction(()=>document.querySelector('.lcc-hp')?.textContent.includes('HP 4 / 20'),null,{timeout:5000});
