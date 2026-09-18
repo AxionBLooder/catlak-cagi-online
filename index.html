@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v17 -->
+<!-- clean-gm-runtime-v18 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -99,8 +99,10 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v1','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitMaybe(window.__catlakPlayerSheetBindFix?.repair?.())}catch(_){}
+          try{if(!app.querySelector('main section.hero'))await awaitMaybe(window.__catlakPlayerSheetHardRecovery?.recover?.())}catch(e){console.warn('CATLAK_PLAYER_HARD_READY',e)}
           await waitForPlayerSheet();
         }
         try{await awaitMaybe(window.__catlakPlayerSheetSupport?.refresh?.(true))}catch(e){console.warn('CATLAK_PLAYER_SUPPORT_READY',e)}
@@ -111,6 +113,7 @@
         try{await awaitMaybe(window.__catlakPlayerSheetSupport?.refresh?.(false))}catch(_){}
         try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
         try{await awaitMaybe(window.__catlakPlayerSheetBindFix?.repair?.())}catch(_){}
+        try{if(!app.querySelector('main section.hero'))await awaitMaybe(window.__catlakPlayerSheetHardRecovery?.recover?.())}catch(_){}
         try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
         await twoFrames();
       }finally{
