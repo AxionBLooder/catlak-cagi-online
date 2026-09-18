@@ -5,6 +5,9 @@ on:
       - 'player-sheet-hard-recovery.js'
       - 'player-sheet-runtime-v4.js'
       - 'player-sheet-bind-fix.js'
+      - 'player-sheet-support-runtime.js'
+      - 'player-live-actions-patch.js'
+      - 'player-sheet-equipment-abilities-patch.js'
       - 'index.html'
       - '.github/workflows/check-player-sheet-stability.yml'
   workflow_dispatch:
