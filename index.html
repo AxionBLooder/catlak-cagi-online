@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v14 -->
+<!-- clean-gm-runtime-v15 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -27,10 +27,30 @@
   <div id="app"><main id="cc-safe-boot"><div><h1>Çatlak Çağı</h1><p>Uygulama açılıyor…</p></div></main></div>
   <div id="toast" class="toast hidden"></div>
 
+  <script>
+  (function(){
+    var done=false;
+    function releaseStartCover(){
+      if(done)return;done=true;
+      document.documentElement.classList.remove('cc-player-critical-pending');
+      var cover=document.getElementById('cc-start-cover');
+      if(!cover)return;
+      cover.classList.add('cc-done');
+      setTimeout(function(){cover&&cover.remove()},180);
+    }
+    var hasJoin=false;try{hasJoin=!!new URLSearchParams(location.search).get('join')}catch(_){}
+    setTimeout(releaseStartCover,hasJoin?1800:3200);
+    window.addEventListener('catlak:player-fast-ready',releaseStartCover,{once:true});
+    window.addEventListener('catlak:data-refreshed',releaseStartCover,{once:true});
+    window.__catlakReleaseStartCover=releaseStartCover;
+  })();
+  </script>
+
   <script src="./live-game-entry-guard.js?v=live-entry-v8"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v7"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v4"></script>
+  <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
 
   <script>
   (function(){
