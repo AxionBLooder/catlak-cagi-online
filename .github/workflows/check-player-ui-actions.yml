@@ -35,6 +35,7 @@ jobs:
             }
             throw new Error('Chrome missing');
           }
+          const hardTimeout=setTimeout(()=>{console.error('PLAYER_UI_ACTIONS_TIMEOUT');process.exit(2)},25000);
           (async()=>{
             const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
             try{
@@ -91,7 +92,9 @@ jobs:
               await page.locator('[data-ws-slot="off_weapon"]').first().click();
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'));
               console.log('PLAYER_UI_ACTIONS_OK');
-            }finally{await browser.close()}
-          })().catch(e=>{console.error(e);process.exit(1)});
+              clearTimeout(hardTimeout);
+              process.exit(0);
+            }finally{browser.close().catch(()=>{})}
+          })().catch(e=>{console.error(e);clearTimeout(hardTimeout);process.exit(1)});
           JS
           node player-ui-actions-smoke.cjs
