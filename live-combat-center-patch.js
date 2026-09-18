@@ -12,7 +12,7 @@ const num=x=>Number(x||0);
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const liveActive=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
-let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null,deferredRender=false;
+let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null,deferredRender=false,interactionUntil=0;
 
 if(!document.querySelector('#lcc-style')){
  const st=document.createElement('style');st.id='lcc-style';st.textContent=`
@@ -121,11 +121,17 @@ function formInteractionActive(){
  const a=document.activeElement;
  return !!(a&&APP.contains(a)&&a.closest?.('[data-lcc-board]')&&a.matches?.('select,input,textarea'));
 }
+function formInteractionLocked(){
+ return Date.now()<interactionUntil||formInteractionActive();
+}
+function holdFormInteraction(ms=1800){
+ interactionUntil=Math.max(interactionUntil,Date.now()+ms);
+}
 async function render(force=false){
  wrapOldCombatRoute();
  if(!liveActive())return false;
  const main=APP.querySelector('main');if(!main)return false;
- if(main.querySelector('[data-lcc-board]')&&formInteractionActive()&&!actionBusy){deferredRender=true;return true}
+ if(main.querySelector('[data-lcc-board]')&&formInteractionLocked()&&!actionBusy){deferredRender=true;return true}
  const restored=restoreCachedBoard(main);
  if(restored&&!force){setTimeout(()=>render(true),0);return true}
  if(!force&&main.querySelector('[data-lcc-board]'))return true;
@@ -221,8 +227,16 @@ APP.addEventListener('click',e=>{
  if(e.target.closest?.('[data-lcc-cond-add]')){e.preventDefault();e.stopImmediatePropagation();const cid=APP.querySelector('#lcc-cond-char')?.value,preset=APP.querySelector('#lcc-cond-preset')?.value||'',custom=APP.querySelector('#lcc-cond-name')?.value.trim()||'',name=custom||preset,note=APP.querySelector('#lcc-cond-note')?.value||'',rounds=num(APP.querySelector('#lcc-cond-rounds')?.value)||0;if(!cid||!name)return toast('Karakter ve durum adı gerekli.');rpc('catlak_gm_add_condition',{p_character_id:cid,p_name:name,p_note:note,p_rounds:rounds||null},'Durum oyuncuya gönderildi.');return}
  const cr=e.target.closest?.('[data-lcc-cond-remove]');if(cr){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_remove_condition',{p_condition_id:cr.dataset.lccCondRemove},'Durum kaldırıldı.');return}
 },true);
+APP.addEventListener('pointerdown',e=>{
+ const field=e.target?.closest?.('[data-lcc-board] select,[data-lcc-board] input,[data-lcc-board] textarea');
+ if(field)holdFormInteraction(field.tagName==='SELECT'?2600:1600);
+},true);
+APP.addEventListener('focusin',e=>{
+ if(e.target?.matches?.('[data-lcc-board] select,[data-lcc-board] input,[data-lcc-board] textarea'))holdFormInteraction(1800);
+},true);
 APP.addEventListener('change',e=>{
  if(!isGM()||e.target?.id!=='lcc-enemy-template')return;
+ holdFormInteraction(1400);
  const o=e.target.selectedOptions?.[0];if(!o||!o.value)return;
  const name=APP.querySelector('#lcc-enemy-name'),hp=APP.querySelector('#lcc-enemy-hp'),ac=APP.querySelector('#lcc-enemy-ac');
  if(name)name.value=o.dataset.name||o.textContent.split(' • ')[0]||'';
@@ -230,8 +244,12 @@ APP.addEventListener('change',e=>{
  if(ac)ac.value=String(num(o.dataset.ac)||10);
 },true);
 APP.addEventListener('focusout',e=>{
- if(!e.target?.closest?.('[data-lcc-board]')||!deferredRender)return;
- setTimeout(()=>{if(!formInteractionActive()&&deferredRender){deferredRender=false;render(true)}},120);
+ if(!e.target?.closest?.('[data-lcc-board]'))return;
+ setTimeout(()=>{
+   if(!formInteractionActive()&&Date.now()>=interactionUntil&&deferredRender){
+     deferredRender=false;render(true)
+   }
+ },220);
 },true);
 
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
@@ -244,7 +262,7 @@ new MutationObserver(rs=>{
  });
  if(structural||liveActive()&&!main?.querySelector('[data-lcc-board]'))schedule();
 }).observe(APP,{childList:true,subtree:true});
-const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive()){if(formInteractionActive()){deferredRender=true;return}render(true)}else preloadBoard()},45)};
+const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive()){if(formInteractionLocked()){deferredRender=true;return}render(true)}else preloadBoard()},45)};
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
 if(liveActive())setTimeout(()=>preloadBoard(),0);
 else if('requestIdleCallback'in window)requestIdleCallback(()=>preloadBoard(),{timeout:1600});
