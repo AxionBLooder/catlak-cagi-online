@@ -272,7 +272,7 @@ async function ccrBattleRender(force=false){
   try{
     const d=await ccrBattleData();
     if(!ccrBattleOpen||gen!==ccrBattleGen||CCR_APP.querySelector('main')!==main)return;
-    ccrEnsureBattleNav();main.classList.add('ccr-base-building');ccrFullRenderCount++;ccrLastFullRenderCanonical=ccrCanonicalBattleOwned;ccrLastFullRenderStack=String(new Error('CCR_FULL_RENDER').stack||'');main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
+    ccrEnsureBattleNav();main.classList.add('ccr-base-building');ccrFullRenderCount++;ccrLastFullRenderCanonical=ccrCanonicalBattleOwned;ccrLastFullRenderStack=String(new Error('CCR_FULL_RENDER').stack||'');main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';ccrCanonicalBattleOwned=true;
     if(document.documentElement.classList.contains('cc-battle-entry-pending')){
       for(let i=0;i<60&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
       let enhanced=false;
