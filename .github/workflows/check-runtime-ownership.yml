@@ -80,7 +80,7 @@ jobs:
           # Canonical screen ownership.
           if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' not in core:
               raise SystemExit('Legacy GM canlı masa rendererı halen yeni masayı tetikleyebilir')
-          if '__catlakPlayerSheetHardRecoveryV28' not in sheet:
+          if '__catlakPlayerSheetHardRecoveryV29' not in sheet:
               raise SystemExit('Oyuncu Masası canonical recovery sürümü beklenenden farklı')
           if 'window.__catlakBattleRoomV3Test' not in battle or 'br3RestoreCached' not in battle:
               raise SystemExit('Savaş Odası canonical renderer/cache eksik')
