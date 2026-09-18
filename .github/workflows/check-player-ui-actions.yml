@@ -17,7 +17,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-hard-recovery-v14-owner-race' index.html
+          grep -Fq 'player-hard-recovery-v15-stable-actions' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify cleaned interactive player sheet
@@ -82,20 +82,37 @@ jobs:
                 statTop:document.querySelector('[data-cc-hard-stats]').getBoundingClientRect().top,
                 invTop:document.querySelector('[data-cc-hard-inventory]').getBoundingClientRect().top,
                 statLeft:document.querySelector('[data-cc-hard-stats]').getBoundingClientRect().left,
-                equipLeft:document.querySelector('[data-cc-hard-equipment]').getBoundingClientRect().left
+                equipLeft:document.querySelector('[data-cc-hard-equipment]').getBoundingClientRect().left,
+                equipPosition:getComputedStyle(document.querySelector('[data-cc-hard-equipment]')).position,
+                slotColumns:getComputedStyle(document.querySelector('.cc-slot-deck')).gridTemplateColumns,
+                hasRollHistory:!!document.querySelector('[data-cc-hard-rolls]')
               }));
-              if(!(layout.statTop<layout.invTop)||!(layout.equipLeft>layout.statLeft))throw new Error('PLAYER_LAYOUT_FAILED '+JSON.stringify(layout));
+              if(!(layout.statTop<layout.invTop)||!(layout.equipLeft>layout.statLeft)||layout.equipPosition==='sticky'||layout.hasRollHistory||layout.slotColumns.split(' ').length<2)throw new Error('PLAYER_LAYOUT_FAILED '+JSON.stringify(layout));
               if(!/1\. Silah/.test(text)||!/2\. Silah/.test(text))throw new Error('Weapon slots missing: '+text);
               const stat=page.locator('[data-cc-hard-stat="DEX"]');
               if(await stat.getAttribute('aria-disabled'))throw new Error('DEX is disabled');
+              await page.evaluate(()=>{document.body.style.minHeight='2400px';window.scrollTo(0,260);window.__stableMain=document.querySelector('main');window.__stableStack=document.querySelector('.cc-character-stack')});
+              await page.waitForTimeout(80);
               console.log('STEP stat click');const rollStart=Date.now();await stat.click();console.log('STEP stat clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'&&x.args.p_stat==='DEX'));
-              await page.waitForFunction(()=>document.querySelector('[data-cc-hard-rolls] .roll')?.textContent.includes('DEX Testi'));
+              await page.waitForFunction(()=>document.querySelector('.cc-roll-flash')?.textContent.includes('DEX Testi'));
               const rollLatency=Date.now()-rollStart;if(rollLatency>800)throw new Error('ROLL_UI_TOO_SLOW '+rollLatency);
+              let stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
+              if(!stable.sameMain||!stable.sameStack||Math.abs(stable.y-260)>3)throw new Error('ROLL_RESET '+JSON.stringify(stable));
               console.log('STEP hp click');await page.locator('[data-cc-hard-hp][data-d="-1"]').click();console.log('STEP hp clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_update_my_hp'&&x.args.p_hp===21));
+              await page.waitForTimeout(180);
+              stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
+              if(!stable.sameMain||!stable.sameStack||Math.abs(stable.y-260)>3)throw new Error('HP_RESET '+JSON.stringify(stable));
               console.log('STEP slot click');await page.locator('[data-ws-slot="off_weapon"]').first().click();console.log('STEP slot clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'));
+              await page.waitForTimeout(180);
+              stable=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY}));
+              if(!stable.sameMain||!stable.sameStack||Math.abs(stable.y-260)>3)throw new Error('SLOT_RESET '+JSON.stringify(stable));
+              await page.locator('[data-cc-hard-race-nav]').click();
+              await page.waitForTimeout(320);
+              const race=await page.evaluate(()=>({sameMain:window.__stableMain===document.querySelector('main'),sameStack:window.__stableStack===document.querySelector('.cc-character-stack'),y:window.scrollY,visible:!!document.querySelector('[data-cc-hard-race]'),hiddenMode:document.querySelector('main')?.classList.contains('cc-hard-race-view')}));
+              if(!race.sameMain||!race.sameStack||!race.visible||race.hiddenMode||race.y<10)throw new Error('RACE_NAV_RESET '+JSON.stringify(race));
               console.log('PLAYER_UI_ACTIONS_OK');
               clearTimeout(hardTimeout);
               process.exit(0);
