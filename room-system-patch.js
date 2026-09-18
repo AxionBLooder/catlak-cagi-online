@@ -347,7 +347,7 @@ document.addEventListener('click',e=>{
   if(hub){e.preventDefault();e.stopImmediatePropagation();ccrHubOpen=true;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrSwitchHub(ccrManagedTabs.has(ccrBaseTab())?ccrBaseTab():ccrHubTab);return}
   const ht=e.target.closest?.('[data-ccr-hub-tab]');
   if(ht){e.preventDefault();e.stopImmediatePropagation();ccrSwitchHub(ht.dataset.ccrHubTab);return}
-  const battle=e.target.closest?.('[data-ccr-battle]');
+  const battle=e.target.closest?.('button[data-ccr-battle]');
   if(battle){e.preventDefault();e.stopImmediatePropagation();ccrOpenBattle();return}
   const retry=e.target.closest?.('[data-ccr-battle-retry]');
   if(retry){e.preventDefault();e.stopImmediatePropagation();ccrLastCanonicalReset='retry';ccrCanonicalBattleOwned=false;document.documentElement.classList.add('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true);return}
