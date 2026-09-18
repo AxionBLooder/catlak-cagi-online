@@ -69,8 +69,6 @@ function gmtEventsHtml(d){
   const groups=['d6','d20','d100','d200'];
   return `<section class="card"><div class="eyebrow">OLAY TABLOSU ATÖLYESİ</div><h2>Olay Sonuçlarını Düzenle</h2><p class="muted">Zar aralıklarını güvenli tutuyoruz; yalnız çıkan olay metnini değiştiriyorsun. Zar Akışı'ndaki d6/d20/d100/d200 aynı anda bu metinleri kullanır.</p></section><div class="gmt-grid">${groups.map(k=>`<section class="card"><div class="eyebrow">${k.toUpperCase()}</div><h2>${k} Olayları</h2>${d.rules.filter(r=>r.table_key===k).map(r=>`<div class="gmt-rule"><b>${gmtRange(r)}</b><input id="gmt-rule-${r.id}" value="${gmtH(r.outcome)}"><button type="button" data-gmt-rule-save="${r.id}">Kaydet</button></div>`).join('')}</section>`).join('')}</div>`;
 }
-function gmtLogsHtml(d){return `<div class="gmt-grid"><section class="card"><div class="eyebrow">OTURUM GÜNLÜĞÜ</div><h2>GM Kayıt Defteri</h2><p class="muted">Savaş, tur, durum etkileri ve olay zarları otomatik kaydolur. İstersen kendi notunu da ekleyebilirsin.</p><label>Oturum Notu<textarea id="gmt-log-note" placeholder="Örn. Parti eski kulede büyücünün mührünü kırdı."></textarea></label><div class="actions"><button type="button" class="primary" data-gmt-log-add>Not Ekle</button><button type="button" class="danger" data-gmt-log-clear>Günlüğü Temizle</button></div></section><section class="card"><div class="eyebrow">SON KAYITLAR</div>${d.logs.length?d.logs.map(x=>`<div class="gmt-log"><b>${gmtH(x.kind.toUpperCase())}</b><div>${gmtH(x.message)}</div><time>${gmtTime(x.created_at)}</time></div>`).join(''):'<div class="muted">Henüz kayıt yok.</div>'}</section></div>`}
-
 function gmtValidSub(x){return x==='combat'||x==='events'}
 function gmtOpenSub(sub='combat'){
   if(!gmtIsGM()||!gmtValidSub(sub))return false;
@@ -190,17 +188,15 @@ document.addEventListener('click',e=>{
   const ca=e.target.closest('[data-gmt-cond-add]');if(ca){e.preventDefault();e.stopImmediatePropagation();const cid=document.querySelector('#gmt-cond-char')?.value,preset=document.querySelector('#gmt-cond-preset')?.value||'',custom=document.querySelector('#gmt-cond-name')?.value.trim()||'',name=custom||preset,note=document.querySelector('#gmt-cond-note')?.value||'',rounds=gmtN(document.querySelector('#gmt-cond-rounds')?.value)||0;if(!cid||!name)return gmtToast('Karakter ve durum adı gerekli.');gmtRpc('catlak_gm_add_condition',{p_character_id:cid,p_name:name,p_note:note,p_rounds:rounds||null},'Durum oyuncuya gönderildi.');return}
   const cr=e.target.closest('[data-gmt-cond-remove]');if(cr){e.preventDefault();e.stopImmediatePropagation();gmtRpc('catlak_gm_remove_condition',{p_condition_id:cr.dataset.gmtCondRemove},'Durum kaldırıldı.');return}
   const rs=e.target.closest('[data-gmt-rule-save]');if(rs){e.preventDefault();e.stopImmediatePropagation();gmtRuleSave(rs.dataset.gmtRuleSave);return}
-  const la=e.target.closest('[data-gmt-log-add]');if(la){e.preventDefault();e.stopImmediatePropagation();const v=document.querySelector('#gmt-log-note')?.value.trim();if(!v)return gmtToast('Not boş olamaz.');gmtRpc('catlak_gm_log_note',{p_message:v},'Oturum notu eklendi.');return}
-  const lc=e.target.closest('[data-gmt-log-clear]');if(lc){e.preventDefault();e.stopImmediatePropagation();if(confirm('Oturum günlüğü topluca temizlensin mi?'))gmtRpc('catlak_gm_clear_session_log',{},d=>`${d||0} günlük kaydı temizlendi.`);return}
 },true);
 
 
 GMT_S.channel('cc-gmt-conditions').on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>{gmtInvalidateSub('combat');if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
 GMT_S.channel('cc-gmt-combat').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>gmtInvalidateSub('combat')).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>gmtInvalidateSub('combat')).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{gmtInvalidateSub('combat');if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
 GMT_S.channel('cc-gmt-player-equipment').on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>{if(!gmtOpen)gmtInvalidatePlayer()}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>{if(!gmtOpen)gmtInvalidatePlayer()}).subscribe();
-GMT_S.channel('cc-gmt-events-logs').on('postgres_changes',{event:'*',schema:'public',table:'catlak_event_rules'},()=>{gmtRuleCache=null;gmtRuleAt=0;gmtInvalidateSub('events');if(!gmtOpen)setTimeout(()=>gmtSyncEventRules(),30)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_session_log'},()=>gmtInvalidateSub('logs')).subscribe();
+GMT_S.channel('cc-gmt-events').on('postgres_changes',{event:'*',schema:'public',table:'catlak_event_rules'},()=>{gmtRuleCache=null;gmtRuleAt=0;gmtInvalidateSub('events');if(!gmtOpen)setTimeout(()=>gmtSyncEventRules(),30)}).subscribe();
 const gmtObserver=new MutationObserver(gmtScheduleMaintain);gmtObserver.observe(GMT_APP,{childList:true,subtree:true});setTimeout(gmtMaintain,150);
 window.gmtRender=gmtRender;
 window.__catlakGmTools={open:gmtOpenSub,close:gmtClose,render:gmtRender,active:()=>gmtOpen?gmtSub:'',isOpen:()=>gmtOpen};
 window.__catlakGmToolsTest={ruleText:gmtRuleText,range:gmtRange,slotName:gmtSlotName};
-setTimeout(()=>{if(gmtIsGM())['combat','events','logs'].forEach((sub,i)=>setTimeout(()=>gmtLoad(sub,false).catch(()=>{}),i*90))},420);
+setTimeout(()=>{if(gmtIsGM())['combat','events'].forEach((sub,i)=>setTimeout(()=>gmtLoad(sub,false).catch(()=>{}),i*90))},420);
