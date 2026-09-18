@@ -13,7 +13,7 @@ const num=x=>Number(x||0);
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const liveActive=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
-let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null,deferredRender=false,interactionUntil=0;
+let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null,deferredRender=false,interactionUntil=0,liveSig='';
 
 if(!document.querySelector('#lcc-style')){
  const st=document.createElement('style');st.id='lcc-style';st.textContent=`
@@ -45,6 +45,7 @@ function removeOldCombatEntry(){
  if(String(window.__catlakGmCenterSelectedRoute||'')==='combat')window.__catlakGmCenterSelectedRoute='';
 }
 function openLive(){
+ try{window.__catlakViewRuntime?.begin?.('gm-live')}catch(_){}
  const b=APP.querySelector('.nav [data-tab="gm"]');
  if(b&&!b.classList.contains('on'))b.click();
  setTimeout(()=>render(true),80);
@@ -85,6 +86,7 @@ async function preloadBoard(){
 function restoreCachedBoard(main){
  if(!main||!cachedBoardHtml||main.querySelector('[data-lcc-board]'))return false;
  main.insertAdjacentHTML('beforeend',cachedBoardHtml);
+ try{window.__catlakViewRuntime?.ready?.('gm-live')}catch(_){}
  return true;
 }
 function combatantHtml(x,current){
@@ -142,11 +144,15 @@ async function render(force=false){
   const d=await loadData();
   if(!liveActive()||APP.querySelector('main')!==main)return false;
   await autoEndClearedCombat(d);
-  cachedBoardHtml=boardHtml(d);
+  const nextHtml=boardHtml(d),sig=JSON.stringify([d.state?.active,d.state?.name,d.state?.round,d.state?.current_combatant_id,(d.combatants||[]).map(x=>[x.id,x.character_id,x.kind,x.name,x.initiative,x.hp_current,x.hp_max,x.ac]),(d.conditions||[]).map(x=>[x.id,x.character_id,x.name,x.remaining_rounds,x.note]),(d.chars||[]).map(x=>[x.id,x.name,x.hp_current,x.hp_max,x.data?.cc_party_member]),(d.templates||[]).map(x=>[x.id,x.name,x.hp,x.ac])]);
+  cachedBoardHtml=nextHtml;
+  if(main.querySelector('[data-lcc-board]')&&sig===liveSig){try{window.__catlakViewRuntime?.ready?.('gm-live')}catch(_){};return true}
+  liveSig=sig;
   const anchor=main.querySelector('.cc-live-two');
   main.querySelector('[data-lcc-board]')?.remove();
   if(anchor?.parentNode)anchor.insertAdjacentHTML('afterend',cachedBoardHtml);
   else main.insertAdjacentHTML('beforeend',cachedBoardHtml);
+  try{window.__catlakViewRuntime?.ready?.('gm-live')}catch(_){}
   return true;
  }catch(e){console.error('LCC render',e);toast('Savaş masası yüklenemedi: '+(e?.message||String(e)));return false}finally{busy=false}
 }
@@ -253,7 +259,7 @@ APP.addEventListener('focusout',e=>{
  },220);
 },true);
 
-function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
+function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');if(!main?.querySelector('[data-lcc-board]'))try{window.__catlakViewRuntime?.begin?.('gm-live')}catch(_){}restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
 new MutationObserver(rs=>{
  const nav=APP.querySelector('.nav'),main=APP.querySelector('main');
  const structural=rs.some(r=>{
