@@ -71,8 +71,8 @@ function br3CreatureCard(x){
     <div class="actions" style="margin-top:9px">${dead?'<button type="button" disabled>Düştü</button>':`<button type="button" class="${selected?'on':''}" data-br3-target="${br3Esc(x.id)}">${selected?'✓ Hedef Seçildi':'Hedef Seç'}</button>`}</div>
   </article>`;
 }
-function br3CreaturesSection(s){const enemies=br3Enemies(s);return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div><h2>${enemies.length?enemies.length+' Yaratık':'Henüz Yaratık Yok'}</h2><p class="muted">GM savaşa yaratık eklediğinde burada görünür. Oyuncu tarafında yaratık için yalnız AC gösterilir.</p>${enemies.length?`<div class="br3-grid">${enemies.map(br3CreatureCard).join('')}</div>`:'<div class="muted">GM henüz bu savaşa yaratık eklemedi.</div>'}</section>`}
-function br3AbilityTargets(a,s){const rows=s.order||[];if(a.target_type==='enemy')return rows.filter(x=>x.kind==='enemy'&&br3Num(x.hp_current)>0);if(a.target_type==='ally')return rows.filter(x=>x.kind==='player'&&br3Num(x.hp_current)>0);return[]}
+function br3CreaturesSection(s){const enemies=br3Enemies(s);return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:''}</section>`}
+function br3AbilityTargets(a,s){const rows=s.order||[];if(a.target_type==='enemy')return rows.filter(x=>x.kind==='enemy'&&(x.hp_current==null||br3Num(x.hp_current)>0));if(a.target_type==='ally')return rows.filter(x=>x.kind==='player'&&br3Num(x.hp_current)>0);return[]}
 function br3AbilityCard(a,s){
   const targets=br3AbilityTargets(a,s),uses=a.uses_per_combat==null?'∞':br3Num(a.uses_remaining)+'/'+br3Num(a.uses_per_combat),out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;
   const isEnemy=a.target_type==='enemy',isAlly=a.target_type==='ally',selectedEnemy=isEnemy?targets.find(x=>String(x.id)===String(br3TargetId)):null;
