@@ -67,7 +67,12 @@ function crgActionKey(el){
   if(el?.matches?.('[data-ccr-stat]'))return `stat:${el.dataset.ccrStat}`;
   return '';
 }
-function crgRefreshBattle(){setTimeout(()=>window.__catlakRoomSystemTest?.renderBattle?.(true),60)}
+function crgRefreshBattle(){
+  setTimeout(()=>{
+    if(window.__catlakBattleRoomV3Test?.render)window.__catlakBattleRoomV3Test.render(false);
+    else window.__catlakRoomSystemTest?.renderBattle?.(true)
+  },60)
+}
 async function crgRunAction(el){
   const key=crgActionKey(el);if(!key||crgBusy.has(key))return;
   crgBusy.add(key);
@@ -87,6 +92,8 @@ async function crgRunAction(el){
 }
 function crgBattleTarget(e){
   if(window.__catlakBattleRoomOpen!==true)return null;
+  const main=CRG_APP.querySelector('main');
+  if(main?.querySelector('[data-br3-abilities]')||window.__catlakBattleRoomV3Test?.isBattleView?.())return null;
   return e.target.closest?.('[data-ccr-weapon],[data-ccr-stat]')||null;
 }
 
