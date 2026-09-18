@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakLiveCombatCenterLoaderV1)return;
-window.__catlakLiveCombatCenterLoaderV1=true;
+if(window.__catlakLiveCombatCenterLoaderV2)return;
+window.__catlakLiveCombatCenterLoaderV2=true;
 let tries=0;
 function start(){
   const app=document.getElementById('app');
@@ -12,13 +12,13 @@ function start(){
     return;
   }
   if(window.__catlakLiveCombatCenter&&typeof window.__catlakLiveCombatCenter.render==='function')return;
-  if(window.__catlakLiveCombatCenterV1&&!window.__catlakLiveCombatCenter){
-    try{delete window.__catlakLiveCombatCenterV1}catch(_){window.__catlakLiveCombatCenterV1=false}
+  if((window.__catlakLiveCombatCenterV1||window.__catlakLiveCombatCenterV2)&&!window.__catlakLiveCombatCenter){
+    try{delete window.__catlakLiveCombatCenterV1;delete window.__catlakLiveCombatCenterV2}catch(_){window.__catlakLiveCombatCenterV1=false;window.__catlakLiveCombatCenterV2=false}
   }
   if(document.querySelector('script[data-live-combat-center-runtime]'))return;
   const s=document.createElement('script');
   s.dataset.liveCombatCenterRuntime='1';
-  s.src='./live-combat-center-patch.js?v=livecombat-v3-runtime';
+  s.src='./live-combat-center-patch.js?v=livecombat-v4-party-library';
   s.async=false;
   s.onerror=function(){console.error('Canlı savaş merkezi runtime dosyası yüklenemedi.');};
   document.body.appendChild(s);
