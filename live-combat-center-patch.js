@@ -12,7 +12,7 @@ const num=x=>Number(x||0);
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const liveActive=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
-let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null;
+let busy=false,actionBusy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false,cachedBoardHtml='',preloadBusy=null,deferredRender=false;
 
 if(!document.querySelector('#lcc-style')){
  const st=document.createElement('style');st.id='lcc-style';st.textContent=`
@@ -117,10 +117,15 @@ async function autoEndClearedCombat(d){
  }catch(e){console.warn('LCC_AUTO_END',e);return false}
  finally{autoEndBusy=false}
 }
+function formInteractionActive(){
+ const a=document.activeElement;
+ return !!(a&&APP.contains(a)&&a.closest?.('[data-lcc-board]')&&a.matches?.('select,input,textarea'));
+}
 async function render(force=false){
  wrapOldCombatRoute();
  if(!liveActive())return false;
  const main=APP.querySelector('main');if(!main)return false;
+ if(main.querySelector('[data-lcc-board]')&&formInteractionActive()&&!actionBusy){deferredRender=true;return true}
  const restored=restoreCachedBoard(main);
  if(restored&&!force){setTimeout(()=>render(true),0);return true}
  if(!force&&main.querySelector('[data-lcc-board]'))return true;
@@ -224,6 +229,10 @@ APP.addEventListener('change',e=>{
  if(hp)hp.value=String(num(o.dataset.hp)||1);
  if(ac)ac.value=String(num(o.dataset.ac)||10);
 },true);
+APP.addEventListener('focusout',e=>{
+ if(!e.target?.closest?.('[data-lcc-board]')||!deferredRender)return;
+ setTimeout(()=>{if(!formInteractionActive()&&deferredRender){deferredRender=false;render(true)}},120);
+},true);
 
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
 new MutationObserver(rs=>{
@@ -235,7 +244,7 @@ new MutationObserver(rs=>{
  });
  if(structural||liveActive()&&!main?.querySelector('[data-lcc-board]'))schedule();
 }).observe(APP,{childList:true,subtree:true});
-const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive())render(true);else preloadBoard()},45)};
+const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive()){if(formInteractionActive()){deferredRender=true;return}render(true)}else preloadBoard()},45)};
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
 if(liveActive())setTimeout(()=>preloadBoard(),0);
 else if('requestIdleCallback'in window)requestIdleCallback(()=>preloadBoard(),{timeout:1600});
