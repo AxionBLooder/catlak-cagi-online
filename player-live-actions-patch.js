@@ -56,8 +56,15 @@ function plaPlayerItem(r,i){
   const fx=i.effects||{},note=fx.public_note||'',mode=fx.item_mode||'general',type=i.item_type,weaponSlot=String(r.equipped_slot||''),shownEquipped=type==='weapon'?!!r.equipped&&(weaponSlot==='main_weapon'||weaponSlot==='off_weapon'):!!r.equipped;let meta='',actions='';
   if(type==='weapon'){
     const stat=i.attack_stat&&i.attack_stat!=='NONE'?i.attack_stat:'STR',weaponBonus=plaNum(i.attack_bonus);
+    const mainOn=!!r.equipped&&weaponSlot==='main_weapon',offOn=!!r.equipped&&weaponSlot==='off_weapon';
     meta=`Saldırı • ${stat} bonusu${weaponBonus?` ${weaponBonus>0?'+':'-'} ${Math.abs(weaponBonus)} silah`:''} • Hasar • ${stat} bonusu`;
-    actions=`<button type="button" class="primary" data-a="weapon" data-id="${r.id}" data-k="attack">Saldırı At</button><button type="button" data-a="weapon" data-id="${r.id}" data-k="damage">Hasar Vur</button>`;
+    actions=`<div class="ws-slot-controls" data-ws-controls="1">
+      <button type="button" class="${mainOn?'ws-active':''}" data-ws-slot="main_weapon">${mainOn?'✓ 1. Yuvaya Atandı':'1. Yuvaya Ata'}</button>
+      <button type="button" class="${offOn?'ws-active':''}" data-ws-slot="off_weapon">${offOn?'✓ 2. Yuvaya Atandı':'2. Yuvaya Ata'}</button>
+    </div>
+    <button type="button" class="primary" data-a="weapon" data-id="${r.id}" data-k="attack">Saldırı At</button>
+    <button type="button" data-a="weapon" data-id="${r.id}" data-k="damage">Hasar Vur</button>
+    ${shownEquipped?`<button type="button" data-ws-remove="${r.id}">Yuvadan Çıkar</button>`:''}`;
   }else if(type==='armor'){
     meta=i.ac_mode==='set'?`AC Tabanı ${i.ac_value}`:i.ac_mode==='bonus'?`AC +${i.ac_value}`:'AC etkisi yok';
   }else if(mode==='accessory'){
