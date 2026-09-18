@@ -19,9 +19,11 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v1' index.html
-          grep -Fq 'recovery-core-9-joined-sheet-boot' index.html
+          grep -Fq 'player-sheet-hard-recovery.js?v=player-hard-recovery-v2' index.html
+          grep -Fq 'recovery-core-10-canonical-invite-sheet' index.html
           grep -Fq 'catlakBootJoinedCharacter' live_08.txt
+          grep -Fq "catlak-guest-join" live_08.txt
+          grep -Fq 'visibility:visible!important' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Recover blank invited-player sheet
