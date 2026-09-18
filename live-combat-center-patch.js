@@ -200,9 +200,20 @@ APP.addEventListener('change',e=>{
 },true);
 
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive()){const main=APP.querySelector('main');restoreCachedBoard(main);render(false)}else APP.querySelector('[data-lcc-board]')?.remove()})}
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
-const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(liveActive())render(true)},35)};
+new MutationObserver(rs=>{
+ const nav=APP.querySelector('.nav'),main=APP.querySelector('main');
+ const structural=rs.some(r=>{
+  if(r.target===APP||r.target===main)return true;
+  if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+  return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role,.cc-live-two')||n.querySelector?.('main,.nav,.role,.cc-live-two')));
+ });
+ if(structural||liveActive()&&!main?.querySelector('[data-lcc-board]'))schedule();
+}).observe(APP,{childList:true,subtree:true});
+const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(liveActive())render(true);else preloadBoard()},45)};
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
-setTimeout(()=>preloadBoard(),20);setTimeout(schedule,120);setTimeout(schedule,700);setTimeout(schedule,1600);
+if(liveActive())setTimeout(()=>preloadBoard(),0);
+else if('requestIdleCallback'in window)requestIdleCallback(()=>preloadBoard(),{timeout:1600});
+else setTimeout(()=>preloadBoard(),900);
+setTimeout(schedule,100);setTimeout(schedule,850);
 window.__catlakLiveCombatCenter={render:()=>render(true),restore:()=>restoreCachedBoard(APP.querySelector('main')),preload:preloadBoard,open:openLive,removeLegacy:removeOldCombatEntry,start:startCombat};
 })();
