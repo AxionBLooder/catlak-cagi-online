@@ -17,6 +17,10 @@ on:
       - 'gm-ui-polish-v1.js'
       - 'presence-patch.js'
       - 'quality-of-life-patch.js'
+      - 'event-rolls-patch.js'
+      - 'visual-archive-map-flow-patch.js'
+      - 'gm-nav-canonical.js'
+      - 'gm-tools-patch.js'
       - '.github/workflows/check-playable-hardening.yml'
   workflow_dispatch:
 
@@ -64,7 +68,7 @@ jobs:
           # 2. Legacy runtime quarantine: files may remain in repo, but cannot be loaded.
           retired=['gm-live-player-state.js','gm-controls-patch.js','dice-ux-patch.js',
                    'player-sheet-patch.js','player-live-actions-patch.js',
-                   'gm-management-room-patch.js','gm-center-router-core.js']
+                   'gm-management-room-patch.js','gm-center-router-core.js','session-log-delete-fix.js']
           ok('legacy.not.loaded',all(x not in html for x in retired))
 
           # 3. Canonical routing and view restoration.
