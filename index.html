@@ -92,7 +92,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v17-layout-race-rest','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v18-race-readonly','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -107,11 +107,11 @@
       await loadParallel([
         ['./presence-patch.js?v=player-bg-v4-single-owner','presence'],
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v5-party-gate','rooms'],
+        ['./room-system-patch.js?v=player-bg-v6-stable-battle','rooms'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
         ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
       ]);
-      await load('./battle-room-v3-patch.js?v=battle-v3-usability-v1','battle-room-v3');
+      await load('./battle-room-v3-patch.js?v=battle-v3-usability-v2-stable-target','battle-room-v3');
     }
 
     async function loadGmCore(){
@@ -127,7 +127,7 @@
         ['./gm-live-compact-v1.js?v=gm-live-compact-v9-columns','gm-live-compact']
       ]);
       await load('./live-combat-center-loader.js?v=livecombat-loader-v8-party-library','live-combat-loader');
-      await load('./gm-live-player-state.js?v=gm-live-player-state-v3','gm-live-player-state');
+      await load('./gm-live-player-state.js?v=gm-live-player-state-v4-readable','gm-live-player-state');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -142,7 +142,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-5-party-gate','rooms'],
+        ['./room-system-patch.js?v=recovery-6-stable-battle','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
