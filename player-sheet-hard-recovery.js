@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV25)return;
-window.__catlakPlayerSheetHardRecoveryV25=true;
+if(window.__catlakPlayerSheetHardRecoveryV26)return;
+window.__catlakPlayerSheetHardRecoveryV26=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -401,7 +401,6 @@ async function hardStat(btn){
     const S=await getRuntime(),r=await S.rpc('catlak_roll_stat',{p_character_id:cid,p_stat:stat});if(r.error)throw r.error;
     const roll=Array.isArray(r.data)?r.data[0]:r.data;
     showRollFlash(cid,roll);
-    toast((roll?.label||stat)+': '+(roll?.total??'?'));
     btn.classList.remove('cc-rolling');
   });
 }
@@ -411,7 +410,6 @@ async function hardWeapon(btn){
     const S=await getRuntime(),r=await S.rpc('catlak_roll_weapon',{p_inventory_id:id,p_action:kind});if(r.error)throw r.error;
     const roll=Array.isArray(r.data)?r.data[0]:r.data,cid=btn.closest('.cc-character-stack')?.dataset.ccHardStack;
     if(cid)showRollFlash(cid,roll);
-    toast((roll?.label||'Silah')+': '+(roll?.total??'DM Kararı'));
   });
 }
 async function hardEquip(btn){
