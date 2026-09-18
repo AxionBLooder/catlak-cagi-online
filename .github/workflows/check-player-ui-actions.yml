@@ -76,20 +76,20 @@ jobs:
                   }
                 };
               });
-              await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
-              await page.waitForSelector('[data-cc-hard-stat="DEX"]');
-              await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
+              console.log('STEP hard load start');await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});console.log('STEP hard load done');
+              console.log('STEP wait stat');await page.waitForSelector('[data-cc-hard-stat="DEX"]');console.log('STEP stat ready');
+              console.log('STEP live load start');await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});console.log('STEP live load done');
               await page.waitForFunction(()=>!document.querySelector('.cc-desk-intro'));
               const text=await page.locator('main').innerText();
               if(/D20 TESTLERİ|d20 at/i.test(text))throw new Error('D20 labels still visible: '+text);
               if(!/1\. Silah/.test(text)||!/2\. Silah/.test(text))throw new Error('Weapon slots missing: '+text);
               const stat=page.locator('[data-cc-hard-stat="DEX"]');
               if(await stat.getAttribute('aria-disabled'))throw new Error('DEX is disabled');
-              await stat.click();
+              console.log('STEP stat click');await stat.click();console.log('STEP stat clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'&&x.args.p_stat==='DEX'));
-              await page.locator('[data-cc-hard-hp][data-d="-1"]').click();
+              console.log('STEP hp click');await page.locator('[data-cc-hard-hp][data-d="-1"]').click();console.log('STEP hp clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_update_my_hp'&&x.args.p_hp===21));
-              await page.locator('[data-ws-slot="off_weapon"]').first().click();
+              console.log('STEP slot click');await page.locator('[data-ws-slot="off_weapon"]').first().click();console.log('STEP slot clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_set_equipped_slot'&&x.args.p_slot==='off_weapon'));
               console.log('PLAYER_UI_ACTIONS_OK');
               clearTimeout(hardTimeout);
