@@ -50,7 +50,7 @@ jobs:
             'battle route owner':'closeBattle:ccrCloseBattle' in rooms,
             'battle atomic transition':"begin?.('player-battle')" in rooms and 'ccrQueueRealtime' in rooms,
             'battle duplicate realtime removed':"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle,
-            'sheet fail-open core':'const coreX=' in sheet and 'CATLAK_PLAYER_SHEET_HYDRATE' in sheet,
+            'sheet core-first fallback':'coreSheetVisible' in sheet and "window.addEventListener('catlak:player-fast-ready'" in sheet,
             'battle fixed geometry':'ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle,
             'guest query tolerant':"6500,'character owner query'" in sheet and "5000,'character dom handoff'" in sheet,
             'guest no auto retry':"setTimeout(()=>schedule(true,0),900)" not in sheet and "if(queued)return" in sheet,
