@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmLiveCompactV10)return;
-window.__catlakGmLiveCompactV10=true;
+if(window.__catlakGmLiveCompactV11)return;
+window.__catlakGmLiveCompactV11=true;
 ['glc-style-v2','glc-style-v3','glc-style-v4','glc-style-v5','glc-style-v6','glc-style-v7'].forEach(id=>document.getElementById(id)?.remove());
 const APP=document.getElementById('app');if(!APP)return;
 
@@ -27,10 +27,18 @@ function cleanNav(){
 
 function decorateLive(){
  const main=APP.querySelector('main[data-cc-simple-live="1"]');if(!main)return;
+ [...main.children].forEach(el=>{
+  if(!(el instanceof HTMLElement)||!el.matches('.card')||el.classList.contains('cc-party-show'))return;
+  const tx=String(el.textContent||'').replace(/\s+/g,' ').trim();
+  if(/CANLI OYUN MASASI/i.test(tx)&&/Oyuncular\s*&\s*Zarlar/i.test(tx))el.remove();
+ });
  const wrap=main.querySelector('.cc-live-two');
  if(wrap)wrap.remove();
  main.querySelectorAll('[data-glc-kind="players"],[data-glc-kind="rolls"]').forEach(x=>x.remove());
- if(APP.querySelector('.nav [data-tab="gm"].on')&&!main.querySelector('[data-lcc-board]'))setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},0);
+ if(APP.querySelector('.nav [data-tab="gm"].on')&&!main.querySelector('[data-lcc-board]')){
+   try{if(window.__catlakLiveCombatCenter?.restore?.())return}catch(_){}
+   setTimeout(()=>{try{window.__catlakLiveCombatCenter?.render?.()}catch(_){}},0);
+ }
 }
 
 const st=document.createElement('style');st.id='glc-style-v10';st.textContent=`
@@ -45,6 +53,8 @@ const st=document.createElement('style');st.id='glc-style-v10';st.textContent=`
 #app.gmc-gm [data-gmc-route="characters"],#app.gmc-gm [data-gm2-route="characters"]{display:none!important}
 
 html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:8px 16px 30px!important}
+html body #app.gmc-gm:has(.nav [data-tab="gm"].on) main:has(.cc-live-two)>.card:not(.cc-party-show){display:none!important}
+html body #app.gmc-gm:has(.nav [data-tab="gm"].on) main .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two{display:none!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{width:100%!important;height:auto!important;overflow:auto!important;margin:0!important;padding:12px 14px!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card[data-glc-kind="players"]{max-height:520px!important}
