@@ -44,6 +44,7 @@ async function reconcile(){
    for(const id of eligible){if(!existing.has(id))await addCharacter(id)}
   }
   normalizeUi();
+  window.dispatchEvent(new CustomEvent('catlak:battle-party-synced',{detail:{eligible:[...eligible]}}));
  }catch(e){console.warn('BATTLE_PARTY_GUARD',e);toast('Parti / savaş katılımı eşitlenemedi: '+(e?.message||String(e)))}finally{busy=false;if(queued)schedule(180)}
 }
 function schedule(ms=220){clearTimeout(timer);timer=setTimeout(reconcile,ms)}
@@ -58,6 +59,8 @@ window.addEventListener('click',e=>{
  const party=e.target?.closest?.('[data-pptf-party],[data-prh-set-party]');if(party&&String(party.dataset.v||'')==='0')schedule(420);
  if(b||add||e.target?.closest?.('[data-lcc-start],[data-gmt-combat-start]'))schedule(120);
 },true);
+
+window.addEventListener('catlak:party-membership-changed',()=>schedule(0));
 
 new MutationObserver(rs=>{
  if(!isGM())return;

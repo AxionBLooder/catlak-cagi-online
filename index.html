@@ -128,11 +128,12 @@
         ['./gm-tools-patch.js?v=clean-gm-tools-v6-session-log-removed','gm-tools'],
         ['./quality-of-life-patch.js?v=clean-qol-v4-no-polling','qol'],
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
-        ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean'],
+        ['./party-room-stable-v2.js?v=party-room-clean-v8-live-sync','party-room-clean'],
+        ['./battle-party-membership-guard.js?v=battle-party-v6-immediate-sync','battle-party-guard'],
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v13-atomic-swr','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v13-battle-only','gm-live-compact'],
-        ['./live-combat-center-patch.js?v=livecombat-v15-direct-hp-entry','live-combat-center-runtime']
+        ['./live-combat-center-patch.js?v=livecombat-v16-party-live-sync','live-combat-center-runtime']
       ]);
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
@@ -143,8 +144,7 @@
         ['./special-character-abilities.js?v=special-char-v1','special-character-abilities'],
         ['./presence-patch.js?v=presence-v6-event-driven','presence'],
         ['./item-system-patch.js?v=item-system-v6-light-observer','items'],
-        ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./battle-party-membership-guard.js?v=battle-party-v5-light-observer','battle-party-guard']
+        ['./party-roster-patch.js?v=recovery-3','party-roster']
       ]);
     }
 

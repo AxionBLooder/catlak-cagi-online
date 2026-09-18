@@ -339,6 +339,8 @@ new MutationObserver(rs=>{
  if(structural||liveActive()&&!main?.querySelector('[data-lcc-board]'))schedule();
 }).observe(APP,{childList:true,subtree:true});
 const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive()){if(formInteractionLocked()){deferredRender=true;return}render(true)}else preloadBoard()},45)};
+window.addEventListener('catlak:battle-party-synced',()=>{cachedBoardHtml='';liveSig='';if(liveActive()){render(true)}else preloadBoard()});
+window.addEventListener('catlak:party-membership-changed',()=>{cachedBoardHtml='';liveSig=''});
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
 if(liveActive())setTimeout(()=>preloadBoard(),0);
 else if('requestIdleCallback'in window)requestIdleCallback(()=>preloadBoard(),{timeout:1600});
