@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetBindFixV3)return;
-window.__catlakPlayerSheetBindFixV3=true;
+if(window.__catlakPlayerSheetBindFixV4)return;
+window.__catlakPlayerSheetBindFixV4=true;
 const APP=document.getElementById('app');if(!APP)return;
 let busy=false,queued=false,lastKick=0,realtimeStarted=false;
 const txt=e=>String(e?.textContent||'').trim();
@@ -80,6 +80,7 @@ async function renderFallback(){
 }
 async function repair(force=false){
  queued=false;if(!sheetActive())return false;
+ if(APP.querySelector('main[data-cc-hard-sheet="1"]')&&sheetReady())return true;
  if(bindRawHeroes()){refreshLayers();return true}
  if(busy)return false;busy=true;
  try{
@@ -93,9 +94,9 @@ async function repair(force=false){
 }
 function schedule(force=false,delay=0){if(queued&&!force)return;queued=true;setTimeout(()=>repair(force),Math.max(0,delay))}
 window.addEventListener('click',e=>{const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');if(b&&isPlayer()){clearStaleDesk();schedule(true,35);setTimeout(()=>schedule(true,300),300);setTimeout(()=>schedule(true,1000),1000)}},true);
-window.addEventListener('catlak:data-refreshed',()=>{if(sheetActive())schedule(true,20)});
-new MutationObserver(()=>{if(!sheetActive())return;if(bindRawHeroes())refreshLayers();else schedule(false,60)}).observe(APP,{childList:true,subtree:true});
-async function startRealtime(){if(realtimeStarted)return;for(let i=0;i<120&&!window.__catlakSupabase;i++)await new Promise(r=>setTimeout(r,50));const S=window.__catlakSupabase;if(!S||realtimeStarted)return;realtimeStarted=true;S.channel('cc-player-sheet-bind-fix-v3').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(sheetActive())schedule(true,30)}).subscribe()}
+window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(APP.querySelector('main[data-cc-hard-sheet="1"]')&&sheetReady())return;schedule(true,20)});
+new MutationObserver(()=>{if(!sheetActive())return;if(APP.querySelector('main[data-cc-hard-sheet="1"]')&&sheetReady())return;if(bindRawHeroes())refreshLayers();else schedule(false,60)}).observe(APP,{childList:true,subtree:true});
+async function startRealtime(){if(realtimeStarted)return;for(let i=0;i<120&&!window.__catlakSupabase;i++)await new Promise(r=>setTimeout(r,50));const S=window.__catlakSupabase;if(!S||realtimeStarted)return;realtimeStarted=true;S.channel('cc-player-sheet-bind-fix-v4').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(!sheetActive())return;if(APP.querySelector('main[data-cc-hard-sheet="1"]')&&sheetReady())return;schedule(true,30)}).subscribe()}
 setTimeout(()=>schedule(true,100),100);setTimeout(()=>schedule(true,650),650);setTimeout(()=>schedule(true,1600),1600);setTimeout(()=>schedule(true,3000),3000);startRealtime();
 window.__catlakPlayerSheetBindFix={repair:()=>repair(true),ready:sheetReady,bind:bindRawHeroes,fallback:renderFallback};
 })();
