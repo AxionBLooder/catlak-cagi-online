@@ -58,14 +58,13 @@ function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBat
 function ccrEnsureHub(){
   const nav=ccrNav();if(!nav)return;
   nav.querySelectorAll('[data-tab="characters"],[data-tab="rules"],[data-tab="account"]').forEach(b=>b.classList.toggle('ccr-managed-hidden',ccrIsGM()));
-  let room=nav.querySelector('[data-ccr-hub]');
+  const room=nav.querySelector('[data-ccr-hub]');
   if(ccrIsGM()){
-    if(!room){
-      room=document.createElement('button');room.type='button';room.dataset.ccrHub='1';room.textContent='Yönetim Odası';
-      const races=nav.querySelector('[data-tab="races"]');races?races.before(room):nav.appendChild(room);
-    }
-    room.classList.toggle('on',ccrHubOpen&&ccrManagedTabs.has(ccrBaseTab()));
-  }else room?.remove();
+    ccrHubOpen=false;
+    room?.remove();
+    return;
+  }
+  room?.remove();
 }
 function ccrHubHeader(){
   const active=ccrBaseTab();
