@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanClickGuardV6)return;
-window.__catlakGmCleanClickGuardV6=true;
+if(window.__catlakGmCleanClickGuardV7)return;
+window.__catlakGmCleanClickGuardV7=true;
 function stop(e,prevent=false){if(prevent)e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 function closeManagement(){try{window.__catlakGmUiPolish?.closeManagement?.()}catch(_){}}
 function clearForeignRooms(){
@@ -14,7 +14,7 @@ function clearForeignRooms(){
   try{window.__catlakPartyRoomOwnsMain=false}catch(_){}
   try{document.documentElement.classList.remove('cc-ext-management-pending')}catch(_){}
 }
-function retry(fn){[0,60,180,420,900].forEach(ms=>setTimeout(()=>{try{if(fn())return}catch(_){}},ms))}
+function retry(fn){let done=false,step=0;const waits=[0,60,140,260,480];const run=()=>{if(done)return;try{done=fn()===true}catch(_){}if(done||step>=waits.length-1)return;step++;setTimeout(run,waits[step])};setTimeout(run,waits[0])}
 function dispatch(el){
   if(!el)return;
   const api=window.__catlakGmCleanRouter;
