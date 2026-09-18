@@ -238,10 +238,20 @@ document.addEventListener('change',e=>{
   if(e.target.matches?.('select[data-br3-ability-target]')&&!String(e.target.value||'').trim()){e.preventDefault();e.stopImmediatePropagation();qolToast('Uygun hedef yok.')}
 },true);
 
-new MutationObserver(()=>qolSoon(45)).observe(QOL_APP,{childList:true,subtree:true});
-window.addEventListener('resize',()=>qolSoon(25));
+new MutationObserver(rs=>{
+  const main=QOL_APP.querySelector('main'),nav=QOL_APP.querySelector('.nav');
+  const relevant=rs.some(r=>{
+    if(r.target===QOL_APP||r.target===main)return true;
+    if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+    return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('[data-fup-creatures],[data-qol-creature-page],[data-cex-template-add],[data-cc-clear-all-rolls],select[data-br3-ability-target],main,.nav,.role')||n.querySelector?.('[data-fup-creatures],[data-qol-creature-page],[data-cex-template-add],[data-cc-clear-all-rolls],select[data-br3-ability-target],main,.nav,.role')));
+  });
+  if(relevant)qolSoon(45);
+}).observe(QOL_APP,{childList:true,subtree:true});
+window.addEventListener('resize',()=>qolSoon(80));
+window.addEventListener('focus',()=>qolSoon(0));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')qolSoon(0)});
 QOL_S.channel('qol-roll-cleanup').on('postgres_changes',{event:'DELETE',schema:'public',table:'catlak_rolls'},()=>{
   clearTimeout(qolRollTimer);qolRollTimer=setTimeout(()=>qolSyncRollsAfterDelete().catch(()=>{}),80)
 }).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},()=>{if(qolCreatureOpen)qolRenderCreatureLibrary(true)}).subscribe();
-setInterval(qolMaintain,1600);setTimeout(qolMaintain,180);
+setTimeout(qolMaintain,180);
 window.__catlakQualityOfLifeTest={maintain:qolMaintain,longRest:qolLongRest,batch:qolBatch,slots:qolSlots,compact:qolCompact,openCreatureLibrary:qolOpenCreatureLibrary,closeCreatureLibrary:qolCloseCreatureLibrary,clearAllRolls:qolClearAllRolls,guardEmptyTargets:qolGuardEmptyTargets};
