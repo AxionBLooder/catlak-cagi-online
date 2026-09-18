@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v45 -->
+<!-- clean-gm-runtime-v46 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,8 @@
   <link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co">
   <style>
     html,body{margin:0;min-height:100%;background:#071019;color:#edf6ff;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
-    html.cc-player-critical-pending #app main{visibility:visible!important}
+    html.cc-player-critical-pending #app main{visibility:hidden!important;min-height:46vh}
+    html.cc-player-critical-pending #app::after{content:'Oyuncu Masası hazırlanıyor…';display:block;max-width:980px;margin:22px auto;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:800;box-sizing:border-box}
     #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .08s ease}
     #cc-start-cover.cc-done{opacity:0;pointer-events:none}
     #cc-start-cover strong{font-size:clamp(2rem,7vw,4.6rem);letter-spacing:.04em;color:#edf6ff;text-shadow:0 8px 32px #000}
@@ -44,8 +45,8 @@
   })();
   </script>
 
-  <script src="./runtime-health-guard.js?v=runtime-health-v4-ownership"></script>
-  <script src="./app-action-stability.js?v=action-stability-v7-canonical-router"></script>
+  <script src="./runtime-health-guard.js?v=runtime-health-v5-atomic-views"></script>
+  <script src="./app-action-stability.js?v=action-stability-v8-clean-css"></script>
 
   <script>
   (function(){
@@ -88,9 +89,9 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v31-race-no-shell','player-hard-recovery'),
-          load('./battle-room-v3-patch.js?v=battle-v11-single-owner','battle-room-v3'),
-          load('./room-system-patch.js?v=player-bg-v16-single-owner','rooms')
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v32-full-desk-batched','player-hard-recovery'),
+          load('./battle-room-v3-patch.js?v=battle-v12-deferred-preload','battle-room-v3'),
+          load('./room-system-patch.js?v=player-bg-v17-atomic-batched','rooms')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -129,9 +130,9 @@
         ['./gm-campaign-state-patch.js?v=clean-campaign-v3-fast','gm-campaign-state'],
         ['./party-room-stable-v2.js?v=party-room-clean-v7-party-source','party-room-clean'],
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
-        ['./gm-clean-router-v1.js?v=gm-clean-router-v12-no-session-log','gm-clean-router'],
+        ['./gm-clean-router-v1.js?v=gm-clean-router-v13-atomic-swr','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v13-battle-only','gm-live-compact'],
-        ['./live-combat-center-patch.js?v=livecombat-v12-single-owner','live-combat-center-runtime']
+        ['./live-combat-center-patch.js?v=livecombat-v13-dedup-render','live-combat-center-runtime']
       ]);
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
