@@ -95,7 +95,10 @@ function ccMapCard(x,kind){
 
 async function ccRenderMapPage(force=false){
   if(!ccMapActive||!ccIsGM()||ccMapBusy)return;const main=CC_APP.querySelector('main');if(!main)return;
-  if(!force&&main.dataset.ccMapPage==='1')return;ccMapBusy=true;
+  if(!force&&main.dataset.ccMapPage==='1')return;
+  const preserveMapScroll=main.dataset.ccMapPage==='1'||!!main.querySelector('.cc-map-gallery,[data-vamf-places]');
+  const oldMapY=preserveMapScroll?window.scrollY:null;
+  ccMapBusy=true;
   try{
     const [mr,nr,pr]=await Promise.all([
       CC_S.from('catlak_world_media').select('*').eq('media_type','map').order('created_at',{ascending:true}),
@@ -106,6 +109,7 @@ async function ccRenderMapPage(force=false){
     const maps=mr.data||[],npcs=nr.data||[],party=pr.data;
     main.innerHTML=`<section class="card"><div class="eyebrow">HARİTA • GÖRSEL ARŞİVİ</div><h1>Harita & NPC Görselleri</h1><p class="cc-map-tabs-note">Evren bölümünde eklediğin bütün harita ve NPC'ler otomatik olarak burada görünür. Buradan seçtiğin görseli canlı parti ekranına yansıtabilirsin.</p></section>${party?.image_url?`<section class="card cc-party-show"><div class="section-title"><div><div class="eyebrow">ŞU AN PARTİDE</div><h2>${ccH(party.title||'Parti Görseli')}</h2></div><button type="button" class="danger" data-cc-party-clear>Partiden Kaldır</button></div><img src="${ccH(party.image_url)}" alt="${ccH(party.title||'Parti görseli')}"><p>${ccH(party.note||'')}</p></section>`:''}<section class="card"><div class="eyebrow">HARİTALAR</div><h2>Evren Haritaları</h2>${maps.length?`<div class="cc-map-gallery">${maps.map(x=>ccMapCard(x,'map')).join('')}</div>`:'<div class="cc-world-empty">Harita yok. Evren bölümünden ekleyebilirsin.</div>'}</section><section class="card"><div class="eyebrow">NPC GÖRSELLERİ</div><h2>NPC Arşivi</h2>${npcs.length?`<div class="cc-map-gallery">${npcs.map(x=>ccMapCard(x,'npc')).join('')}</div>`:'<div class="cc-world-empty">NPC yok. Evren bölümünden ekleyebilirsin.</div>'}</section>`;
     main.dataset.ccMapPage='1';
+    if(oldMapY!=null)requestAnimationFrame(()=>{if(ccMapActive&&Math.abs(window.scrollY-oldMapY)>2)window.scrollTo({left:window.scrollX,top:oldMapY,behavior:'auto'})});
   }catch(e){ccToast('Harita arşivi yüklenemedi: '+(e?.message||String(e)))}finally{ccMapBusy=false}
 }
 
@@ -152,7 +156,7 @@ function ccRun(){ccScheduled=false;ccEnsureMapNav();if(ccMapActive)ccRenderMapPa
 function ccSchedule(){if(ccScheduled)return;ccScheduled=true;requestAnimationFrame(ccRun)}
 new MutationObserver(ccSchedule).observe(CC_APP,{childList:true,subtree:true});
 CC_S.channel('cc-stability-live')
- .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{const m=CC_APP.querySelector('main');if(m){m.dataset.ccSimpleLive='';m.dataset.ccMapPage=''}ccRenderSimpleGm(true)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},()=>{if(ccMapActive)return;const m=CC_APP.querySelector('main');if(m)m.dataset.ccSimpleLive='';ccRenderSimpleGm(true)})
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{const m=CC_APP.querySelector('main');if(m)m.dataset.ccSimpleLive='';ccRenderSimpleGm(true)})
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_world_media'},()=>{const m=CC_APP.querySelector('main');if(m)m.dataset.ccMapPage='';if(ccMapActive)ccRenderMapPage(true)})
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_npcs'},()=>{const m=CC_APP.querySelector('main');if(m)m.dataset.ccMapPage='';if(ccMapActive)ccRenderMapPage(true)})
