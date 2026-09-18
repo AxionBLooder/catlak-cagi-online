@@ -14,6 +14,8 @@ if(!document.querySelector('#gms-style')){
   const s=document.createElement('style');
   s.id='gms-style';
   s.textContent=`
+  .gms-slot-label{border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(8,18,29,.65)}
+  .gms-slot-label select{margin-top:6px}
   .gms-slot-label select:disabled{opacity:.55;cursor:not-allowed}
   .gms-slot-help{display:block;margin-top:5px;color:var(--muted);font-size:.72rem;line-height:1.35}
   .gms-slot-badge{color:#f2d284;font-weight:900;letter-spacing:.04em}
@@ -41,6 +43,12 @@ function gmsAllowedSlots(item){
   if(item?.item_type==='item'&&gmsItemMode(item)==='accessory')return ['','accessory_1','accessory_2'];
   return [''];
 }
+function gmsPreferredSlot(item){
+  if(item?.item_type==='weapon')return 'main_weapon';
+  if(item?.item_type==='armor')return 'armor';
+  if(item?.item_type==='item'&&gmsItemMode(item)==='accessory')return 'accessory_1';
+  return '';
+}
 function gmsSlotHelp(item){
   if(item?.item_type==='weapon')return 'Silahı sadece envantere bırakabilir veya doğrudan 1./2. silaha takabilirsin.';
   if(item?.item_type==='armor')return 'Zırhı sadece envantere bırakabilir veya doğrudan Zırh yuvasına takabilirsin.';
@@ -65,7 +73,7 @@ function gmsEnsureSlotControl(){
   if(!select){
     const label=document.createElement('label');
     label.className='gms-slot-label';
-    label.innerHTML='Takılacak Yuva<select id="gms-give-slot"><option value="">Sadece Envantere</option><option value="main_weapon">1. Silah</option><option value="off_weapon">2. Silah</option><option value="armor">Zırh</option><option value="accessory_1">Aksesuar 1</option><option value="accessory_2">Aksesuar 2</option></select><small class="gms-slot-help" data-gms-slot-help>Verilecek kaydı seçtiğinde uygun yuvalar açılır.</small>';
+    label.innerHTML='Teslim Şekli / Takılacak Yuva<select id="gms-give-slot"><option value="">Sadece Envantere</option><option value="main_weapon">1. Silah</option><option value="off_weapon">2. Silah</option><option value="armor">Zırh</option><option value="accessory_1">Aksesuar 1</option><option value="accessory_2">Aksesuar 2</option></select><small class="gms-slot-help" data-gms-slot-help>Silah, zırh ve aksesuar seçildiğinde uygun yuvalar otomatik açılır.</small>';
     const qty=form.querySelector('#iw-give-qty')?.closest('label');
     qty?form.insertBefore(label,qty):form.appendChild(label);
     select=label.querySelector('#gms-give-slot');
@@ -82,9 +90,11 @@ async function gmsSyncSlotControl(){
   if(!iid){select.value='';select.disabled=true;if(help)help.textContent='Önce verilecek kaydı seç.';return}
   try{
     const item=await gmsItem(iid);if(token!==gmsSyncToken)return;
-    const allowed=gmsAllowedSlots(item),keep=allowed.includes(select.value)?select.value:'';
+    const allowed=gmsAllowedSlots(item),changed=select.dataset.itemId!==String(iid),keep=allowed.includes(select.value)?select.value:'';
     select.innerHTML=allowed.map(v=>`<option value="${v}">${gmsSlotLabel(v)}</option>`).join('');
-    select.value=keep;
+    select.dataset.itemId=String(iid);
+    select.value=changed?gmsPreferredSlot(item):keep;
+    if(!allowed.includes(select.value))select.value='';
     select.disabled=false;
     if(help)help.textContent=gmsSlotHelp(item);
   }catch(e){select.value='';select.disabled=true;if(help)help.textContent='Kayıt türü okunamadı.'}
