@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV20)return;
-window.__catlakPlayerSheetHardRecoveryV20=true;
+if(window.__catlakPlayerSheetHardRecoveryV21)return;
+window.__catlakPlayerSheetHardRecoveryV21=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -548,6 +548,7 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>sync('inventory'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>sync('conditions'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>sync('abilities'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>sync('abilities'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>sync('combat'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>sync('combat'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>sync('visual'))
