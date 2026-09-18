@@ -1,25 +1,28 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV8)return;
-window.__catlakActionStabilityV8=true;
+if(window.__catlakActionStabilityV9)return;
+window.__catlakActionStabilityV9=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
-let snap=null,restoreTimer=0,actionHoldUntil=0;
+let snap=null,restoreTimer=0,actionHoldUntil=0,stableActionUntil=0;
 const previousPreserve=window.__catlakShouldPreserveCurrentView;
 
-function isCommitButton(el){
-  const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b))return null;
-  const label=txt(b).toLocaleLowerCase('tr-TR');
+function isNavigationButton(b){
+  if(!b||!APP.contains(b))return true;
+  if(b.closest('.nav'))return true;
+  if(b.matches('[data-tab],[data-ccr-battle],[data-cc-hard-race-nav],[data-ccr-hub],[data-ccr-hub-tab],[data-gmc-open],[data-gmc-route],[data-gmt-open],[data-gmt-route]'))return true;
   const core=String(b.dataset?.a||'').toLowerCase();
-  const custom=String(b.dataset?.gmcAction||b.dataset?.gmtAction||'').toLowerCase();
-  const known=new Set(['itemsave','pathsave','powersave','speciessave','charnote','ruling']);
-  if(known.has(core)||b.hasAttribute('data-cux-save')||/save|note/.test(custom))return b;
-  if(!/(^|\s)(kaydet|güncelle|guncelle|uygula|onayla|tamam)(\s|$)/i.test(label))return null;
+  return ['amode','auth','logout'].includes(core);
+}
+function isStableAction(el){
+  const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b)||isNavigationButton(b))return null;
+  // Any non-navigation action inside the application must keep the current viewport.
   return b;
 }
+function isCommitButton(el){return isStableAction(el)}
 function managedViewActive(){
   const main=APP.querySelector('main');
   if(window.__catlakBattleRoomOpen===true||main?.dataset.ccrBattle==='1')return true;
@@ -30,7 +33,7 @@ function managedViewActive(){
   if(main?.querySelector?.('[data-lcc-board]'))return true;
   return false;
 }
-function holdAction(ms=5000){actionHoldUntil=Math.max(actionHoldUntil,Date.now()+ms)}
+function holdAction(ms=9000){actionHoldUntil=Math.max(actionHoldUntil,Date.now()+ms);stableActionUntil=Math.max(stableActionUntil,Date.now()+ms)}
 window.__catlakShouldPreserveCurrentView=function(){
   if(Date.now()<actionHoldUntil||managedViewActive())return true;
   try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
@@ -45,7 +48,7 @@ function take(){
   snap={at:Date.now(),role:role(),gmRoute,nav:activeNav(),x:window.scrollX,y:window.scrollY};
 }
 function restore(){
-  if(!snap||Date.now()-snap.at>5200)return;
+  if(!snap||Date.now()-snap.at>9500)return;
   const s=snap;
   if(s.role==='GM'&&s.gmRoute){
     let current='';
@@ -57,19 +60,19 @@ function restore(){
       }catch(e){window.__catlakReportError?.('gm-route-restore',e)}
     }
   }
-  requestAnimationFrame(()=>{if(Math.abs(window.scrollY-s.y)>80)window.scrollTo({left:s.x,top:s.y,behavior:'auto'})});
+  requestAnimationFrame(()=>{if(Math.abs(window.scrollY-s.y)>2)window.scrollTo({left:s.x,top:s.y,behavior:'auto'})});
 }
 function queueRestore(){
   clearTimeout(restoreTimer);
-  [0,100,300,700,1500,2800,4500].forEach(ms=>setTimeout(restore,ms));
-  restoreTimer=setTimeout(()=>{snap=null},5200);
+  [0,40,120,280,600,1100,1900,3200,5200,7600].forEach(ms=>setTimeout(restore,ms));
+  restoreTimer=setTimeout(()=>{snap=null},9600);
 }
 let battleFallback=0;
 function finishBattleEntry(){
   clearTimeout(battleFallback);document.documentElement.classList.remove('cc-battle-entry-pending');
 }
-window.addEventListener('pointerdown',e=>{if(e.button!=null&&e.button!==0)return;if(isCommitButton(e.target)){holdAction();take()}},true);
-window.addEventListener('click',e=>{if(isCommitButton(e.target)){holdAction();if(!snap)take();queueRestore()}},true);
+window.addEventListener('pointerdown',e=>{if(e.button!=null&&e.button!==0)return;if(isStableAction(e.target)){holdAction();take()}},true);
+window.addEventListener('click',e=>{if(isStableAction(e.target)){holdAction();if(!snap)take();queueRestore()}},true);
 window.addEventListener('submit',e=>{
   const form=e.target;
   if(!form?.closest?.('#app')||form.hasAttribute('data-cc-native-submit'))return;
@@ -79,5 +82,5 @@ window.addEventListener('submit',e=>{
   queueRestore();
 },true);
 
-window.__catlakActionStability={snapshot:take,restore,finishBattleEntry,hold:holdAction,preserve:managedViewActive};
+window.__catlakActionStability={snapshot:take,restore,finishBattleEntry,hold:holdAction,preserve:managedViewActive,isStableAction};
 })();
