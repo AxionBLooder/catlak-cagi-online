@@ -1,11 +1,11 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanRouterV6)return;
-window.__catlakGmCleanRouterV6=true;
+if(window.__catlakGmCleanRouterV7)return;
+window.__catlakGmCleanRouterV7=true;
 window.__catlakGmCleanRouterV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
-const ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['reputation','İtibar Odası'],['seals','Mühür Odası'] ];
+const ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['reputation','İtibar Odası'],['seals','Mühür Odası'],['rules','Kaynaklar'],['account','Hesap'] ];
 const PAGES_BASE='https://axionblooder.github.io/catlak-cagi-online/';
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,7 +19,7 @@ const GMC_CACHE_MS=15000;
 const inviteLinks=new Map();
 
 if(!document.querySelector('#gmc-style')){const s=document.createElement('style');s.id='gmc-style';s.textContent=`
-#app.gmc-gm .nav [data-tab="items"],#app.gmc-gm .nav [data-tab="races"],#app.gmc-gm .nav [data-tab="builder"],#app.gmc-gm .nav [data-tab="characters"],#app.gmc-gm .nav [data-cc-stats-tab],#app.gmc-gm .nav [data-gmt-open]{display:none!important}
+#app.gmc-gm .nav [data-tab="items"],#app.gmc-gm .nav [data-tab="races"],#app.gmc-gm .nav [data-tab="builder"],#app.gmc-gm .nav [data-tab="characters"],#app.gmc-gm .nav [data-tab="rules"],#app.gmc-gm .nav [data-tab="account"],#app.gmc-gm .nav [data-cc-stats-tab],#app.gmc-gm .nav [data-gmt-open]{display:none!important}
 #app.gmc-gm .nav [data-gmc-open].on{border-color:var(--gold)!important;color:var(--gold)!important;background:#101e33!important}
 .gmc-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 auto 14px;max-width:1540px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:#08121dcc;position:relative;z-index:4}.gmc-label{font-size:.7rem;letter-spacing:.12em;font-weight:900;color:var(--gold);margin-right:4px}.gmc-bar button.on{border-color:var(--gold);color:var(--gold);background:#18170f}
 .gmc-page{max-width:1540px;margin:0 auto}.gmc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.gmc-two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:14px;align-items:start}.gmc-stack{display:flex;flex-direction:column;gap:12px}.gmc-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#081522}.gmc-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.gmc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.gmc-meta{font-size:.82rem;color:var(--muted);line-height:1.45}.gmc-form{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:9px;align-items:end}.gmc-form .wide{grid-column:span 2}.gmc-form textarea{min-height:76px}.gmc-catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:9px}.gmc-pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:.72rem;margin:3px 4px 3px 0}.gmc-assignment{display:flex;justify-content:space-between;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.gmc-invite{margin-top:10px;padding:9px;border:1px solid #496781;border-radius:10px;background:#091827}.gmc-invite input{width:100%;margin-top:6px}.gmc-note textarea{min-height:70px}.gmc-statuses{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.gmc-linked{color:#91d7ff!important;border-color:#367aa0!important;background:#0b2232!important}.gmc-online{color:#a7f3c8!important;border-color:#357a58!important;background:#0c2b20!important}.gmc-offline{color:#aeb8c5!important;border-color:#485563!important;background:#141a22!important}
@@ -88,7 +88,7 @@ function routeTo(r){
   renderToken++;closeForeign();setRoute(r);
   if(r==='ability'){renderAbility(false);return true}
   if(r==='stats')return openStatsDirect();
-  if(['items','races','builder'].includes(r))return openNative(r);
+  if(['items','races','builder','rules','account'].includes(r))return openNative(r);
   if(r==='events'||r==='logs'){
     const api=window.__catlakGmTools;if(typeof api?.open!=='function'){toast('Oyun araçları hazır değil.');return false}
     window.__catlakGmCenterBridge=true;
@@ -108,7 +108,7 @@ window.addEventListener('catlak:presence-changed',()=>{if(open&&route==='charact
 window.addEventListener('catlak:data-refreshed',()=>{
   if(!open)return;
   const r=route;
-  if(['items','races','builder'].includes(r))setTimeout(()=>{if(open&&route===r)openNative(r)},0);
+  if(['items','races','builder','rules','account'].includes(r))setTimeout(()=>{if(open&&route===r)openNative(r)},0);
   else requestAnimationFrame(()=>{if(open){ensureBar();markTop()}});
 });
 S.channel('gmc-clean-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{characterCacheAt=0;ability.cacheAt=0;if(Date.now()<characterLocalUntil)return;if(open&&route==='characters')renderManagement(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).subscribe();
