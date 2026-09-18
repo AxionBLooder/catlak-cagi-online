@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v23 -->
+<!-- clean-gm-runtime-v24 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -91,6 +91,10 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v4','player-hard-recovery');
+        if(app.querySelector('.nav [data-tab="sheet"].on')){
+          try{window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+        }
         await loadParallel([
           ['./player-sheet-bind-fix.js?v=player-bind-v3','player-bind'],
           ['./player-sheet-runtime-v4.js?v=player-sheet-v4c','player-sheet'],
@@ -100,9 +104,7 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v4','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
           try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_READY',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1200)})]);
