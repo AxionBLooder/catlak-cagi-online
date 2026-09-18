@@ -20,41 +20,62 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Prepare safe static site
+      - name: Prepare and verify playable static site
         run: |
           set -euo pipefail
           rm -rf _site
           mkdir _site
-
-          # Güvenli başlangıç: canlı HTML'ye deploy sırasında ekstra runtime enjekte etme.
           cp index.html _site/index.html
           test -f browser-build.json && cp browser-build.json _site/ || true
           test -f catalog.b64 && cp catalog.b64 _site/ || true
-
-          # Kök dizindeki tüm çalışma JS dosyalarını kopyala; dinamik loader'ların
-          # ihtiyaç duyduğu dosyaların eksik kalmasını engelle.
           find . -maxdepth 1 -type f -name '*.js' -exec cp {} _site/ \;
-
           touch _site/.nojekyll
 
-          # Syntax hatalı tek bir JS bile yayına çıkmasın.
-          for file in _site/*.js; do
-            node --check "$file"
-          done
+          for file in _site/*.js; do node --check "$file"; done
 
-          # Ana uygulama zincirinin gerçekten pakette olduğunu doğrula.
-          test -f _site/browser-app.js
-          test -f _site/stat-editor-hardfix.js
-          test -f _site/gm-center-router-core.js
-          grep -Fq './browser-app.js' _site/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          html=Path('_site/index.html').read_text(encoding='utf-8')
+          active=[
+            'browser-app.js','runtime-health-guard.js','app-action-stability.js',
+            'player-sheet-hard-recovery.js','battle-room-v3-patch.js','room-system-patch.js',
+            'gm-clean-router-v1.js','gm-live-compact-v1.js','live-combat-center-patch.js',
+            'gm-ui-polish-v1.js','presence-patch.js','quality-of-life-patch.js'
+          ]
+          for name in active:
+              if not Path('_site',name).exists(): raise SystemExit('Aktif runtime pakette yok: '+name)
+          for name in ['runtime-health-guard.js','app-action-stability.js','player-sheet-hard-recovery.js','battle-room-v3-patch.js','room-system-patch.js','gm-clean-router-v1.js','gm-live-compact-v1.js','live-combat-center-patch.js']:
+              if name not in html: raise SystemExit('Aktif runtime index içinde yok: '+name)
 
-          # Siyah ekranla ilişkili sonradan enjekte edilen DDB başlangıç katmanları
-          # artık HTML'ye deploy aşamasında eklenmiyor.
+          retired=[
+            'gm-live-player-state.js','gm-controls-patch.js','dice-ux-patch.js',
+            'player-sheet-patch.js','player-live-actions-patch.js',
+            'gm-management-room-patch.js','gm-center-router-core.js'
+          ]
+          for name in retired:
+              if name in html: raise SystemExit('Eski runtime indexe geri dönmüş: '+name)
+
+          critical=['battle-room-v3-patch.js','presence-patch.js','quality-of-life-patch.js']
+          for name in critical:
+              text=Path('_site',name).read_text(encoding='utf-8')
+              if 'setInterval(' in text: raise SystemExit(name+' polling içeriyor')
+
+          sheet=Path('_site/player-sheet-hard-recovery.js').read_text(encoding='utf-8')
+          live=Path('_site/live-combat-center-patch.js').read_text(encoding='utf-8')
+          core=Path('_site/browser-app.js').read_text(encoding='utf-8')
+          if '__catlakPlayerSheetHardRecoveryV28' not in sheet: raise SystemExit('Oyuncu Masası owner sürümü yanlış')
+          if 'grid-column:1!important;justify-self:start!important' not in sheet: raise SystemExit('Irk güçleri sol kolon sözleşmesi eksik')
+          if 'grid-column:2!important;justify-self:end!important' not in sheet: raise SystemExit('Yetenekler sağ kolon sözleşmesi eksik')
+          if 'cachedBoardHtml' not in live or 'restoreCachedBoard' not in live: raise SystemExit('Canlı masa cache sözleşmesi eksik')
+          if 'window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' not in core: raise SystemExit('Legacy canlı masa ownerı devrede')
+          print('DEPLOY_PLAYABLE_CONTRACT_OK')
+          PY
+
           ! grep -Fq 'ddb-flow-core.js?v=' _site/index.html
           ! grep -Fq 'ddb-site-theme-v1.js?v=' _site/index.html
           ! grep -Fq 'ddb-builder-v2.js?v=' _site/index.html
