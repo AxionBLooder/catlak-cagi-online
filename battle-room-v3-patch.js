@@ -15,7 +15,7 @@ const br3BattleView=()=>{
   return window.__catlakBattleRoomOpen===true||btn?.classList.contains('on')||main?.dataset.ccrBattle==='1';
 };
 const br3Toast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(br3Toast.t);br3Toast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
-let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false;
+let br3Busy=false,br3Queued=false,br3Timer=null,br3Sig='',br3TargetId='',br3LastResult=null,br3LastSnap=null,br3LastData=null,br3Gen=0,br3ActionBusy=false,br3AutoEndBusy=false,br3CachedHtml='';
 
 if(!document.querySelector('#br3-style')){
   const s=document.createElement('style');s.id='br3-style';s.textContent=`
@@ -123,6 +123,20 @@ function br3SyncHeroVitals(s){
     else if(label==='AC'&&self.ac!=null)b.textContent=String(br3Num(self.ac));
   });
 }
+function br3CacheCurrent(){
+  const main=BR3_APP.querySelector('main');
+  if(!main||!br3BattleView()||!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-abilities]'))return false;
+  br3CachedHtml=main.innerHTML;return true;
+}
+function br3RestoreCached(){
+  if(!br3CachedHtml||!br3IsPlayer())return false;
+  const main=BR3_APP.querySelector('main');if(!main)return false;
+  main.innerHTML=br3CachedHtml;main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');
+  document.documentElement.classList.remove('cc-battle-entry-pending');
+  try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+  requestAnimationFrame(()=>br3Render(false));
+  return true;
+}
 function br3Node(html){const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
 function br3ReplaceIfChanged(current,next){
   if(!current)return next;
@@ -156,6 +170,7 @@ function br3Insert(d){
   main.querySelectorAll('[data-br3-log]').forEach(x=>x.remove());
   br3SyncHeroVitals(d.snap);
   br3EnhanceWeapons(d.snap);
+  br3CacheCurrent();
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
 }
@@ -221,6 +236,7 @@ function br3SelectTarget(id){
   });
   if(br3LastSnap)br3EnhanceWeapons(br3LastSnap);
   br3SyncEnemyAbilityTargets();
+  br3CacheCurrent();
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest?.('[data-br3-target]');if(t){e.preventDefault();e.stopImmediatePropagation();br3SelectTarget(t.dataset.br3Target);return}
@@ -245,4 +261,4 @@ BR3_S.channel('cc-battle-room-v3-live')
  .subscribe();
 setInterval(()=>{if(br3IsGM())br3EnsureGmClear();else if(br3BattleView()){const main=BR3_APP.querySelector('main');if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0)}},5000);
 setTimeout(()=>br3Soon(true,0),80);
-window.__catlakBattleRoomV3Test={render:br3Render,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
+window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
