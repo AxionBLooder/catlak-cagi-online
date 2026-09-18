@@ -23,6 +23,9 @@ if(!document.querySelector('#ccr-style')){
   s.textContent=`
     html.cc-battle-entry-pending #app main>*,#app main.ccr-base-building>*{visibility:hidden!important}
     html.cc-battle-entry-pending #app main::before,#app main.ccr-base-building::before{content:'Savaş Odası hazırlanıyor…';display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}
+    #app main.ccr-battle-surface{width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;margin-left:auto!important;margin-right:auto!important}
+    #app main.ccr-battle-surface>*{min-width:0!important;box-sizing:border-box!important}
+    #app main.ccr-battle-surface .ccr-battle-grid{width:100%!important;max-width:none!important;min-width:0!important}
     .ccr-managed-hidden{display:none!important}
     .ccr-room-head{position:relative;z-index:2}
     .ccr-room-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -50,6 +53,12 @@ if(!document.querySelector('#ccr-style')){
   document.head.appendChild(s);
 }
 
+function ccrPrepareBattleMain(main){
+  if(!main)return null;
+  main.className='ccr-battle-surface';
+  delete main.dataset.ccHardSheet;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
+  return main
+}
 function ccrToast(x){
   const t=document.querySelector('#toast');if(!t)return;
   t.textContent=String(x);t.classList.remove('hidden');clearTimeout(ccrToast.t);
@@ -58,12 +67,12 @@ function ccrToast(x){
 function ccrNav(){return CCR_APP.querySelector('.nav')}
 function ccrBaseTab(){return ccrNav()?.querySelector('button.on[data-tab]')?.dataset.tab||''}
 function ccrSelectOnly(btn){const nav=ccrNav();if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));btn?.classList.add('on')}
-function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');CCR_APP.querySelector('main')?.classList.remove('ccr-base-building');try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}}
+function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main){delete main.dataset.ccrBattle;main.classList.remove('ccr-base-building','br3-live-layout','ccr-battle-surface')}try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}}
 function ccrCloseBattle(){
   ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;
   document.documentElement.classList.remove('cc-battle-entry-pending');
   const main=CCR_APP.querySelector('main');
-  if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout','ccr-base-building')}
+  if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout','ccr-base-building','ccr-battle-surface')}
   ccrNav()?.querySelector('[data-ccr-battle]')?.classList.remove('on');
   try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}
   return true
@@ -232,7 +241,7 @@ function ccrBattleHtml(d){
 }
 async function ccrBattleRender(force=false){
   if(!ccrBattleOpen||!ccrIsPlayer()||ccrBattleBusy)return;
-  const main=CCR_APP.querySelector('main');if(!main)return;
+  const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));if(!main)return;
   if(!force&&main.dataset.ccrBattle==='1')return;
   const gen=++ccrBattleGen,oldY=window.scrollY;ccrBattleBusy=true;
   try{
@@ -291,7 +300,7 @@ function ccrOpenBattle(){
   try{window.__catlakViewRuntime?.begin?.('player-battle')}catch(_){}
   document.documentElement.classList.add('cc-battle-entry-pending');
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
-  const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
+  const main=ccrPrepareBattleMain(CCR_APP.querySelector('main'));if(main)delete main.dataset.ccrBattle;
   try{
     if(window.__catlakBattleRoomV3Test?.restore?.()){
       if(main)main.dataset.ccrBattle='1';

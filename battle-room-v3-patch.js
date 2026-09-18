@@ -22,6 +22,8 @@ function br3InteractionLocked(){const a=document.activeElement;return Date.now()
 
 if(!document.querySelector('#br3-style')){
   const s=document.createElement('style');s.id='br3-style';s.textContent=`
+  #app main.br3-live-layout{width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}
+  #app main.br3-live-layout .ccr-battle-grid{width:100%!important;max-width:none!important;min-width:0!important}
   #app main [data-bcc-creatures],#app main [data-apb-player],#app main [data-cex-turn],#app main [data-cex-log],#app main [data-bcc-weapon-actions]{display:none!important}
   .br3-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px}.br3-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0a1622}.br3-card.current{border-color:var(--gold);box-shadow:inset 0 0 0 1px #d6ad5b44}.br3-card.selected{border-color:var(--cyan);box-shadow:inset 0 0 0 1px #69d7ff55}.br3-card.dead{opacity:.58}.br3-card h3{margin:4px 0 7px}.br3-pills{display:flex;gap:6px;flex-wrap:wrap;margin:7px 0}.br3-pill{font-size:.74rem;border:1px solid var(--line);border-radius:999px;padding:3px 7px}.br3-note{white-space:pre-wrap;color:var(--muted);font-size:.84rem}.br3-target-line{margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#07111d;font-size:.82rem}.br3-target-line b{color:var(--cyan)}
   .br3-turn{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.br3-turn.ready{border-color:var(--gold)}.br3-turn button{min-width:150px}.br3-result{margin-top:10px;border:1px solid var(--line);border-radius:11px;padding:10px;background:#09131e}.br3-result.good{border-color:#4f7b4e}.br3-result.bad{border-color:#8b3f46;background:#1d1116}.br3-result.bad b{color:#ffb2b8}.br3-ability.spell .eyebrow{color:#bba7ff}.br3-ability.skill .eyebrow{color:#8fd4ff}.br3-ability.special .eyebrow{color:#f1c36f}.br3-gm-clear{margin-top:10px}.br3-warning{margin-top:8px;padding:8px 10px;border:1px solid #725d34;border-radius:10px;background:#211d12;color:#f3d58d;font-size:.78rem}
@@ -66,6 +68,13 @@ async function br3PreloadData(){
 async function br3Load(){
   if(br3Preload&&Date.now()-br3PreloadAt<2500){const d=br3Preload;br3Preload=null;return d}
   return br3Fetch();
+}
+function br3NormalizeMain(main){
+  if(!main)return null;
+  main.className='ccr-battle-surface br3-live-layout';
+  main.dataset.ccrBattle='1';
+  delete main.dataset.ccHardSheet;delete main.dataset.ccDesk;delete main.dataset.ccPage;delete main.dataset.ccBindFallback;delete main.dataset.ccViewMount;
+  return main
 }
 function br3CreatureCard(x){
   const hp=br3Num(x.hp_current),max=br3Num(x.hp_max),dead=max>0&&hp<=0,selected=String(x.id)===String(br3TargetId);
@@ -140,12 +149,12 @@ function br3CacheCurrent(){
 }
 function br3RestoreCached(){
   if(!br3IsPlayer())return false;
-  const main=BR3_APP.querySelector('main');if(!main)return false;
+  const main=br3NormalizeMain(BR3_APP.querySelector('main'));if(!main)return false;
   let restored=false;
   if(br3CachedHtml){main.innerHTML=br3CachedHtml;restored=true}
   else try{restored=!!window.__catlakViewRuntime?.restore?.('player-battle',main)}catch(_){}
   if(!restored)return false;
-  main.dataset.ccrBattle='1';main.classList.add('br3-live-layout');main.classList.remove('ccr-base-building');
+  br3NormalizeMain(main);main.classList.remove('ccr-base-building');
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
   try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}
@@ -171,8 +180,7 @@ function br3ReplaceIfChanged(current,next){
   const y=window.scrollY;current.replaceWith(next);requestAnimationFrame(()=>{if(Math.abs(window.scrollY-y)>2)window.scrollTo({top:y,left:0,behavior:'auto'})});return next;
 }
 function br3Insert(d){
-  const main=BR3_APP.querySelector('main');if(!main)return;
-  main.classList.add('br3-live-layout');
+  const main=br3NormalizeMain(BR3_APP.querySelector('main'));if(!main)return;
   [...main.querySelectorAll('section.card')].forEach(sec=>{
     const eye=br3Txt(sec.querySelector('.eyebrow')).toUpperCase();
     const title=br3Txt(sec.querySelector('h2')).toUpperCase();

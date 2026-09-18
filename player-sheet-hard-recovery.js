@@ -88,7 +88,8 @@ const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
 const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
-const sheetActive=()=>isPlayer()&&(!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
+let sheetWantedUntil=0;
+const sheetActive=()=>isPlayer()&&(Date.now()<sheetWantedUntil||!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
 function ensureRaceNav(){
   if(!isPlayer())return null;
   const nav=APP.querySelector('.nav'),sheet=sheetButton();if(!nav||!sheet)return null;
@@ -101,6 +102,7 @@ function clearPlayerNavSelection(except){
   except?.classList.add('on');
 }
 function leaveRaceForForeignNav(){
+  sheetWantedUntil=0;
   const m=main(),race=raceButton();if(!raceMode&&!m?.classList.contains('cc-hard-race-view'))return;
   raceScrollY=window.scrollY;raceMode=false;raceWanted=false;window.__catlakRaceWantedEarly=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
 }
@@ -512,20 +514,33 @@ async function recover(force=false){
     }
     if(!chars.length){if(!hadReady)showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return hadReady}
     if(!sheetActive())return false;
-    const x=await extras(S,chars);
-    window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
     if(!sheetActive())return false;
+    const partyAllowed=chars.some(c=>c?.data?.cc_party_member===true);
+    window.__catlakPlayerPartyAllowedEarly=partyAllowed;
+    const coreX={inv:[],items:[],powers:[],paths:[],conditions:[],abilities:[],combat:{},partyVisual:null,partyAllowed};
     const m=main();if(!m)return false;
     m.className='';
     m.dataset.ccHardSheet='1';
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
-    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
-    const html=chars.map(c=>charHtml(c,x)).join('');
-    if(!window.__catlakViewRuntime?.mount?.('player-sheet',m,html))m.innerHTML=html;
+    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccrBattle;delete m.dataset.ccViewMount;
+    const html=chars.map(c=>charHtml(c,coreX)).join('');
+    const mounted=window.__catlakViewRuntime?.mount?.('player-sheet',m,html);
+    if(!mounted||!m.querySelector('.cc-character-stack[data-cc-hard-stack]'))m.innerHTML=html;
     ensureRaceNav();setRaceView(raceWanted);
     applyLayers();cacheSheet();release();
     try{window.__catlakViewRuntime?.ready?.('player-sheet')}catch(_){}
+    sheetWantedUntil=0;
     window.dispatchEvent(new CustomEvent('catlak:player-fast-ready'));
+    // Heavy inventory/ability/species data must never block the sheet from opening.
+    Promise.resolve().then(async()=>{
+      try{
+        const x=await extras(S,chars);
+        if(!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return;
+        window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
+        patchStable(chars,x,new Set(['all']));
+        try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
+      }catch(e){console.warn('CATLAK_PLAYER_SHEET_HYDRATE',e)}
+    });
     return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
@@ -541,9 +556,10 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(restoreCachedSheet(true))return;if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();sheetWantedUntil=Date.now()+8000;try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(restoreCachedSheet(true))return;if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(sheetNav&&isPlayer()){
+    sheetWantedUntil=Date.now()+8000;
     const alreadyClean=sheetNav.classList.contains('on')&&main()?.dataset.ccHardSheet==='1'&&!main()?.classList.contains('cc-hard-race-view')&&ready();
     if(alreadyClean)return;
     e.preventDefault();e.stopImmediatePropagation();
