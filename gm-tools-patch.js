@@ -24,7 +24,14 @@ function gmtInjectNav(){
   const nav=GMT_APP.querySelector('.nav');if(!nav||nav.querySelector('[data-gmt-open]'))return;
   const b=document.createElement('button');b.type='button';b.className='gmt-nav';b.dataset.gmtOpen='1';b.textContent='GM Araçları';nav.appendChild(b);
 }
-function gmtSetNavOn(){const nav=GMT_APP.querySelector('.nav');if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));nav.querySelector('[data-gmt-open]')?.classList.add('on')}
+function gmtSetNavOn(){
+  const nav=GMT_APP.querySelector('.nav');if(!nav)return;
+  nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));
+  const clean=window.__catlakGmCleanRouter;
+  const embedded=!!(clean?.isOpen?.()&&['events','logs'].includes(String(clean?.current?.()||'')));
+  if(embedded){nav.querySelector('[data-gmc-open]')?.classList.add('on');return}
+  nav.querySelector('[data-gmt-open]')?.classList.add('on')
+}
 function gmtClose(){gmtOpen=false;gmtGen++;gmtRenderQueued=false;window.__catlakGmToolsOpen=false;const m=GMT_APP.querySelector('main');if(m){delete m.dataset.gmtTools;delete m.dataset.gmtSub}}
 function gmtTime(x){try{return new Date(x).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return''}}
 function gmtRange(r){return r.min_roll===r.max_roll?String(r.min_roll):`${r.min_roll}–${r.max_roll}`}
