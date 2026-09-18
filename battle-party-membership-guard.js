@@ -61,6 +61,7 @@ window.addEventListener('click',e=>{
 },true);
 
 window.addEventListener('catlak:party-membership-changed',()=>schedule(0));
+window.addEventListener('catlak:realtime-sync',e=>{if(String(e.detail?.kind||'')==='party')schedule(0)});
 
 new MutationObserver(rs=>{
  if(!isGM())return;

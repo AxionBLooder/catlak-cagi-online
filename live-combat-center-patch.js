@@ -180,7 +180,7 @@ async function render(force=false){
 }
 async function rpc(name,args,msg){
  if(actionBusy)return false;actionBusy=true;
- try{const r=await S.rpc(name,args||{});if(r.error)throw r.error;toast(typeof msg==='function'?msg(r.data):msg);return true}
+ try{const r=await S.rpc(name,args||{});if(r.error)throw r.error;window.__catlakRealtimeSync?.emit?.('combat',{action:name});toast(typeof msg==='function'?msg(r.data):msg);return true}
  catch(e){toast('İşlem başarısız: '+(e?.message||String(e)));return false}
  finally{actionBusy=false;setTimeout(()=>render(true),20)}
 }
@@ -216,6 +216,7 @@ async function addEnemies(){
    if(r.error)throw r.error;
    added++;
   }
+  window.__catlakRealtimeSync?.emit?.('combat',{action:'enemy-added'});
   toast(added+' yaratık savaşa eklendi • saldırı ve hasar zarları hazır.');
  }catch(e){
   toast('Yaratık eklenemedi'+(added?' • '+added+' tanesi eklendi':'')+': '+(e?.message||String(e)));
@@ -241,6 +242,7 @@ async function creatureAttack(creatureId){
    toast((d.hit?`${d.creature_name}: ${d.damage_total} hasar`:`${d.creature_name}: ISKA`)+' • saldırı işlendi fakat tur otomatik geçirilemedi: '+n.error.message);
   }else{
    nextName=n.data?.name||n.data?.current_name||'—';
+   window.__catlakRealtimeSync?.emit?.('combat',{action:'creature-attack'});
    toast((d.hit?`${d.creature_name}: ${d.critical?'KRİTİK • ':''}${d.damage_total} hasar`:`${d.creature_name}: ISKA`)+' • Tur → '+nextName);
   }
  }catch(e){
@@ -279,6 +281,7 @@ async function startCombat(){
     const a=await S.rpc('catlak_gm_combat_add_character',{p_character_id:c.id,p_initiative:null});
     if(a.error)throw a.error;added++;
   }
+  window.__catlakRealtimeSync?.emit?.('combat',{action:'combat-start'});
   toast('Savaş başlatıldı • '+party.length+' parti üyesi hazır'+(added?' • '+added+' otomatik eklendi':'')+'.');
  }catch(e){toast('Savaş başlatılamadı: '+(e?.message||String(e)))}
  finally{actionBusy=false;setTimeout(()=>render(true),20)}
@@ -341,6 +344,7 @@ new MutationObserver(rs=>{
 const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(actionBusy)return;if(liveActive()){if(formInteractionLocked()){deferredRender=true;return}render(true)}else preloadBoard()},45)};
 window.addEventListener('catlak:battle-party-synced',()=>{cachedBoardHtml='';liveSig='';if(liveActive()){render(true)}else preloadBoard()});
 window.addEventListener('catlak:party-membership-changed',()=>{cachedBoardHtml='';liveSig=''});
+window.addEventListener('catlak:realtime-sync',e=>{if(!['combat','party','character','ability'].includes(String(e.detail?.kind||'')))return;cachedBoardHtml='';liveSig='';if(liveActive()){if(formInteractionLocked()){deferredRender=true;return}render(true)}else preloadBoard()});
 S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
 if(liveActive())setTimeout(()=>preloadBoard(),0);
 else if('requestIdleCallback'in window)requestIdleCallback(()=>preloadBoard(),{timeout:1600});

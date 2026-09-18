@@ -339,6 +339,7 @@ async function ccrRefreshConditionsOnly(){
 let ccrRealtimeTimer=0,ccrRealtimeFull=false,ccrRealtimeConditions=false;
 function ccrFlushRealtime(){
   ccrRealtimeTimer=0;
+  const lockUntil=Number(window.__catlakBattleInteractionUntil||0);if(lockUntil>Date.now()){ccrRealtimeTimer=setTimeout(ccrFlushRealtime,Math.max(80,lockUntil-Date.now()+80));return}
   if(!ccrBattleOpen){ccrRealtimeFull=false;ccrRealtimeConditions=false;return}
   if(ccrRealtimeFull){
     ccrRealtimeFull=false;ccrRealtimeConditions=false;
@@ -364,6 +365,7 @@ new MutationObserver(rs=>{
   });
   if(structural||ccrBattleOpen&&!main?.dataset.ccrBattle)ccrSchedule();
 }).observe(CCR_APP,{childList:true,subtree:true});
+window.addEventListener('catlak:realtime-sync',e=>{const k=String(e.detail?.kind||'');if(k==='party'||k==='character')ccrRefreshPartyAccess(true);if(['combat','ability','party','character'].includes(k))ccrQueueRealtime(false,k==='character')});
 if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{ccrRefreshPartyAccess(true);ccrQueueRealtime(false,false)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrQueueRealtime(false,true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrQueueRealtime(true,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrQueueRealtime(true,false)).subscribe();
 window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember};
 ccrEnsure();ccrRefreshPartyAccess();
