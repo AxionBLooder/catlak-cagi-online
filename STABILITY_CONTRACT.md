@@ -12,6 +12,7 @@ Her ana ekranın yalnız bir canonical sahibi vardır:
 - GM Merkezi: `gm-clean-router-v1.js`
 - Yönetim Odası: `gm-ui-polish-v1.js`
 - Canlı Oyun Masası savaş alanı: `live-combat-center-patch.js`
+- Zar Akışı: `event-rolls-patch.js`
 
 `runtime-health-guard.js` çalışma anında bu sahiplikleri kaydeder. Aynı yüzeye ikinci bir farklı sahip eklenmemelidir.
 
@@ -33,7 +34,9 @@ Savaş bittiğinde oda açık kalır.
 
 ## 5. GM regresyon zinciri
 
-`GM Merkezi → Yetenek → Eşya → Stat → Irk → Karakter Oluşturucu → Olay Atölyesi → Oturum Günlüğü → Yaratık Kütüphanesi → İtibar → Mühür → Kaynaklar → Hesap`.
+`GM Merkezi → Yetenek → Eşya → Stat → Irk → Karakter Oluşturucu → Olay Atölyesi → Yaratık Kütüphanesi → İtibar → Mühür → Kaynaklar → Hesap`.
+
+Canlı Oyun Masası ile Zar Akışı üst menüde yan yana tutulur. Zar Akışı oyuncu kağıdındaki atışlar dahil bütün zar kayıtlarını tek akışta gösterir ve toplu silme bütün `catlak_rolls` kayıtlarını temizler.
 
 Alt rota değişirken GM Merkezi tekrar tıklanmak zorunda kalmamalıdır.
 
@@ -41,7 +44,7 @@ Alt rota değişirken GM Merkezi tekrar tıklanmak zorunda kalmamalıdır.
 
 `Oyuncu Masası → zar → Irk Becerileri → Savaş Odası → hedef → aksiyon → Oyuncu Masası`.
 
-Irk Becerileri masa düzeninde Irk Güçleri solda, Yetenekler & Büyüler sağda bağımsız sütunlar halinde aşağı doğru büyür.
+Irk Becerileri masa düzeninde sayfanın tüm genişliği kullanılır; Irk Güçleri solda, Yetenekler & Büyüler sağda aynı üst hizadan başlayıp bağımsız sütunlar halinde aşağı doğru büyür.
 
 ## 7. Veri güvenliği
 
@@ -62,3 +65,8 @@ Hardening başlamadan önceki oynanabilir geri dönüş noktası:
 `stable/playable-pre-hardening-2026-09-18`
 
 Yeni bir değişiklik bu sözleşmeyi bozarsa önce düzeltme yapılır; eski runtime ancak yeni canonical sistem birkaç gerçek oyun oturumunda stabil kaldıktan sonra silinir.
+
+
+## Görsel Arşivi sözleşmesi
+
+Görsel Arşivi yalnız yükleme ekranıdır; daha önce yüklenen görseller burada listelenmez. Görseller Harita ekranındaki ilgili Harita / Yer-Sahne / NPC bölümlerinde görüntülenir.
