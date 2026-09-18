@@ -80,7 +80,18 @@ function maintain(){queued=false;if(isGM()&&gmActive())decorateLive();if(isPlaye
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(maintain)}
 window.addEventListener('pointerdown',e=>{if(e.button!=null&&e.button!==0)return;const gm=e.target?.closest?.('#app .nav [data-tab="gm"]');if(gm&&isGM())beginLive()},true);
 window.addEventListener('click',e=>{const gm=e.target?.closest?.('#app .nav [data-tab="gm"]');if(gm&&isGM()){beginLive();return}const add=e.target?.closest?.('[data-lcc-add-char]');if(add&&isGM()){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();addCharacterWithDex();return}const ini=e.target?.closest?.('[data-lcc-init]');if(ini&&isGM()){const S=window.__catlakSupabase,id=ini.dataset.lccInit;if(S&&id){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();(async()=>{const c=await S.from('catlak_combatants').select('id,kind').eq('id',id).maybeSingle();if(c.error){toast(c.error.message);return}if(c.data?.kind==='player')await rerollPlayerDex(id);else{const r=await S.rpc('catlak_gm_combat_roll_initiative',{p_combatant_id:id});if(r.error)toast(r.error.message);else{toast('İnisiyatif: '+r.data);setTimeout(()=>window.__catlakLiveCombatCenter?.render?.(),20)}}})();return}}const sheet=e.target?.closest?.('#app .nav [data-tab="sheet"]');if(sheet&&isPlayer()){playerSheetRepair();return}const nav=e.target?.closest?.('#app .nav button');if(nav&&isGM()&&!nav.matches('[data-tab="gm"]'))clearLivePending()},true);
-new MutationObserver(()=>{schedule();if(ROOT.classList.contains('cc-live-entry-pending')){if(!isGM()||!gmActive())clearLivePending();else decorateLive()}}).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-cc-simple-live']});
-setTimeout(()=>{if(isGM()&&gmActive())beginLive();schedule()},0);setTimeout(schedule,400);setTimeout(schedule,1200);
+new MutationObserver(rs=>{
+ const nav=APP.querySelector('.nav'),main=APP.querySelector('main');
+ const relevant=rs.some(r=>{
+  if(r.type==='attributes')return r.target===main||r.target===nav||r.target?.matches?.('.nav button,.role');
+  if(r.target===APP||r.target===main)return true;
+  if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+  return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role,.cc-live-two,[data-lcc-board]')||n.querySelector?.('main,.nav,.role,.cc-live-two,[data-lcc-board]')));
+ });
+ if(!relevant)return;
+ schedule();
+ if(ROOT.classList.contains('cc-live-entry-pending')){if(!isGM()||!gmActive())clearLivePending();else decorateLive()}
+}).observe(APP,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-cc-simple-live']});
+setTimeout(()=>{if(isGM()&&gmActive())beginLive();schedule()},0);setTimeout(schedule,500);
 window.__catlakLiveGameEntryGuard={begin:beginLive,clear:clearLivePending,ready:decorateLive,repairPlayerSheet:playerSheetRepair,maintain:schedule};
 })();
