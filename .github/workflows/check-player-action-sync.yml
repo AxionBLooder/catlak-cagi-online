@@ -1,0 +1,235 @@
+name: Check Player Action Sync
+on:
+  push:
+    paths:
+      - 'player-sheet-hard-recovery.js'
+      - 'stat-roll-patch.js'
+      - 'player-live-actions-patch.js'
+      - 'player-sheet-support-runtime.js'
+      - 'player-sheet-equipment-abilities-patch.js'
+      - 'gm-live-player-state.js'
+      - 'live-combat-center-patch.js'
+      - 'index.html'
+      - '.github/workflows/check-player-action-sync.yml'
+  workflow_dispatch:
+
+jobs:
+  action-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check player-sheet-hard-recovery.js
+          node --check stat-roll-patch.js
+          node --check player-live-actions-patch.js
+          node --check player-sheet-support-runtime.js
+          node --check player-sheet-equipment-abilities-patch.js
+          node --check gm-live-player-state.js
+          node --check live-combat-center-patch.js
+          grep -Fq 'player-hard-recovery-v4' index.html
+          grep -Fq 'gm-live-player-state-v1' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Player and GM action synchronization
+        run: |
+          cat > player-action-sync-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+
+          async function installMock(page,role){
+            await page.evaluate(({role})=>{
+              window.__rpcCalls=[];
+              window.__handlers={};
+              window.__db={
+                catlak_characters:[{id:'char-1',name:'Eeliot',owner_id:'user-1',play_status:'active',species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:10,hp_max:20,base_ac:13,base_speed:30,base_stats:{STR:8,DEX:14,CON:12,INT:18,WIS:13,CHA:10},data:{},created_at:'2026-01-01'}],
+                catlak_inventory:[{id:'inv-1',character_id:'char-1',item_id:'item-1',quantity:1,equipped:true,equipped_slot:'main_weapon',player_note:'',granted_at:'2026-01-01'}],
+                catlak_items:[{id:'item-1',name:'Test Kılıcı',item_type:'weapon',description:'Test silahı',attack_stat:'DEX',attack_bonus:0,attack_formula:'1d20',damage_formula:'1d8',damage_type:'Kesici',effects:{},ac_mode:'none',ac_value:0,is_active:true,created_at:'2026-01-01'}],
+                catlak_rolls:[],
+                catlak_species_powers:[{id:'pow-1',species_name:'İnsan',unlock_level:1,name:'İnsan Direnci',short_description:'Dayanıklılık yeteneği',detail_note:'',data:{},sort_order:1}],
+                catlak_special_paths:[],
+                catlak_character_conditions:[{id:'cond-1',character_id:'char-1',name:'Zehirli',remaining_rounds:2,note:'-1 test',active:true,created_at:'2026-01-01'}],
+                catlak_character_abilities:[{id:'assign-1',character_id:'char-1',uses_remaining:2,uses_per_combat:2}],
+                catlak_combat_state:[{id:1,active:true,name:'Test Savaşı',round:1,current_combatant_id:'cmb-1'}],
+                catlak_combatants:[{id:'cmb-1',character_id:'char-1',kind:'player',name:'Eeliot',initiative:15,hp_current:10,hp_max:20,ac:13,created_at:'2026-01-01'}]
+              };
+              window.__abilities=[{assignment_id:'assign-1',name:'Acil Müdahale',ability_type:'special',effect_type:'heal',target_type:'self',formula:'1d4',uses_per_combat:2,uses_remaining:2}];
+              window.__snapshot={active:true,is_my_turn:true,character_id:'char-1',order:[
+                {id:'cmb-1',character_id:'char-1',kind:'player',name:'Eeliot',hp_current:10,hp_max:20},
+                {id:'enemy-1',kind:'enemy',name:'Çatlak Avcısı',hp_current:12,hp_max:12}
+              ]};
+
+              window.__fire=table=>(window.__handlers[table]||[]).forEach(fn=>fn({eventType:'UPDATE'}));
+              function rows(table,filters,ins){
+                let out=(window.__db[table]||[]).slice();
+                for(const [k,v] of filters)out=out.filter(x=>String(x?.[k])===String(v));
+                for(const [k,a] of ins)out=out.filter(x=>a.map(String).includes(String(x?.[k])));
+                return out;
+              }
+              function q(table){
+                const state={filters:[],ins:[],single:false,limit:null,update:null,del:false,selectAfter:false};
+                const obj={
+                  select(){state.selectAfter=true;return obj},
+                  eq(k,v){state.filters.push([k,v]);return obj},
+                  in(k,a){state.ins.push([k,a]);return obj},
+                  order(){return obj},
+                  limit(n){state.limit=n;return obj},
+                  maybeSingle(){state.single=true;return obj},
+                  update(v){state.update=v;return obj},
+                  delete(){state.del=true;return obj},
+                  then(ok,bad){
+                    let data=rows(table,state.filters,state.ins);
+                    if(state.update){
+                      for(const r of data)Object.assign(r,state.update);
+                      window.__fire(table);
+                    }
+                    if(state.del){
+                      const ids=new Set(data.map(x=>x.id));
+                      window.__db[table]=(window.__db[table]||[]).filter(x=>!ids.has(x.id));
+                      window.__fire(table);
+                    }
+                    data=rows(table,state.filters,state.ins);
+                    if(state.limit!=null)data=data.slice(0,state.limit);
+                    const val=state.single?(data[0]||null):data;
+                    return Promise.resolve({data:val,error:null}).then(ok,bad);
+                  }
+                };
+                return obj;
+              }
+              const channel={
+                on(_ev,filter,cb){(window.__handlers[filter.table]??=[]).push(cb);return channel},
+                subscribe(){return channel}
+              };
+              window.__catlakSupabase={
+                auth:{getSession:async()=>({data:{session:{user:{id:role==='GM'?'gm-1':'user-1'}}}})},
+                from:table=>q(table),
+                channel:()=>channel,
+                rpc:async(name,args={})=>{
+                  window.__rpcCalls.push({name,args});
+                  if(name==='catlak_player_combat_snapshot')return{data:window.__snapshot,error:null};
+                  if(name==='catlak_player_abilities')return{data:window.__abilities,error:null};
+                  if(name==='catlak_roll_stat'){
+                    const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:args.p_character_id,label:args.p_stat+' Testi',roll_kind:'stat',stat:args.p_stat,formula:'1d20',modifier:2,total:17,dice:[15],created_at:new Date().toISOString()};
+                    window.__db.catlak_rolls.unshift(r);window.__fire('catlak_rolls');return{data:r,error:null};
+                  }
+                  if(name==='catlak_roll_weapon'){
+                    const damage=args.p_action==='damage';
+                    const r={id:'roll-'+(window.__db.catlak_rolls.length+1),character_id:'char-1',label:'Test Kılıcı • '+(damage?'Hasar':'Saldırı'),roll_kind:damage?'weapon_damage':'weapon_attack',formula:damage?'1d8':'1d20',modifier:2,total:damage?7:18,dice:[damage?5:16],created_at:new Date().toISOString()};
+                    window.__db.catlak_rolls.unshift(r);window.__fire('catlak_rolls');return{data:r,error:null};
+                  }
+                  if(name==='catlak_update_my_hp'){
+                    const c=window.__db.catlak_characters.find(x=>x.id===args.p_character_id);if(c)c.hp_current=args.p_hp;
+                    const b=window.__db.catlak_combatants.find(x=>x.character_id===args.p_character_id);if(b)b.hp_current=args.p_hp;
+                    window.__snapshot.order[0].hp_current=args.p_hp;window.__fire('catlak_characters');window.__fire('catlak_combatants');return{data:args.p_hp,error:null};
+                  }
+                  if(name==='catlak_player_use_ability'){
+                    const a=window.__abilities.find(x=>x.assignment_id===args.p_assignment_id);if(a&&a.uses_remaining!=null)a.uses_remaining--;
+                    window.__fire('catlak_character_abilities');return{data:{ability:a?.name||'Yetenek',effect_type:'heal',amount:3,hit:true},error:null};
+                  }
+                  if(name==='catlak_gm_add_condition'){
+                    const id='cond-'+(window.__db.catlak_character_conditions.length+1);
+                    window.__db.catlak_character_conditions.push({id,character_id:args.p_character_id,name:args.p_name,remaining_rounds:args.p_rounds,note:args.p_note||'',active:true,created_at:new Date().toISOString()});
+                    window.__fire('catlak_character_conditions');return{data:id,error:null};
+                  }
+                  if(name==='catlak_gm_remove_condition'){
+                    const c=window.__db.catlak_character_conditions.find(x=>x.id===args.p_condition_id);if(c)c.active=false;
+                    window.__fire('catlak_character_conditions');return{data:true,error:null};
+                  }
+                  if(name==='catlak_gm_combat_adjust_hp'){
+                    const b=window.__db.catlak_combatants.find(x=>x.id===args.p_combatant_id);
+                    if(b){b.hp_current=Math.max(0,Math.min(b.hp_max,b.hp_current+Number(args.p_delta||0)));const c=window.__db.catlak_characters.find(x=>x.id===b.character_id);if(c)c.hp_current=b.hp_current;window.__snapshot.order[0].hp_current=b.hp_current}
+                    window.__fire('catlak_combatants');window.__fire('catlak_characters');return{data:b?.hp_current,error:null};
+                  }
+                  return{data:null,error:null};
+                }
+              };
+            },{role});
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox','--disable-gpu']});
+            try{
+              const player=await browser.newPage();const errors=[];player.on('pageerror',e=>errors.push(String(e.message||e)));
+              await player.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><header><span class="role">MİSAFİR</span></header><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
+              await installMock(player,'MİSAFİR');
+              for(const file of ['stat-roll-patch.js','player-sheet-support-runtime.js','player-live-actions-patch.js','player-sheet-equipment-abilities-patch.js','player-sheet-hard-recovery.js'])await player.addScriptTag({path:path.resolve(file)});
+              await player.waitForSelector('main[data-cc-hard-sheet="1"] .cc-character-stack section.hero');
+              await player.waitForSelector('.stat[data-sr-stat="DEX"]',{timeout:5000});
+              await player.getByRole('button',{name:/DEX/}).first().click();
+              await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_stat'));
+              await player.waitForFunction(()=>document.body.textContent.includes('DEX Testi'));
+
+              await player.locator('[data-cc-hard-hp][data-d="-1"]').first().click();
+              await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_update_my_hp'));
+              await player.waitForFunction(()=>document.querySelector('section.hero .vital b')?.textContent==='9/20');
+
+              await player.waitForSelector('[data-a="weapon"][data-k="attack"]',{timeout:5000});
+              await player.getByRole('button',{name:'Saldırı At',exact:true}).first().click();
+              await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_weapon'&&x.args.p_action==='attack'));
+
+              await player.waitForFunction(()=>document.body.textContent.includes('İnsan Direnci'),null,{timeout:5000});
+              await player.waitForFunction(()=>document.body.textContent.includes('Zehirli'),null,{timeout:5000});
+              await player.waitForSelector('[data-psea-use="assign-1"]',{timeout:5000});
+              await player.locator('[data-psea-use="assign-1"]').click();
+              await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_player_use_ability'));
+
+              const pout=await player.evaluate(()=>({
+                hp:document.querySelector('section.hero .vital b')?.textContent,
+                rolls:window.__db.catlak_rolls.map(x=>x.label),
+                calls:window.__rpcCalls.map(x=>x.name),
+                race:document.body.textContent.includes('İnsan Direnci'),
+                condition:document.body.textContent.includes('Zehirli'),
+                ability:document.body.textContent.includes('Acil Müdahale')
+              }));
+              if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
+              if(errors.length)throw new Error('PLAYER_PAGE_ERRORS '+errors.join(' | '));
+
+              const gm=await browser.newPage();const gerr=[];gm.on('pageerror',e=>gerr.push(String(e.message||e)));
+              await gm.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main data-cc-simple-live="1"><div class="cc-live-two"><section class="card"><div class="eyebrow">ZAR AKIŞI</div></section><section class="card"><div class="eyebrow">OYUNCULAR</div><div class="cc-simple-player"><b>Eeliot</b><br><small>● CANLI</small></div></section></div></main></div><div id="toast" class="hidden"></div>`);
+              await installMock(gm,'GM');
+              await gm.evaluate(()=>{
+                window.__db.catlak_characters[0].hp_current=9;
+                window.__db.catlak_combatants[0].hp_current=9;
+                window.__snapshot.order[0].hp_current=9;
+              });
+              await gm.addScriptTag({path:path.resolve('gm-live-player-state.js')});
+              await gm.addScriptTag({path:path.resolve('live-combat-center-patch.js')});
+              await gm.waitForFunction(()=>document.querySelector('.glps-state')?.textContent.includes('HP 9/20'),null,{timeout:5000});
+              await gm.waitForFunction(()=>document.querySelector('.glps-state')?.textContent.includes('Zehirli'),null,{timeout:5000});
+              await gm.waitForSelector('[data-lcc-board]',{timeout:5000});
+
+              await gm.selectOption('#lcc-cond-char','char-1');
+              await gm.selectOption('#lcc-cond-preset','Yanıyor');
+              await gm.locator('[data-lcc-cond-add]').click();
+              await gm.waitForFunction(()=>document.querySelector('[data-lcc-board]')?.textContent.includes('Yanıyor'),null,{timeout:5000});
+              const yan=gm.locator('.lcc-cond').filter({hasText:'Yanıyor'}).locator('[data-lcc-cond-remove]');
+              await yan.click();
+              await gm.waitForFunction(()=>!document.querySelector('[data-lcc-board]')?.textContent.includes('Yanıyor'),null,{timeout:5000});
+
+              await gm.locator('[data-lcc-hp="cmb-1"][data-d="-5"]').click();
+              await gm.waitForFunction(()=>document.querySelector('.lcc-hp')?.textContent.includes('HP 4 / 20'),null,{timeout:5000});
+              await gm.waitForFunction(()=>document.querySelector('.glps-state')?.textContent.includes('HP 4/20'),null,{timeout:5000});
+
+              const gout=await gm.evaluate(()=>({
+                hp:document.querySelector('.glps-state')?.textContent,
+                combat:document.querySelector('.lcc-hp')?.textContent,
+                calls:window.__rpcCalls.map(x=>x.name),
+                zehir:document.querySelector('.glps-state')?.textContent.includes('Zehirli')
+              }));
+              if(!gout.hp?.includes('4/20')||!gout.combat?.includes('4 / 20')||!gout.calls.includes('catlak_gm_add_condition')||!gout.calls.includes('catlak_gm_remove_condition')||!gout.calls.includes('catlak_gm_combat_adjust_hp')||!gout.zehir)throw new Error('GM_ACTION_SYNC_FAILED '+JSON.stringify(gout));
+              if(gerr.length)throw new Error('GM_PAGE_ERRORS '+gerr.join(' | '));
+              console.log('PLAYER_GM_ACTION_SYNC_OK',JSON.stringify({player:pout,gm:gout}));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node player-action-sync-smoke.cjs
