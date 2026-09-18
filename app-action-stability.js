@@ -19,7 +19,8 @@ function isNavigationButton(b){
 }
 function isStableAction(el){
   const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b)||isNavigationButton(b))return null;
-  // Any non-navigation action inside the application must keep the current viewport.
+  if(b.closest('main[data-ccr-battle="1"],main.ccr-battle-surface'))return null;
+  // Managed battle actions already preserve their own DOM and viewport.
   return b;
 }
 function isCommitButton(el){return isStableAction(el)}

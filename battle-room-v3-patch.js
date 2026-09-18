@@ -84,7 +84,7 @@ function br3CreatureCard(x){
     <div class="actions" style="margin-top:9px">${dead?'<button type="button" disabled>Düştü</button>':`<button type="button" class="${selected?'on':''}" data-br3-target="${br3Esc(x.id)}">${selected?'✓ Hedef Seçildi':'Hedef Seç'}</button>`}</div>
   </article>`;
 }
-function br3CreaturesSection(s){const enemies=br3Enemies(s);const empty=s?.active?'Karşılaşmaya yaratık eklenmedi.':'Henüz aktif savaş yok; yaratıklar savaş başladığında burada görünecek.';return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:`<div class="muted" style="margin-top:10px">${empty}</div>`}</section>`}
+function br3CreaturesSection(s){if(!s?.active)return'';const enemies=br3Enemies(s);return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:'<div class="muted" style="margin-top:10px">Karşılaşmaya yaratık eklenmedi.</div>'}</section>`}
 function br3AbilityTargets(a,s){const rows=s.order||[];if(a.target_type==='enemy')return rows.filter(x=>x.kind==='enemy'&&(x.hp_current==null||br3Num(x.hp_current)>0));if(a.target_type==='ally')return rows.filter(x=>x.kind==='player'&&br3Num(x.hp_current)>0);return[]}
 function br3AbilityCard(a,s){
   const rule=br3AbilityRule(a),targets=br3AbilityTargets(a,s),uses=a.uses_per_combat==null?'∞':br3Num(a.uses_remaining)+'/'+br3Num(a.uses_per_combat),out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;
@@ -112,7 +112,39 @@ function br3ResultHtml(r){
   else if(r.effect_type==='heal')text=br3Num(r.amount)+' iyileştirme';
   return `<div class="br3-result ${bad?'bad':'good'}"><div class="eyebrow">SON AKSİYON</div><b>${br3Esc(r.ability||'Yetenek')} → ${br3Esc(r.target_name||'')}</b><div>${br3Esc(text)}</div></div>`
 }
-function br3TurnSection(s){const active=!!s?.active,title=!active?'Savaş Başlamadı':s.is_my_turn?'Sıra Sende':'Sıra: '+br3Esc(s.current_name||'—'),detail=!active?'GM savaşı başlattığında tur burada başlayacak.':s.in_combat?'Round '+br3Num(s.round):'Karakterin henüz karşılaşmaya eklenmedi.';return `<section class="card br3-turn ${s.is_my_turn?'ready':''}" data-br3-turn><div><div class="eyebrow">TUR KONTROLÜ</div><h2>${title}</h2><div class="mini muted">${detail}</div></div><button type="button" class="primary" data-br3-end-turn ${s.is_my_turn?'':'disabled'}>Turumu Bitir ▶</button></section>`}
+function br3OrderRows(s){
+  return (s?.order||[]).map(x=>`<div class="ccr-order-row ${x.is_current?'current':''} ${x.is_self?'self':''}"><div class="ccr-init">${br3Num(x.initiative)}</div><div><b>${br3Esc(x.name)}</b><div class="muted mini">${x.kind==='enemy'?'DÜŞMAN':'OYUNCU'}${x.is_self?' • SEN':''}</div></div>${x.is_current?'<span class="ccr-pill ccr-turn">SIRA</span>':''}</div>`).join('');
+}
+function br3OrderSection(s){
+  return `<section class="card br3-order-section" data-br3-base-order><div class="eyebrow">TUR SIRASI</div><h2>Round ${br3Num(s?.round)}</h2><div class="ccr-order">${br3OrderRows(s)||'<div class="muted">Katılımcı yok.</div>'}</div></section>`;
+}
+function br3SyncBattleShell(s){
+  const main=BR3_APP.querySelector('main');if(!main)return;
+  const active=!!s?.active;
+  main.dataset.br3CombatActive=active?'1':'0';
+  const hero=main.querySelector('section.hero');
+  if(hero){
+    const h1=hero.querySelector('h1'),p=hero.querySelector('p');
+    if(h1)h1.textContent=active?(s.battle_name||'Karşılaşma'):'Karşılaşma';
+    if(p){
+      if(!active){p.classList.add('muted');p.innerHTML='Henüz aktif savaş yok. Aksiyonların, silahların ve durumların burada hazır kalır.'}
+      else{p.classList.remove('muted');p.innerHTML=(s.in_combat?('Round '+br3Num(s.round)+' • '+(s.is_my_turn?'<b class="gold">SIRA SENDE</b>':'Sıra: <b>'+br3Esc(s.current_name||'—')+'</b>')):'Savaş başladı; GM henüz karakterini karşılaşmaya eklemedi.')}
+    }
+    const status=[...hero.querySelectorAll('.vital')].find(v=>br3Txt(v.querySelector('span')).toUpperCase()==='DURUM')?.querySelector('b');
+    if(status)status.textContent=active?(s.is_my_turn?'▶':'•'):'—';
+  }
+  const left=main.querySelector('.ccr-battle-grid')?.firstElementChild;
+  let order=main.querySelector('[data-br3-base-order]')||main.querySelector('.ccr-order')?.closest('section.card');
+  if(active){
+    const next=br3Node(br3OrderSection(s));
+    if(order)br3ReplaceIfChanged(order,next);
+    else if(left){
+      const weapons=[...left.querySelectorAll('section.card')].find(x=>br3Txt(x.querySelector('.eyebrow'))==='TAKILI SİLAHLAR');
+      weapons?weapons.before(next):left.appendChild(next);
+    }
+  }else if(order)order.remove();
+}
+function br3TurnSection(s){if(!s?.active)return'';const title=s.is_my_turn?'Sıra Sende':'Sıra: '+br3Esc(s.current_name||'—'),detail=s.in_combat?'Round '+br3Num(s.round):'Karakterin henüz karşılaşmaya eklenmedi.';return `<section class="card br3-turn ${s.is_my_turn?'ready':''}" data-br3-turn><div><div class="eyebrow">TUR KONTROLÜ</div><h2>${title}</h2><div class="mini muted">${detail}</div></div><button type="button" class="primary" data-br3-end-turn ${s.is_my_turn?'':'disabled'}>Turumu Bitir ▶</button></section>`}
 function br3HpControl(s){const self=(s.order||[]).find(x=>x.is_self);return `<div class="vital br3-hero-hp" data-br3-hp><span>CAN DEĞİŞİMİ</span><input type="number" min="1" step="1" value="1" data-br3-hp-amount aria-label="Can değişim miktarı"><button type="button" class="danger" data-br3-hp-change="damage" ${self?'':'disabled'}>− Hasar</button><button type="button" data-br3-hp-change="heal" ${self?'':'disabled'}>+ İyileştir</button></div>`}
 
 function br3EnhanceWeapons(s){
@@ -143,7 +175,7 @@ function br3SyncHeroVitals(s){
 }
 function br3CacheCurrent(){
   const main=BR3_APP.querySelector('main');
-  if(!main||!br3BattleView()||!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-abilities]'))return false;
+  if(!main||!br3BattleView()||!main.querySelector('[data-br3-abilities]'))return false;
   br3CachedHtml=main.innerHTML;
   try{window.__catlakViewRuntime?.cache?.('player-battle',br3CachedHtml)}catch(_){}
   return true;
@@ -167,14 +199,14 @@ function br3WaitReady(ms=1800){
   return new Promise(resolve=>{
     const tick=()=>{
       const main=BR3_APP.querySelector('main');
-      if(!br3Busy&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]'))return resolve(true);
+      if(!br3Busy&&main?.querySelector('[data-br3-abilities]')&&(main.dataset.br3CombatActive==='0'||main.querySelector('[data-br3-turn]')))return resolve(true);
       if(Date.now()-start>=ms)return resolve(false);
       setTimeout(tick,20);
     };
     tick();
   });
 }
-function br3Node(html){const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
+function br3Node(html){if(!html)return null;const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
 function br3ReplaceIfChanged(current,next){
   if(!current)return next;
   if(current.outerHTML===next.outerHTML)return current;
@@ -188,13 +220,17 @@ function br3Insert(d){
     if(eye==='HIZLI D20'||eye==='SON ZARLARIN'||eye==='SAVAŞ GÜNLÜĞÜ'||title==='CANLI AKIŞ')sec.remove();
   });
   const grid=main.querySelector('.ccr-battle-grid'),left=grid?.firstElementChild,aside=grid?.querySelector('aside');
+  br3SyncBattleShell(d.snap);
   let turn=main.querySelector('[data-br3-turn]'),creatures=main.querySelector('[data-br3-creatures]'),abilities=main.querySelector('[data-br3-abilities]');
   const nextTurn=br3Node(br3TurnSection(d.snap)),nextCreatures=br3Node(br3CreaturesSection(d.snap)),nextAbilities=br3Node(br3AbilitiesSection(d));
-  if(turn)turn=br3ReplaceIfChanged(turn,nextTurn);else{turn=nextTurn;left?left.insertBefore(turn,left.firstChild):main.appendChild(turn)}
-  if(creatures)creatures=br3ReplaceIfChanged(creatures,nextCreatures);else{creatures=nextCreatures;const order=main.querySelector('.ccr-order')?.closest('section.card');if(order)order.classList.add('br3-order-section');order?order.insertAdjacentElement('afterend',creatures):(left?left.appendChild(creatures):main.appendChild(creatures))}
+  if(nextTurn){if(turn)turn=br3ReplaceIfChanged(turn,nextTurn);else{turn=nextTurn;left?left.insertBefore(turn,left.firstChild):main.appendChild(turn)}}else if(turn)turn.remove();
+  if(nextCreatures){
+    if(creatures)creatures=br3ReplaceIfChanged(creatures,nextCreatures);
+    else{creatures=nextCreatures;const order=main.querySelector('[data-br3-base-order]')||main.querySelector('.ccr-order')?.closest('section.card');order?order.insertAdjacentElement('afterend',creatures):(left?left.appendChild(creatures):main.appendChild(creatures))}
+  }else if(creatures)creatures.remove();
   if(abilities)abilities=br3ReplaceIfChanged(abilities,nextAbilities);else abilities=nextAbilities;
   const weapons=[...main.querySelectorAll('section.card')].find(x=>br3Txt(x.querySelector('.eyebrow'))==='TAKILI SİLAHLAR');if(weapons)weapons.classList.add('br3-weapons-section');
-  const baseOrder=main.querySelector('.ccr-order')?.closest('section.card');if(baseOrder)baseOrder.classList.add('br3-order-section');
+  const baseOrder=main.querySelector('[data-br3-base-order]')||main.querySelector('.ccr-order')?.closest('section.card');if(baseOrder){baseOrder.classList.add('br3-order-section');baseOrder.dataset.br3BaseOrder='1'}
   const heroVitals=main.querySelector('section.hero .vitals');
   let hp=main.querySelector('[data-br3-hp]'),nextHp=br3Node(br3HpControl(d.snap));
   if(hp&&!hp.classList.contains('br3-hero-hp')){hp.remove();hp=null}
@@ -222,7 +258,7 @@ async function br3Render(force=false){
     if(gen!==br3Gen||BR3_APP.querySelector('main')!==main||!br3BattleView())return;
     br3NormalizeTarget(d.snap);br3LastSnap=d.snap;br3LastData=d;
     const sig=JSON.stringify([d.snap?.active,d.snap?.round,d.snap?.current_combatant_id,d.snap?.in_combat,d.snap?.is_my_turn,(d.snap?.order||[]).map(x=>[x.id,x.name,x.kind,x.hp_current,x.hp_max,x.ac,x.is_current,x.creature_type]),d.abilities.map(a=>[a.assignment_id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.uses_per_combat,a.uses_remaining,a.description]),d.warnings]);
-    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3SyncHeroVitals(d.snap);br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
+    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-abilities]')&&(d.snap?.active?main.querySelector('[data-br3-creatures]'):main.dataset.br3CombatActive==='0')){br3SyncBattleShell(d.snap);br3SyncHeroVitals(d.snap);br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
     br3Sig=sig;br3Insert(d);return true;
   }catch(e){if(force)br3Toast('Savaş Odası yüklenemedi: '+(e?.message||String(e)));return false}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
 }
@@ -359,10 +395,11 @@ new MutationObserver(rs=>{
   });
   if(br3IsGM()){if(structural)br3Soon(false,80);return}
   if(!br3BattleView())return;
-  if(!structural&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))return;
-  if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,25);
+  const active=main?.dataset.br3CombatActive==='1';
+  if(!structural&&main?.querySelector('[data-br3-abilities]')&&(!active||main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')))return;
+  if(!main?.querySelector('[data-br3-abilities]')||(active&&(!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]'))))br3Soon(false,25);
 }).observe(BR3_APP,{childList:true,subtree:true});
-window.addEventListener('catlak:realtime-sync',e=>{if(!['combat','ability','party','character'].includes(String(e.detail?.kind||'')))return;br3Preload=null;const delay=Math.max(90,Number(window.__catlakBattleInteractionUntil||0)-Date.now()+80);if(br3BattleView())br3Soon(false,delay)});
+window.addEventListener('catlak:realtime-sync',e=>{const kind=String(e.detail?.kind||'');if(!['combat','ability','party','character'].includes(kind))return;br3Preload=null;const action=String(e.detail?.action||''),stateFlip=kind==='combat'&&(action==='combat-start'||action==='catlak_gm_combat_end'||action==='combat-end');const delay=Math.max(90,Number(window.__catlakBattleInteractionUntil||0)-Date.now()+80);if(br3BattleView())br3Soon(stateFlip,delay)});
 BR3_S.channel('cc-battle-room-v4-abilities')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>br3Soon(false,90))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))
@@ -371,7 +408,7 @@ function br3RepairIfNeeded(){
   if(br3IsGM()){br3EnsureGmClear();return}
   if(!br3BattleView())return;
   const main=BR3_APP.querySelector('main');
-  if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,0);
+  const active=main?.dataset.br3CombatActive==='1';if(!main?.querySelector('[data-br3-abilities]')||(active&&(!main.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]'))))br3Soon(false,0);
 }
 window.addEventListener('focus',br3RepairIfNeeded);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')br3RepairIfNeeded()});
@@ -380,4 +417,17 @@ window.addEventListener('catlak:player-fast-ready',()=>{
   const run=()=>{if(!br3BattleView())br3PreloadData()};
   if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1200});else setTimeout(run,180);
 });
+let br3HeartbeatBusy=false;
+async function br3Heartbeat(){
+  if(br3HeartbeatBusy||!br3BattleView()||document.visibilityState!=='visible'||br3ActionBusy||br3InteractionLocked())return;
+  br3HeartbeatBusy=true;
+  try{
+    const r=await BR3_S.rpc('catlak_player_combat_snapshot');if(r.error)return;
+    const active=!!r.data?.active,last=!!br3LastSnap?.active;
+    if(active!==last){br3Preload=null;br3Sig='';br3Soon(true,0)}
+  }catch(_){}
+  finally{br3HeartbeatBusy=false}
+}
+setInterval(br3Heartbeat,3000);
+window.addEventListener('catlak:realtime-status',e=>{if(String(e.detail?.status||'').toUpperCase()==='SUBSCRIBED'&&br3BattleView())br3Soon(true,0)});
 window.__catlakBattleRoomV3Test={render:br3Render,restore:br3RestoreCached,cache:br3CacheCurrent,preload:br3PreloadData,target:br3SelectTarget,clearLog:br3ClearBattleLog,isBattleView:br3BattleView,selectedTarget:()=>br3TargetId,actionBusy:()=>br3ActionBusy};
