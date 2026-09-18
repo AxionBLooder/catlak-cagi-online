@@ -87,9 +87,9 @@ function setRaceView(on){
     raceMode=true;m.classList.add('cc-hard-race-view');clearPlayerNavSelection(race);
     requestAnimationFrame(()=>window.scrollTo({top:raceScrollY||Math.max(0,m.offsetTop-10),behavior:'auto'}));
   }else{
-    if(raceMode)raceScrollY=window.scrollY;
+    const wasRace=raceMode;if(wasRace)raceScrollY=window.scrollY;
     raceMode=false;m.classList.remove('cc-hard-race-view');clearPlayerNavSelection(sheet);
-    requestAnimationFrame(()=>window.scrollTo({top:sheetScrollY||Math.max(0,m.offsetTop-10),behavior:'auto'}));
+    if(wasRace)requestAnimationFrame(()=>window.scrollTo({top:sheetScrollY,behavior:'auto'}));
   }
   return true;
 }
