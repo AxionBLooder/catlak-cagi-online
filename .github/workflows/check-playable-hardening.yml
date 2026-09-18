@@ -1,0 +1,123 @@
+name: Check Playable Hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'browser-app.js'
+      - 'runtime-health-guard.js'
+      - 'app-action-stability.js'
+      - 'player-sheet-hard-recovery.js'
+      - 'battle-room-v3-patch.js'
+      - 'room-system-patch.js'
+      - 'gm-clean-router-v1.js'
+      - 'gm-live-compact-v1.js'
+      - 'live-combat-center-patch.js'
+      - 'gm-ui-polish-v1.js'
+      - 'presence-patch.js'
+      - 'quality-of-life-patch.js'
+      - '.github/workflows/check-playable-hardening.yml'
+  workflow_dispatch:
+
+jobs:
+  playable-hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate ten-point playable contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def read(name): return Path(name).read_text(encoding='utf-8')
+          html=read('index.html')
+          core=read('browser-app.js')
+          health=read('runtime-health-guard.js')
+          action=read('app-action-stability.js')
+          sheet=read('player-sheet-hard-recovery.js')
+          battle=read('battle-room-v3-patch.js')
+          rooms=read('room-system-patch.js')
+          gm=read('gm-clean-router-v1.js')
+          live=read('live-combat-center-patch.js')
+          compact=read('gm-live-compact-v1.js')
+          gmui=read('gm-ui-polish-v1.js')
+          presence=read('presence-patch.js')
+          qol=read('quality-of-life-patch.js')
+
+          failures=[]
+          def ok(name,cond):
+              if not cond: failures.append(name)
+
+          # 1. Single renderer / screen ownership
+          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV28' in sheet)
+          ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
+          ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
+          ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
+          ok('legacy.gm.live.disabled','window.__catlakLiveCombatCenter&&s()&&!l&&i()==="gm")return' in core)
+
+          # 2. Legacy runtime quarantine: files may remain in repo, but cannot be loaded.
+          retired=['gm-live-player-state.js','gm-controls-patch.js','dice-ux-patch.js',
+                   'player-sheet-patch.js','player-live-actions-patch.js',
+                   'gm-management-room-patch.js','gm-center-router-core.js']
+          ok('legacy.not.loaded',all(x not in html for x in retired))
+
+          # 3. Canonical routing and view restoration.
+          ok('route.gm.canonical','window.__catlakGmCleanRouter?.current?.()' in action and 'window.__catlakGmCleanRouter.route' in action)
+          ok('route.player.sheet.cache','restoreCachedSheet' in sheet and 'setRaceView' in sheet)
+          ok('route.player.battle.cache','window.__catlakBattleRoomV3Test?.restore?.()' in rooms)
+
+          # 4. Battle regression contract.
+          ok('battle.target.local','function br3SelectTarget' in battle and 'br3SyncEnemyAbilityTargets' in battle)
+          ok('battle.auto.end','br3MaybeAutoEndCombat' in battle)
+          ok('battle.no.empty.enemy.copy','Henüz Yaratık Yok' not in battle and 'GM henüz bu savaşa yaratık eklemedi' not in battle)
+          ok('battle.fail.safe','data-ccr-battle-retry' in rooms and 'cc-battle-entry-pending' in rooms)
+          ok('battle.enemy.add','catlak_gm_combat_add_enemy' in live and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
+
+          # 5. GM flow contract.
+          for route in ['ability','items','stats','races','builder','events','logs','creatures','reputation','seals','rules','account']:
+              ok('gm.route.'+route,("['"+route+"'," in gm) or ("'"+route+"'" in gm))
+          ok('gm.live.battle.only','cc-live-battle-only' in compact)
+          ok('gm.management.local.hp','data-cc-mrv2-hp' in gmui)
+          ok('gm.management.local.level','data-cc-mrv2-level' in gmui)
+          ok('gm.presence','catlak:presence-changed' in gmui and 'window.__catlakPresence' in presence)
+
+          # 6. Player flow contract.
+          ok('player.sheet.cache','cachedSheetHtml' in sheet)
+          ok('player.race.left','[data-cc-hard-race]{display:block!important;grid-column:1!important;justify-self:start!important' in sheet)
+          ok('player.abilities.right','[data-cc-hard-abilities]{display:block!important;grid-column:2!important;justify-self:end!important' in sheet)
+          ok('player.single.roll',"showRollFlash(cid,roll);\n    toast(" not in sheet)
+          ok('player.battle.preload','br3PreloadData' in battle)
+
+          # 7. Data/action safety.
+          ok('safety.save.hold','__catlakActionStabilityV7' in action and 'actionHoldUntil' in action)
+          ok('safety.battle.action.lock','br3ActionBusy' in battle)
+          ok('safety.live.action.lock','actionBusy' in live)
+          ok('safety.delete.confirm',"confirm(" in qol)
+
+          # 8. Performance budget.
+          for name,text in [('battle',battle),('presence',presence),('qol',qol),('sheet',sheet)]:
+              ok('perf.no.polling.'+name,'setInterval(' not in text)
+          ok('perf.live.cache','cachedBoardHtml' in live and 'restoreCachedBoard' in live)
+          ok('perf.sheet.cache','cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet)
+
+          # 9. Error visibility / diagnostics.
+          ok('diagnostics.buffer','__catlakRuntimeDiagnostics' in health)
+          ok('diagnostics.reporter','__catlakReportError' in health)
+          ok('diagnostics.bounded','diagnostics.length>30' in health)
+
+          # 10. Stable build identifiers.
+          ok('version.sheet','player-hard-recovery-v28-race-left-right' in html)
+          ok('version.health','runtime-health-v3-diagnostics' in html)
+          ok('version.action','action-stability-v7-canonical-router' in html)
+
+          if failures:
+              raise SystemExit('PLAYABLE_HARDENING_FAIL: '+', '.join(failures))
+          print('PLAYABLE_HARDENING_OK')
+          PY
+
+          for f in browser-app.js runtime-health-guard.js app-action-stability.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js gm-live-compact-v1.js live-combat-center-patch.js gm-ui-polish-v1.js presence-patch.js quality-of-life-patch.js; do
+            node --check "$f"
+          done
