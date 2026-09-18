@@ -79,7 +79,11 @@ window.addEventListener('click',e=>{
  const d=e.target?.closest?.('[data-vamf-delete]');if(d){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();deleteVisual(d.dataset.vamfDelete,d.dataset.kind||'map').catch(x=>toast('Silinemedi: '+(x?.message||String(x))));return}
  if(e.target?.closest?.('[data-cc-map-tab],[data-cc-world-tab]'))schedule(80);
 },true);
-new MutationObserver(()=>schedule(0)).observe(APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+  if(mapActive()){schedule(0);return}
+  const relevant=rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('[data-cc-map-tab],[data-cc-world-tab],[data-vamf-card],[data-vamf-places],.cc-map-gallery')||n.querySelector?.('[data-cc-map-tab],[data-cc-world-tab],[data-vamf-card],[data-vamf-places],.cc-map-gallery'))));
+  if(relevant)schedule(0);
+}).observe(APP,{childList:true,subtree:true});
 S.channel('vamf-world').on('postgres_changes',{event:'*',schema:'public',table:'catlak_world_media'},()=>{APP.querySelector('[data-vamf-places]')?.remove();schedule(80)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_npcs'},()=>schedule(80)).subscribe();
 setTimeout(()=>schedule(0),300);
 window.__catlakVisualArchiveMapFlow={maintain,renderPlaces};
