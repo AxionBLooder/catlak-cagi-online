@@ -1,11 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Stat Roll
 on:
-  push:
-    paths:
-      - 'stat-roll-patch.js'
-      - 'index.html'
-      - '.github/workflows/check-stat-roll.yml'
   workflow_dispatch:
+
 jobs:
   stat-roll:
     runs-on: ubuntu-latest
