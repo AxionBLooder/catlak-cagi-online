@@ -94,16 +94,15 @@ async function render(force=false){
  wrapOldCombatRoute();
  if(!liveActive())return;
  const main=APP.querySelector('main');if(!main||busy)return;
- if(!main.querySelector('.cc-live-two')){if(force)setTimeout(()=>render(false),80);return}
  if(!force&&main.querySelector('[data-lcc-board]'))return;
  busy=true;
  try{
   const d=await loadData();
   if(!liveActive()||APP.querySelector('main')!==main)return;
   const anchor=main.querySelector('.cc-live-two');
-  if(!anchor||!anchor.parentNode){setTimeout(()=>render(true),80);return}
   main.querySelector('[data-lcc-board]')?.remove();
-  anchor.insertAdjacentHTML('afterend',boardHtml(d));
+  if(anchor?.parentNode)anchor.insertAdjacentHTML('afterend',boardHtml(d));
+  else main.insertAdjacentHTML('beforeend',boardHtml(d));
  }catch(e){console.error('LCC render',e);toast('Savaş masası yüklenemedi: '+(e?.message||String(e)))}finally{busy=false}
 }
 async function rpc(name,args,msg){
