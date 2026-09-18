@@ -136,17 +136,15 @@
 
     async function loadGmBackground(){
       await loadParallel([
-        ['./class-bonus-patch.js?v=classbonus-v1','class-bonus'],
+        ['./class-bonus-patch.js?v=classbonus-v2-light-observer','class-bonus'],
         ['./special-character-abilities.js?v=special-char-v1','special-character-abilities'],
-        ['./visual-archive-map-flow-patch.js?v=visual-flow-v2-safe','visual-map-flow'],
-        ['./gm-controls-patch.js?v=recovery-3','gm-controls'],
+        ['./visual-archive-map-flow-patch.js?v=visual-flow-v3-light-observer','visual-map-flow'],
         ['./presence-patch.js?v=presence-v6-event-driven','presence'],
-        ['./dice-ux-patch.js?v=recovery-3','dice'],
-        ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
+        ['./item-system-patch.js?v=item-system-v6-light-observer','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v5-light-observer','battle-party-guard'],
-        ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
+        ['./session-log-delete-fix.js?v=session-log-v5-light-observer','session-log-delete']
       ]);
     }
 
