@@ -25,7 +25,7 @@ jobs:
           grep -Fq '__catlakGmCleanRoute' item-system-patch.js
           grep -Fq 'gmcNativeBridge' gm-clean-router-v1.js
           grep -Fq 'gm-clean-router-v5-builder' index.html
-          grep -Fq 'gm-item-slot-v4-route' index.html
+          grep -Fq 'gm-item-slot-v5-type-slots' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Browser regression
@@ -84,13 +84,16 @@ jobs:
               await slots.addScriptTag({path:path.resolve('gm-item-slot-patch.js')});
               await slots.waitForSelector('#gms-give-slot');
               await slots.waitForFunction(()=>[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='main_weapon')&&[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='off_weapon'));
-              const out=await slots.evaluate(()=>({
+              let out=await slots.evaluate(()=>({
                 values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),
-                labels:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.textContent),
+                selected:document.querySelector('#gms-give-slot').value,
                 disabled:document.querySelector('#gms-give-slot').disabled,
                 owned:!!document.querySelector('[data-gms-give]')
               }));
-              if(out.disabled||!out.values.includes('main_weapon')||!out.values.includes('off_weapon')||!out.owned)throw new Error('Item slot regression '+JSON.stringify(out));
+              if(out.disabled||!out.values.includes('main_weapon')||!out.values.includes('off_weapon')||out.selected!=='main_weapon'||!out.owned)throw new Error('Weapon slot regression '+JSON.stringify(out));
+              await slots.evaluate(()=>{
+                const q=window.__dbItems||(window.__dbItems={});
+              });
               console.log('GM_BUILDER_ITEM_SLOTS_OK',JSON.stringify(out));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
