@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v19 -->
+<!-- clean-gm-runtime-v20 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,7 @@
   <link rel="dns-prefetch" href="https://ygbereitlhjvoqgqlwfe.supabase.co">
   <style>
     html,body{margin:0;min-height:100%;background:#071019;color:#edf6ff;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
-    html.cc-player-critical-pending #app main{visibility:hidden!important}
+    html.cc-player-critical-pending #app main{visibility:visible!important}
     #cc-start-cover{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#071019;opacity:1;pointer-events:auto;transition:opacity .14s ease}
     #cc-start-cover.cc-done{opacity:0;pointer-events:none}
     #cc-start-cover strong{font-size:clamp(2rem,7vw,4.6rem);letter-spacing:.04em;color:#edf6ff;text-shadow:0 8px 32px #000}
@@ -99,7 +99,7 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v1','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v2','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitMaybe(window.__catlakPlayerSheetBindFix?.repair?.())}catch(_){}
           try{if(!app.querySelector('main section.hero'))await awaitMaybe(window.__catlakPlayerSheetHardRecovery?.recover?.())}catch(e){console.warn('CATLAK_PLAYER_HARD_READY',e)}
@@ -193,7 +193,7 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-9-joined-sheet-boot';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-10-canonical-invite-sheet';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
