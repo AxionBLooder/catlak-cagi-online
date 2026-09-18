@@ -1,9 +1,10 @@
 (function(){
 'use strict';
-if(window.__catlakGmCleanClickGuardV8)return;
-window.__catlakGmCleanClickGuardV8=true;
+if(window.__catlakGmCleanClickGuardV9)return;
+window.__catlakGmCleanClickGuardV9=true;
 function stop(e,prevent=false){if(prevent)e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 function closeManagement(){try{window.__catlakGmUiPolish?.closeManagement?.()}catch(_){}}
+function centerBridgeNav(nav){return !!(window.__catlakGmCenterBridge||nav?.matches?.('[data-gmc-native-bridge]'))}
 function clearForeignRooms(){
   closeManagement();
   try{window.__catlakPartyEeliotHotfix?.close?.()}catch(_){}
@@ -30,12 +31,12 @@ window.addEventListener('pointerdown',e=>{
   const el=e.target?.closest?.('[data-gmc-open],[data-gmc-route],[data-gmc-action],[data-prh-manager],[data-prh-party],[data-cc-management-room]');
   if(el){stop(e,false);return}
   const nav=e.target?.closest?.('#app .nav button');
-  if(nav)clearForeignRooms();
+  if(nav&&!centerBridgeNav(nav))clearForeignRooms();
 },true);
 window.addEventListener('click',e=>{
   const el=e.target?.closest?.('[data-gmc-open],[data-gmc-route],[data-gmc-action],[data-prh-manager],[data-prh-party],[data-cc-management-room]');
   if(el){stop(e,true);dispatch(el);return}
   const nav=e.target?.closest?.('#app .nav button');
-  if(nav&&!nav.matches('[data-gmc-open],[data-prh-manager],[data-prh-party],[data-cc-management-room]'))clearForeignRooms();
+  if(nav&&!centerBridgeNav(nav)&&!nav.matches('[data-gmc-open],[data-prh-manager],[data-prh-party],[data-cc-management-room]'))clearForeignRooms();
 },true);
 })();
