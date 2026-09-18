@@ -58,6 +58,7 @@ window.addEventListener('pointerdown',e=>{
 
 new MutationObserver(rs=>{
   if(ROOT.classList.contains('cc-fast-nav-switch')){
+    if(ROOT.dataset.ccViewTransition)return;
     const main=APP.querySelector('main');
     const changed=rs.some(r=>r.target===main||main?.contains(r.target)||[...r.addedNodes].some(n=>n===main||n.nodeType===1&&main?.contains(n)));
     if(changed)requestAnimationFrame(()=>requestAnimationFrame(finishNavSwitch));
@@ -114,6 +115,12 @@ function viewCacheSet(key,html){if(key&&typeof html==='string')viewCache.set(Str
 function viewCacheRestore(key,main){
   const html=viewCache.get(String(key||''));if(!html||!main)return false;main.innerHTML=html;return true
 }
-window.__catlakViewRuntime={begin:viewBegin,ready:viewReady,batch:viewBatch,cache:viewCacheSet,restore:viewCacheRestore,has:key=>viewCache.has(String(key||''))};
+function viewMount(surface,main,html){
+  if(!main||typeof html!=='string')return false;
+  const tpl=document.createElement('template');tpl.innerHTML=html;
+  main.replaceChildren(tpl.content.cloneNode(true));main.dataset.ccViewMount=String(surface||'');
+  return true
+}
+window.__catlakViewRuntime={begin:viewBegin,ready:viewReady,batch:viewBatch,mount:viewMount,cache:viewCacheSet,restore:viewCacheRestore,has:key=>viewCache.has(String(key||''))};
 window.__catlakRuntimeHealthGuard={scan,clear:clearClass,finishNavSwitch};
 })();
