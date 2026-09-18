@@ -17,7 +17,7 @@ const plaActed=new Map();
 if(!document.querySelector('#pla-player-live-style')){
   const s=document.createElement('style');s.id='pla-player-live-style';s.textContent=`
   .psv4-sheet .pla-static-stats .eyebrow,.ps-player-sheet .pla-static-stats .eyebrow{display:none!important}
-  .psv4-sheet .pla-static-stats .stat,.ps-player-sheet .pla-static-stats .stat{cursor:default!important;pointer-events:none!important;transform:none!important}
+  .psv4-sheet .pla-static-stats .stat,.ps-player-sheet .pla-static-stats .stat{cursor:pointer!important;pointer-events:auto!important}
   .psv4-sheet .pla-static-stats .stat:hover,.ps-player-sheet .pla-static-stats .stat:hover{transform:none!important;box-shadow:none!important}
   .psv4-sheet .iw-player-item.pla-equip-pending,.ps-player-sheet .iw-player-item.pla-equip-pending{opacity:1!important;filter:none!important;transition:none!important}
   .psv4-sheet [data-pla-inventory-owner="1"] .iw-player-item,.ps-player-sheet [data-pla-inventory-owner="1"] .iw-player-item{animation:none!important}
@@ -42,12 +42,12 @@ function plaClaimInventory(){
 function plaStaticStats(){
   if(!plaIsSheet())return;
   PLA_APP.querySelectorAll('main .cc-character-stack section.card').forEach(sec=>{
-    if(plaEyebrow(sec)!=='D20 TESTLERİ'&&!sec.classList.contains('ps-stat-card'))return;
+    if(plaEyebrow(sec)!=='D20 TESTLERİ'&&!sec.classList.contains('ps-stat-card')&&!sec.hasAttribute('data-cc-hard-stats'))return;
     sec.classList.add('pla-static-stats');
-    const h=sec.querySelector('.section-title h2, :scope > h2');if(h&&h.textContent!=='Statlar')h.textContent='Statlar';
+    const eye=sec.querySelector(':scope > .eyebrow,.section-title .eyebrow');if(eye&&/D20 TESTLERİ/i.test(plaTxt(eye)))eye.remove();
+    const h=sec.querySelector('.section-title h2, :scope > h2');if(h)h.textContent='Statlar';
     sec.querySelectorAll('.stat').forEach(b=>{
-      if(b.dataset.a==='stat'){b.removeAttribute('data-a');b.removeAttribute('data-id');b.removeAttribute('data-stat')}
-      b.classList.add('static');b.setAttribute('aria-disabled','true');b.tabIndex=-1;
+      b.classList.remove('static');b.removeAttribute('aria-disabled');b.tabIndex=0;
       const sm=b.querySelector('small');if(sm){const t=plaTxt(sm).replace(/\s*•\s*d20(?:\s*at)?\s*$/i,'').trim();if(sm.textContent!==t)sm.textContent=t}
     })
   })
