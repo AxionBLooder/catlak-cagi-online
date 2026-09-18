@@ -14,7 +14,7 @@ const ccrSigned=x=>ccrNum(x)>=0?'+'+ccrNum(x):String(ccrNum(x));
 const ccrManagedTabs=new Set(['characters','rules','account']);
 const CCR_PKEY='cc_party_member';
 let ccrHubOpen=false,ccrHubTab='characters',ccrProgrammatic=false;
-let ccrBattleOpen=false,ccrBattleBusy=false,ccrBattleGen=0,ccrScheduled=false,ccrCanonicalBattleOwned=false,ccrFullRenderCount=0;
+let ccrBattleOpen=false,ccrBattleBusy=false,ccrBattleGen=0,ccrScheduled=false,ccrCanonicalBattleOwned=false,ccrFullRenderCount=0,ccrLastFullRenderStack='',ccrLastFullRenderCanonical=false;
 let ccrPartyKnown=false,ccrPartyMember=false,ccrPartyBusy=false;
 
 if(!document.querySelector('#ccr-style')){
@@ -272,7 +272,7 @@ async function ccrBattleRender(force=false){
   try{
     const d=await ccrBattleData();
     if(!ccrBattleOpen||gen!==ccrBattleGen||CCR_APP.querySelector('main')!==main)return;
-    ccrEnsureBattleNav();main.classList.add('ccr-base-building');ccrFullRenderCount++;main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
+    ccrEnsureBattleNav();main.classList.add('ccr-base-building');ccrFullRenderCount++;ccrLastFullRenderCanonical=ccrCanonicalBattleOwned;ccrLastFullRenderStack=String(new Error('CCR_FULL_RENDER').stack||'');main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
     if(document.documentElement.classList.contains('cc-battle-entry-pending')){
       for(let i=0;i<60&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
       let enhanced=false;
@@ -415,5 +415,5 @@ window.addEventListener('catlak:realtime-sync',e=>{
 });
 window.addEventListener('catlak:party-membership-changed',()=>ccrRefreshPartyAccess(true));
 if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrQueueRealtime(false,true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrQueueRealtime(true,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrQueueRealtime(true,false)).subscribe();
-window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember,canonicalOwned:()=>ccrCanonicalBattleOwned,fullRenderCount:()=>ccrFullRenderCount};
+window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember,canonicalOwned:()=>ccrCanonicalBattleOwned,fullRenderCount:()=>ccrFullRenderCount,lastFullRenderStack:()=>ccrLastFullRenderStack,lastFullRenderCanonical:()=>ccrLastFullRenderCanonical};
 ccrEnsure();ccrRefreshPartyAccess();
