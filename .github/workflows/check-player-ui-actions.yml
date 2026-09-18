@@ -17,7 +17,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          grep -Fq 'player-hard-recovery-v11' index.html
+          grep -Fq 'player-hard-recovery-v12' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify cleaned interactive player sheet
@@ -77,12 +77,21 @@ jobs:
               console.log('STEP wait stat');await page.waitForSelector('[data-cc-hard-stat="DEX"]');console.log('STEP stat ready');
               await page.waitForFunction(()=>!document.querySelector('.cc-desk-intro'));
               const text=await page.locator('main').innerText();
-              if(/D20 TESTLERİ|d20 at/i.test(text))throw new Error('D20 labels still visible: '+text);
+              if(/D20 TESTLERİ|d20 at|1d20/i.test(text))throw new Error('D20 labels still visible: '+text);
+              const layout=await page.evaluate(()=>({
+                statTop:document.querySelector('[data-cc-hard-stats]').getBoundingClientRect().top,
+                invTop:document.querySelector('[data-cc-hard-inventory]').getBoundingClientRect().top,
+                statLeft:document.querySelector('[data-cc-hard-stats]').getBoundingClientRect().left,
+                equipLeft:document.querySelector('[data-cc-hard-equipment]').getBoundingClientRect().left
+              }));
+              if(!(layout.statTop<layout.invTop)||!(layout.equipLeft>layout.statLeft))throw new Error('PLAYER_LAYOUT_FAILED '+JSON.stringify(layout));
               if(!/1\. Silah/.test(text)||!/2\. Silah/.test(text))throw new Error('Weapon slots missing: '+text);
               const stat=page.locator('[data-cc-hard-stat="DEX"]');
               if(await stat.getAttribute('aria-disabled'))throw new Error('DEX is disabled');
-              console.log('STEP stat click');await stat.click();console.log('STEP stat clicked');
+              console.log('STEP stat click');const rollStart=Date.now();await stat.click();console.log('STEP stat clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'&&x.args.p_stat==='DEX'));
+              await page.waitForFunction(()=>document.querySelector('[data-cc-hard-rolls] .roll')?.textContent.includes('DEX Testi'));
+              const rollLatency=Date.now()-rollStart;if(rollLatency>800)throw new Error('ROLL_UI_TOO_SLOW '+rollLatency);
               console.log('STEP hp click');await page.locator('[data-cc-hard-hp][data-d="-1"]').click();console.log('STEP hp clicked');
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_update_my_hp'&&x.args.p_hp===21));
               console.log('STEP slot click');await page.locator('[data-ws-slot="off_weapon"]').first().click();console.log('STEP slot clicked');
