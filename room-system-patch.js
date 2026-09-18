@@ -14,7 +14,7 @@ const ccrSigned=x=>ccrNum(x)>=0?'+'+ccrNum(x):String(ccrNum(x));
 const ccrManagedTabs=new Set(['characters','rules','account']);
 const CCR_PKEY='cc_party_member';
 let ccrHubOpen=false,ccrHubTab='characters',ccrProgrammatic=false;
-let ccrBattleOpen=false,ccrBattleBusy=false,ccrBattleGen=0,ccrScheduled=false,ccrCanonicalBattleOwned=false,ccrFullRenderCount=0,ccrLastFullRenderStack='',ccrLastFullRenderCanonical=false;
+let ccrBattleOpen=false,ccrBattleBusy=false,ccrBattleGen=0,ccrScheduled=false,ccrCanonicalBattleOwned=false,ccrFullRenderCount=0,ccrLastFullRenderStack='',ccrLastFullRenderCanonical=false,ccrLastCanonicalReset='init';
 let ccrPartyKnown=false,ccrPartyMember=false,ccrPartyBusy=false;
 
 if(!document.querySelector('#ccr-style')){
@@ -67,9 +67,9 @@ function ccrToast(x){
 function ccrNav(){return CCR_APP.querySelector('.nav')}
 function ccrBaseTab(){return ccrNav()?.querySelector('button.on[data-tab]')?.dataset.tab||''}
 function ccrSelectOnly(btn){const nav=ccrNav();if(!nav)return;nav.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));btn?.classList.add('on')}
-function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main){delete main.dataset.ccrBattle;main.classList.remove('ccr-base-building','br3-live-layout','ccr-battle-surface')}try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}}
+function ccrCloseRooms(){ccrHubOpen=false;ccrBattleOpen=false;ccrLastCanonicalReset='close-rooms';ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;document.documentElement.classList.remove('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main){delete main.dataset.ccrBattle;main.classList.remove('ccr-base-building','br3-live-layout','ccr-battle-surface')}try{window.__catlakViewRuntime?.ready?.('player-battle')}catch(_){}}
 function ccrCloseBattle(){
-  ccrBattleOpen=false;ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;
+  ccrBattleOpen=false;ccrLastCanonicalReset='close-battle';ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=false;ccrBattleGen++;
   document.documentElement.classList.remove('cc-battle-entry-pending');
   const main=CCR_APP.querySelector('main');
   if(main){delete main.dataset.ccrBattle;main.classList.remove('br3-live-layout','ccr-base-building','ccr-battle-surface')}
@@ -329,7 +329,7 @@ async function ccrBattleRollStat(stat){
 }
 function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
-  ccrHubOpen=false;ccrBattleOpen=true;ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=true;
+  ccrHubOpen=false;ccrBattleOpen=true;ccrLastCanonicalReset='open';ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=true;
   try{window.__catlakViewRuntime?.begin?.('player-battle')}catch(_){}
   document.documentElement.classList.add('cc-battle-entry-pending');
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
@@ -350,7 +350,7 @@ document.addEventListener('click',e=>{
   const battle=e.target.closest?.('[data-ccr-battle]');
   if(battle){e.preventDefault();e.stopImmediatePropagation();ccrOpenBattle();return}
   const retry=e.target.closest?.('[data-ccr-battle-retry]');
-  if(retry){e.preventDefault();e.stopImmediatePropagation();ccrCanonicalBattleOwned=false;document.documentElement.classList.add('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true);return}
+  if(retry){e.preventDefault();e.stopImmediatePropagation();ccrLastCanonicalReset='retry';ccrCanonicalBattleOwned=false;document.documentElement.classList.add('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true);return}
   const wr=e.target.closest?.('[data-ccr-weapon]');
   if(wr&&ccrBattleOpen){e.preventDefault();e.stopImmediatePropagation();ccrBattleRollWeapon(wr.dataset.ccrWeapon,wr.dataset.kind).catch(x=>ccrToast(x?.message||x));return}
   const sr=e.target.closest?.('[data-ccr-stat]');
@@ -415,5 +415,5 @@ window.addEventListener('catlak:realtime-sync',e=>{
 });
 window.addEventListener('catlak:party-membership-changed',()=>ccrRefreshPartyAccess(true));
 if(typeof CCR_S.channel==='function')CCR_S.channel('ccr-battle-live-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>ccrQueueRealtime(false,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>ccrQueueRealtime(false,true)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>ccrQueueRealtime(true,false)).on('postgres_changes',{event:'*',schema:'public',table:'catlak_items'},()=>ccrQueueRealtime(true,false)).subscribe();
-window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember,canonicalOwned:()=>ccrCanonicalBattleOwned,fullRenderCount:()=>ccrFullRenderCount,lastFullRenderStack:()=>ccrLastFullRenderStack,lastFullRenderCanonical:()=>ccrLastFullRenderCanonical};
+window.__catlakRoomSystemTest={openBattle:ccrOpenBattle,closeBattle:ccrCloseBattle,renderBattle:ccrBattleRender,managedTabs:[...ccrManagedTabs],realtimeRefresh:ccrRealtimeRefresh,refreshPartyAccess:ccrRefreshPartyAccess,partyAllowed:()=>ccrPartyMember,canonicalOwned:()=>ccrCanonicalBattleOwned,fullRenderCount:()=>ccrFullRenderCount,lastFullRenderStack:()=>ccrLastFullRenderStack,lastFullRenderCanonical:()=>ccrLastFullRenderCanonical,lastCanonicalReset:()=>ccrLastCanonicalReset};
 ccrEnsure();ccrRefreshPartyAccess();
