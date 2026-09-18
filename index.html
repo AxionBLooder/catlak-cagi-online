@@ -39,9 +39,7 @@
       setTimeout(function(){cover&&cover.remove()},180);
     }
     var hasJoin=false;try{hasJoin=!!new URLSearchParams(location.search).get('join')}catch(_){}
-    setTimeout(releaseStartCover,hasJoin?1800:3200);
-    window.addEventListener('catlak:player-fast-ready',releaseStartCover,{once:true});
-    window.addEventListener('catlak:data-refreshed',releaseStartCover,{once:true});
+    setTimeout(releaseStartCover,hasJoin?5000:7000);
     window.__catlakReleaseStartCover=releaseStartCover;
   })();
   </script>
@@ -92,10 +90,11 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v21-race-ability-live','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v22-race-isolated','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
-          try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
-          await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
+          var recovered=false;
+          try{recovered=!!(await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),1800))}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
+          if(!recovered)await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},700)})]);
         }
         await twoFrames();
       }finally{
@@ -106,11 +105,11 @@
     async function loadPlayerBackground(){
       // Enhanced battle runtime loads first; the Savaş Odası nav is created only afterwards.
       // This prevents the legacy/base battle layout from flashing before v3/v4 enhancement.
-      await load('./battle-room-v3-patch.js?v=battle-v6-target-hp-vitals','battle-room-v3');
+      await load('./battle-room-v3-patch.js?v=battle-v7-action-autoend','battle-room-v3');
       await loadParallel([
         ['./presence-patch.js?v=presence-v5-shared-online','presence'],
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v10-no-action-reset','rooms'],
+        ['./room-system-patch.js?v=player-bg-v11-race-detach','rooms'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
         ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
       ]);
@@ -128,7 +127,7 @@
         ['./gm-clean-router-v1.js?v=gm-clean-router-v7-presence-stable-actions','gm-clean-router'],
         ['./gm-live-compact-v1.js?v=gm-live-compact-v10-combat-only','gm-live-compact']
       ]);
-      await load('./live-combat-center-loader.js?v=livecombat-loader-v9-repaired-live-board','live-combat-loader');
+      await load('./live-combat-center-loader.js?v=livecombat-loader-v10-autoend','live-combat-loader');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -143,7 +142,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-10-no-action-reset','rooms'],
+        ['./room-system-patch.js?v=recovery-11-race-detach','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
@@ -156,17 +155,17 @@
       var role=await waitForRole();
       if(role==='GM'){
         await loadGmCore();
-        await loadGmBackground();
         try{
           window.__catlakGmCleanRouter?.ensure?.();
           window.__catlakLiveCombatCenter?.render?.();
           window.__catlakGmUiPolish?.maintain?.();
           window.__catlakGmLiveCompact?.maintain?.();
           window.__catlakLiveGameEntryGuard?.maintain?.();
-          window.__catlakGmLivePlayerState?.refresh?.(true);
           if(app.querySelector('.nav [data-tab="gm"].on'))window.__catlakLiveGameEntryGuard?.begin?.();
         }catch(_){}
+        await twoFrames();
         reveal();
+        loadGmBackground().catch(function(e){console.warn('CATLAK_GM_BACKGROUND',e)});
         return;
       }
       await loadPlayerCritical();
