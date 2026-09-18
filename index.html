@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v12 -->
+<!-- clean-gm-runtime-v13 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -169,7 +169,7 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-5-clean';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-6-invite-boot';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},9000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
