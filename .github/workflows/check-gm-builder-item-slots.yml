@@ -1,11 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check GM Builder and Item Slots
 on:
-  push:
-    paths:
-      - 'gm-clean-router-v1.js'
-      - 'item-system-patch.js'
-      - 'index.html'
-      - '.github/workflows/check-gm-builder-item-slots.yml'
   workflow_dispatch:
 
 jobs:
