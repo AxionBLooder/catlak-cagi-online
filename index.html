@@ -46,7 +46,7 @@
   </script>
 
   <script src="./runtime-health-guard.js?v=runtime-health-v6-fast-first-action-owned-wait"></script>
-  <script src="./app-action-stability.js?v=action-stability-v10-battle-local"></script>
+  <script src="./app-action-stability.js?v=action-stability-v11-no-battle-app-rerender"></script>
 
   <script>
   (function(){
@@ -90,7 +90,7 @@
       try{
         await Promise.all([
           load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v42-sheet-audit','player-hard-recovery'),
-          load('./room-system-patch.js?v=player-bg-v29-click-selector-fix','rooms'),
+          load('./room-system-patch.js?v=player-bg-v30-idempotent-battle','rooms'),
           load('./battle-room-v3-patch.js?v=battle-v22-live-state-shell','battle-room-v3')
         ]);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
