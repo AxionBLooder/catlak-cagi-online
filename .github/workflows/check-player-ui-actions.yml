@@ -3,7 +3,6 @@ on:
   push:
     paths:
       - 'player-sheet-hard-recovery.js'
-      - 'player-live-actions-patch.js'
       - 'index.html'
       - '.github/workflows/check-player-ui-actions.yml'
   workflow_dispatch:
@@ -18,9 +17,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check player-sheet-hard-recovery.js
-          node --check player-live-actions-patch.js
-          grep -Fq 'player-hard-recovery-v10' index.html
-          grep -Fq 'player-actions-v5-hard-owned' index.html
+          grep -Fq 'player-hard-recovery-v11' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify cleaned interactive player sheet
@@ -78,7 +75,6 @@ jobs:
               });
               console.log('STEP hard load start');await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});console.log('STEP hard load done');
               console.log('STEP wait stat');await page.waitForSelector('[data-cc-hard-stat="DEX"]');console.log('STEP stat ready');
-              console.log('STEP live load start');await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});console.log('STEP live load done');
               await page.waitForFunction(()=>!document.querySelector('.cc-desk-intro'));
               const text=await page.locator('main').innerText();
               if(/D20 TESTLERİ|d20 at/i.test(text))throw new Error('D20 labels still visible: '+text);
