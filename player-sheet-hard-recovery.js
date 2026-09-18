@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV31)return;
-window.__catlakPlayerSheetHardRecoveryV31=true;
+if(window.__catlakPlayerSheetHardRecoveryV32)return;
+window.__catlakPlayerSheetHardRecoveryV32=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -38,7 +38,9 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy b{display:block;color:#f2d284;font-size:.76rem;letter-spacing:.04em}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span.muted{color:var(--muted)}
-  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race],#app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{display:none!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view){width:100%!important;max-width:none!important;margin:0!important;padding:18px clamp(14px,2vw,34px) 34px!important;box-sizing:border-box!important}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-character-stack{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race],#app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"]{width:100%!important;max-width:none!important;margin:0!important;padding:18px clamp(14px,2.2vw,36px) 34px!important;box-sizing:border-box!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:1fr!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
@@ -370,7 +372,7 @@ function patchStable(chars,x,kinds){
   window.scrollTo(sx,sy);requestAnimationFrame(()=>window.scrollTo(sx,sy));
 }
 async function refreshStable(kind='all'){
-  stableKinds.add(kind);
+  if(kind)stableKinds.add(kind);
   if(stableBusy){stableAgain=true;return true}
   if(!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return false;
   stableBusy=true;
@@ -519,6 +521,7 @@ async function recover(force=false){
     m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
     ensureRaceNav();setRaceView(raceWanted);
     applyLayers();cacheSheet();release();
+    try{window.__catlakViewRuntime?.ready?.('player-sheet')}catch(_){}
     return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
@@ -579,18 +582,30 @@ new MutationObserver(rs=>{
   if(ready())return;
   schedule(false,20);
 }).observe(APP,{childList:true,subtree:true});
+let syncTimer=0,syncNeedsRecover=false;
+function queueSheetSync(kind){
+  if(!sheetActive())return;
+  if(kind)stableKinds.add(kind);
+  if(!(main()?.dataset.ccHardSheet==='1'&&ready()))syncNeedsRecover=true;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{
+    syncTimer=0;
+    if(!sheetActive()){stableKinds.clear();syncNeedsRecover=false;return}
+    if(syncNeedsRecover){syncNeedsRecover=false;schedule(true,0);return}
+    refreshStable('');
+  },80);
+}
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
-  const sync=kind=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())setTimeout(()=>refreshStable(kind),50);else schedule(true,80)};
-  S.channel('cc-player-hard-sheet-v2')
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>sync('character'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>sync('inventory'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>sync('conditions'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>sync('abilities'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>sync('abilities'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>sync('combat'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>sync('combat'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>sync('visual'))
+  S.channel('cc-player-hard-sheet-v3')
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>queueSheetSync('character'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},()=>queueSheetSync('inventory'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>queueSheetSync('conditions'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>queueSheetSync('abilities'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>queueSheetSync('abilities'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>queueSheetSync('combat'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>queueSheetSync('combat'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>queueSheetSync('visual'))
     .subscribe();
 }
 setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},80);
