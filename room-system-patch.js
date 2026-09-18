@@ -20,6 +20,8 @@ if(!document.querySelector('#ccr-style')){
   const s=document.createElement('style');
   s.id='ccr-style';
   s.textContent=`
+    html.cc-battle-entry-pending #app main>*{visibility:hidden!important}
+    html.cc-battle-entry-pending #app main::before{content:'Savaş Odası hazırlanıyor…';display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}
     .ccr-managed-hidden{display:none!important}
     .ccr-room-head{position:relative;z-index:2}
     .ccr-room-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -222,7 +224,14 @@ async function ccrBattleRender(force=false){
     if(document.documentElement.classList.contains('cc-battle-entry-pending')){
       for(let i=0;i<40&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
       if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
-      try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+      for(let i=0;i<30;i++){
+        if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))break;
+        await new Promise(r=>setTimeout(r,10));
+      }
+      if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
+        document.documentElement.classList.remove('cc-battle-entry-pending');
+        try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+      }
     }
     requestAnimationFrame(()=>window.scrollTo(0,oldY));
   }catch(e){ccrToast('Savaş Odası yüklenemedi: '+(e?.message||String(e)))}finally{ccrBattleBusy=false}
@@ -239,9 +248,10 @@ async function ccrBattleRollStat(stat){
 }
 function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
+  document.documentElement.classList.add('cc-battle-entry-pending');
   ccrHubOpen=false;ccrBattleOpen=true;window.__catlakBattleRoomOpen=true;
   const b=ccrNav()?.querySelector('[data-ccr-battle]');ccrSelectOnly(b);
-  const main=CCR_APP.querySelector('main');if(main){delete main.dataset.ccrBattle;document.documentElement.classList.add('cc-battle-entry-pending')}
+  const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
   ccrBattleRender(true);
 }
 
