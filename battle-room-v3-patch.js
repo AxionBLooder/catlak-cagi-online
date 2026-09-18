@@ -84,7 +84,7 @@ function br3CreatureCard(x){
     <div class="actions" style="margin-top:9px">${dead?'<button type="button" disabled>Düştü</button>':`<button type="button" class="${selected?'on':''}" data-br3-target="${br3Esc(x.id)}">${selected?'✓ Hedef Seçildi':'Hedef Seç'}</button>`}</div>
   </article>`;
 }
-function br3CreaturesSection(s){const enemies=br3Enemies(s);return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:''}</section>`}
+function br3CreaturesSection(s){const enemies=br3Enemies(s);const empty=s?.active?'Karşılaşmaya yaratık eklenmedi.':'Henüz aktif savaş yok; yaratıklar savaş başladığında burada görünecek.';return `<section class="card" data-br3-creatures><div class="eyebrow">KARŞILAŞMADAKİ YARATIKLAR</div>${enemies.length?`<div class="br3-grid" style="margin-top:10px">${enemies.map(br3CreatureCard).join('')}</div>`:`<div class="muted" style="margin-top:10px">${empty}</div>`}</section>`}
 function br3AbilityTargets(a,s){const rows=s.order||[];if(a.target_type==='enemy')return rows.filter(x=>x.kind==='enemy'&&(x.hp_current==null||br3Num(x.hp_current)>0));if(a.target_type==='ally')return rows.filter(x=>x.kind==='player'&&br3Num(x.hp_current)>0);return[]}
 function br3AbilityCard(a,s){
   const rule=br3AbilityRule(a),targets=br3AbilityTargets(a,s),uses=a.uses_per_combat==null?'∞':br3Num(a.uses_remaining)+'/'+br3Num(a.uses_per_combat),out=a.uses_remaining!=null&&br3Num(a.uses_remaining)<=0;
@@ -98,7 +98,7 @@ function br3AbilityCard(a,s){
   }else if(isAlly){
     targetHtml=`<label style="margin-top:9px">Hedef<select data-br3-ability-target="${br3Esc(a.assignment_id)}">${opts||'<option value="">Uygun hedef yok</option>'}</select></label>`;
   }
-  const button=out?'Kullanım Hakkı Bitti':!s.in_combat?'Önce Savaşa Eklenmelisin':!s.is_my_turn?'Sıra Sende Değil':isEnemy&&!selectedEnemy?'Önce Hedef Seç':selectedEnemy?`Kullan → ${selectedEnemy.name}`:'Kullan';
+  const button=out?'Kullanım Hakkı Bitti':!s.active?'Savaş Başlamadı':!s.in_combat?'Karşılaşmaya Eklenmedin':!s.is_my_turn?'Sıra Sende Değil':isEnemy&&!selectedEnemy?'Önce Hedef Seç':selectedEnemy?`Kullan → ${selectedEnemy.name}`:'Kullan';
   return `<article class="br3-card br3-ability ${br3Esc(a.ability_type||'skill')}" data-br3-ability-card="${br3Esc(a.assignment_id)}" data-br3-ability-kind="${br3Esc(a.target_type||'self')}"><div class="eyebrow">${br3AbilityType(a.ability_type)} • ${br3Effect(a.effect_type)}</div><h3>${br3Esc(a.name)}</h3><div class="br3-pills"><span class="br3-pill">Hedef: ${br3TargetLabel(a.target_type)}</span>${a.formula?`<span class="br3-pill">${br3Esc(a.formula)}</span>`:''}<span class="br3-pill">Kullanım: ${uses}</span>${rule.fixed?`<span class="br3-pill">Sabit AC: d20${br3Num(a.attack_bonus)>=0?'+':''}${br3Num(a.attack_bonus)} &gt; ${rule.fixed}</span>`:(a.requires_attack?`<span class="br3-pill">Hedef AC: d20${br3Num(a.attack_bonus)>=0?'+':''}${br3Num(a.attack_bonus)} ≥ hedef AC</span>`:'')}</div>${rule.description?`<div class="br3-note">${br3Esc(rule.description)}</div>`:''}${targetHtml}<button type="button" class="primary widebtn" data-br3-use="${br3Esc(a.assignment_id)}" data-br3-use-kind="${br3Esc(a.target_type||'self')}" ${canUse?'':'disabled'}>${br3Esc(button)}</button></article>`;
 }
 function br3AbilitiesSection(d){const warning=d.warnings?.some(x=>x.includes('Yetenek'))?'<div class="br3-warning">Yetenek listesi şu anda alınamadı; yaratık hedefleme çalışmaya devam eder.</div>':'';return `<section class="card" data-br3-abilities><div class="eyebrow">YETENEKLER & BÜYÜLER</div><h2>${d.abilities.length?'Aksiyon':'Henüz Yetenek Yok'}</h2><p class="muted">GM Merkezi → Yetenek bölümünden karakterine verilen büyü ve özel yetenekler burada görünür ve sıra sendeyken kullanılır.</p>${warning}${d.abilities.length?`<div class="br3-grid">${d.abilities.map(a=>br3AbilityCard(a,d.snap)).join('')}</div>`:'<div class="muted">Bu karaktere henüz bir yetenek atanmadı.</div>'}${br3ResultHtml(br3LastResult)}</section>`}
@@ -112,7 +112,7 @@ function br3ResultHtml(r){
   else if(r.effect_type==='heal')text=br3Num(r.amount)+' iyileştirme';
   return `<div class="br3-result ${bad?'bad':'good'}"><div class="eyebrow">SON AKSİYON</div><b>${br3Esc(r.ability||'Yetenek')} → ${br3Esc(r.target_name||'')}</b><div>${br3Esc(text)}</div></div>`
 }
-function br3TurnSection(s){return `<section class="card br3-turn ${s.is_my_turn?'ready':''}" data-br3-turn><div><div class="eyebrow">TUR KONTROLÜ</div><h2>${s.is_my_turn?'Sıra Sende':'Sıra: '+br3Esc(s.current_name||'—')}</h2><div class="mini muted">${s.in_combat?'Round '+br3Num(s.round):'Karakterin henüz karşılaşmaya eklenmedi.'}</div></div><button type="button" class="primary" data-br3-end-turn ${s.is_my_turn?'':'disabled'}>Turumu Bitir ▶</button></section>`}
+function br3TurnSection(s){const active=!!s?.active,title=!active?'Savaş Başlamadı':s.is_my_turn?'Sıra Sende':'Sıra: '+br3Esc(s.current_name||'—'),detail=!active?'GM savaşı başlattığında tur burada başlayacak.':s.in_combat?'Round '+br3Num(s.round):'Karakterin henüz karşılaşmaya eklenmedi.';return `<section class="card br3-turn ${s.is_my_turn?'ready':''}" data-br3-turn><div><div class="eyebrow">TUR KONTROLÜ</div><h2>${title}</h2><div class="mini muted">${detail}</div></div><button type="button" class="primary" data-br3-end-turn ${s.is_my_turn?'':'disabled'}>Turumu Bitir ▶</button></section>`}
 function br3HpControl(s){const self=(s.order||[]).find(x=>x.is_self);return `<div class="vital br3-hero-hp" data-br3-hp><span>CAN DEĞİŞİMİ</span><input type="number" min="1" step="1" value="1" data-br3-hp-amount aria-label="Can değişim miktarı"><button type="button" class="danger" data-br3-hp-change="damage" ${self?'':'disabled'}>− Hasar</button><button type="button" data-br3-hp-change="heal" ${self?'':'disabled'}>+ İyileştir</button></div>`}
 
 function br3EnhanceWeapons(s){
@@ -123,11 +123,12 @@ function br3EnhanceWeapons(s){
     card.querySelectorAll('[data-ccr-weapon]').forEach(x=>x.remove());
     let box=card.querySelector('[data-br3-weapon-actions]');
     if(!box){box=document.createElement('div');box.dataset.br3WeaponActions='1';card.appendChild(box)}
-    const targetName=target?target.name:'Seçilmedi',waiting=!s.is_my_turn;
-    const state=JSON.stringify([invId,target?.id||'',targetName,waiting]);
+    const targetName=target?target.name:'Seçilmedi',inactive=!s.active,waiting=!inactive&&!s.is_my_turn;
+    const state=JSON.stringify([invId,target?.id||'',targetName,waiting,inactive]);
     if(box.dataset.br3State!==state){
       box.dataset.br3State=state;
-      box.innerHTML=`<div class="br3-target-line">Hedef: <b>${br3Esc(targetName)}</b>${waiting?' • <span class="muted">Sıra sende değil</span>':''}</div><div class="actions"><button type="button" class="primary" data-br3-strike="${br3Esc(invId)}" ${!invId||!target||waiting?'disabled':''}>⚔ Hedefe Vur</button></div>`;
+      const stateText=inactive?'Savaş başlamadı':waiting?'Sıra sende değil':'';
+      box.innerHTML=`<div class="br3-target-line">Hedef: <b>${br3Esc(targetName)}</b>${stateText?' • <span class="muted">'+stateText+'</span>':''}</div><div class="actions"><button type="button" class="primary" data-br3-strike="${br3Esc(invId)}" ${!invId||!target||waiting||inactive?'disabled':''}>${inactive?'Savaş Başlamadı':'⚔ Hedefe Vur'}</button></div>`;
     }
   });
 }

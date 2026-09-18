@@ -228,12 +228,19 @@ function ccrRecentHtml(rows){
 function ccrBattleHtml(d){
   if(!d.char)return`<section class="card"><div class="eyebrow">⚔ SAVAŞ ODASI</div><h1>Karakter bulunamadı</h1><p class="muted">Aktif bir karakter bağlandığında Savaş Odası hazır olacak.</p></section>`;
   const s=d.snap||{},der=d.derived||{stats:d.char.base_stats||{},ac:d.char.base_ac,hp:d.char.hp_max};
-  if(!s.active)return`<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>Savaş Hazır</h1><p class="muted">Şu anda aktif bir savaş yok. GM savaşı başlattığında bu oda otomatik güncellenecek.</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div></div></section>`;
+  const active=!!s.active,inCombat=!!s.in_combat;
   const order=ccrOrderHtml(s);
-  if(!s.in_combat)return`<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>${ccrEsc(s.battle_name||'Savaş')}</h1><p class="muted">Savaş başladı; GM henüz karakterini karşılaşmaya eklemedi.</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div></div></section><section class="card"><div class="eyebrow">TUR SIRASI</div><h2>Round ${ccrNum(s.round)}</h2><div class="ccr-order">${order||'<div class="muted">Katılımcı yok.</div>'}</div></section>`;
-  return `<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>${ccrEsc(s.battle_name||'Savaş')}</h1><p>${ccrEsc(d.char.name)} • Round ${ccrNum(s.round)} • ${s.is_my_turn?'<b class="gold">SIRA SENDE</b>':`Sıra: <b>${ccrEsc(s.current_name||'—')}</b>`}</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div><div class="vital"><span>DURUM</span><b>${s.is_my_turn?'▶':'•'}</b></div></div></section>
+  const title=active?ccrEsc(s.battle_name||'Karşılaşma'):'Karşılaşma';
+  const roundText=active&&ccrNum(s.round)>0?'Round '+ccrNum(s.round):'Beklemede';
+  const heroText=!active
+    ?'Henüz aktif savaş yok. GM savaşı başlattığında bu oda aynı düzen içinde otomatik güncellenecek.'
+    :!inCombat
+      ?'Savaş başladı; GM henüz karakterini karşılaşmaya eklemedi.'
+      :ccrEsc(d.char.name)+' • Round '+ccrNum(s.round)+' • '+(s.is_my_turn?'<b class="gold">SIRA SENDE</b>':'Sıra: <b>'+ccrEsc(s.current_name||'—')+'</b>');
+  const orderEmpty=!active?'Henüz inisiyatif atılmadı.':'Katılımcı yok.';
+  return `<section class="card hero"><div><div class="eyebrow">⚔ OYUNCU • SAVAŞ ODASI</div><h1>${title}</h1><p class="${active?'':'muted'}">${heroText}</p></div><div class="vitals"><div class="vital"><span>HP</span><b>${ccrNum(d.char.hp_current)}/${ccrNum(der.hp)}</b></div><div class="vital"><span>AC</span><b>${ccrNum(der.ac)}</b></div><div class="vital"><span>DURUM</span><b>${active?(s.is_my_turn?'▶':'•'):'—'}</b></div></div></section>
   <div class="ccr-battle-grid"><div>
-    <section class="card"><div class="eyebrow">TUR SIRASI</div><h2>Round ${ccrNum(s.round)}</h2><div class="ccr-order">${order||'<div class="muted">Katılımcı yok.</div>'}</div></section>
+    <section class="card"><div class="eyebrow">TUR SIRASI</div><h2>${roundText}</h2><div class="ccr-order">${order||'<div class="muted">'+orderEmpty+'</div>'}</div></section>
     <section class="card"><div class="eyebrow">TAKILI SİLAHLAR</div><h2>Saldırı & Hasar</h2>${ccrWeaponsHtml(d)}</section>
   </div><aside>
     <section class="card"><div class="eyebrow">AKTİF DURUMLAR</div><h2>Üzerindeki Etkiler</h2>${ccrConditionsHtml(d.conditions)}</section>

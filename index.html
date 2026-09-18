@@ -90,8 +90,8 @@
       try{
         await Promise.all([
           load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v42-sheet-audit','player-hard-recovery'),
-          load('./room-system-patch.js?v=player-bg-v21-clean-room-switch','rooms'),
-          load('./battle-room-v3-patch.js?v=battle-v20-no-ghost-cache','battle-room-v3')
+          load('./room-system-patch.js?v=player-bg-v22-persistent-battle-shell','rooms'),
+          load('./battle-room-v3-patch.js?v=battle-v21-persistent-action-shell','battle-room-v3')
         ]);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           var hardOk=false;
