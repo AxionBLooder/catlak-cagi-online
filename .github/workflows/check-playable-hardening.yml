@@ -91,7 +91,7 @@ jobs:
           ok('gm.management.local.level','data-cc-mrv2-level' in gmui)
           ok('gm.presence','catlak:presence-changed' in gmui and 'window.__catlakPresence' in presence)
           ok('gm.no.session.log',"['logs','Oturum Günlüğü']" not in gm)
-          ok('gm.roll.flow','__catlakUnifiedRollFlowV2' in rolls and 'Tüm Zarları Sil' in rolls and 'catlak_clear_roll_log' in rolls and "data-er-private=\"d20\"" in rolls and "data-er-private=\"d100\"" in rolls and "data-er-event=\"d6\"" in rolls and "data-er-event=\"d200\"" in rolls)
+          ok('gm.roll.flow','__catlakUnifiedRollFlowV2' in rolls and 'Tüm Zarları Sil' in rolls and 'catlak_clear_roll_log' in rolls and "data-er-private=\"d20\"" in rolls and "data-er-private=\"d100\"" in rolls and "erEventCard('d6'" in rolls and "erEventCard('d20'" in rolls and "erEventCard('d100'" in rolls and "erEventCard('d200'" in rolls)
           ok('gm.live.roll.adjacent',"live.after(rolls)" in nav)
           ok('gm.visual.upload.only','__catlakVisualArchiveMapFlowV2' in visuals and 'sw-gallery-head' in visuals)
 
