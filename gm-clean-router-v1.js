@@ -105,6 +105,12 @@ function handle(kind,b){if(kind==='open')return openCenter();if(kind==='route')r
 
 new MutationObserver(rs=>{if(rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.nav,.role')||n.querySelector?.('.nav,.role')))))queueMaintain()}).observe(APP,{childList:true,subtree:true});
 window.addEventListener('catlak:presence-changed',()=>{if(open&&route==='characters')updateManagementPresence()});
+window.addEventListener('catlak:data-refreshed',()=>{
+  if(!open)return;
+  const r=route;
+  if(['items','races','builder'].includes(r))setTimeout(()=>{if(open&&route===r)openNative(r)},0);
+  else requestAnimationFrame(()=>{if(open){ensureBar();markTop()}});
+});
 S.channel('gmc-clean-live').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{characterCacheAt=0;ability.cacheAt=0;if(Date.now()<characterLocalUntil)return;if(open&&route==='characters')renderManagement(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>{ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}).subscribe();
 setTimeout(()=>{maintain();if(isGM()){loadAbility(false).catch(()=>{});loadCharacters(false).catch(()=>{})}},0);setTimeout(maintain,500);
 window.__catlakGmCleanRouter={open:openCenter,close,route:routeTo,action,handle,current:()=>route,isOpen:()=>open,ensure:maintain,renderManagement,renderAbility};
