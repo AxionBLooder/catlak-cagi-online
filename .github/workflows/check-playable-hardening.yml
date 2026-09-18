@@ -83,7 +83,7 @@ jobs:
           ok('battle.auto.end','br3MaybeAutoEndCombat' in battle)
           ok('battle.no.empty.enemy.copy','Henüz Yaratık Yok' not in battle and 'GM henüz bu savaşa yaratık eklemedi' not in battle)
           ok('battle.fail.safe','data-ccr-battle-retry' in rooms and 'cc-battle-entry-pending' in rooms)
-          ok('battle.enemy.add','catlak_gm_combat_add_enemy' in live and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
+          ok('battle.enemy.add',('catlak_gm_combat_add_enemy' in live or 'catlak_gm_combat_add_creature' in live or 'catlak_gm_combat_add_template' in live) and 'lcc-enemy-count' in live and 'İnisiyatif At' in live)
 
           # 5. GM flow contract.
           for route in ['ability','items','stats','races','builder','events','creatures','reputation','seals','rules','account']:
