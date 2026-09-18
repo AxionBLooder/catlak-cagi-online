@@ -320,7 +320,7 @@ new MutationObserver(rs=>{
   if(!structural&&main?.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]'))return;
   if(!main?.querySelector('[data-br3-turn]')||!main.querySelector('[data-br3-creatures]')||!main.querySelector('[data-br3-abilities]'))br3Soon(false,25);
 }).observe(BR3_APP,{childList:true,subtree:true});
-window.addEventListener('catlak:realtime-sync',e=>{if(!['combat','ability','party','character'].includes(String(e.detail?.kind||'')))return;br3Sig='';br3Preload=null;const delay=Math.max(50,Number(window.__catlakBattleInteractionUntil||0)-Date.now()+60);if(br3BattleView())br3Soon(false,delay)});
+window.addEventListener('catlak:realtime-sync',e=>{if(!['combat','ability','party','character'].includes(String(e.detail?.kind||'')))return;br3Preload=null;const delay=Math.max(90,Number(window.__catlakBattleInteractionUntil||0)-Date.now()+80);if(br3BattleView())br3Soon(false,delay)});
 BR3_S.channel('cc-battle-room-v4-abilities')
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>br3Soon(false,90))
  .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>br3Soon(false,90))

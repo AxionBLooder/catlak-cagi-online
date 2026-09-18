@@ -341,12 +341,18 @@ function ccrFlushRealtime(){
   ccrRealtimeTimer=0;
   const lockUntil=Number(window.__catlakBattleInteractionUntil||0);if(lockUntil>Date.now()){ccrRealtimeTimer=setTimeout(ccrFlushRealtime,Math.max(80,lockUntil-Date.now()+80));return}
   if(!ccrBattleOpen){ccrRealtimeFull=false;ccrRealtimeConditions=false;return}
+  if(window.__catlakBattleRoomV3Test?.render){
+    const conditions=ccrRealtimeConditions;
+    ccrRealtimeFull=false;ccrRealtimeConditions=false;
+    window.__catlakBattleRoomV3Test.render(false);
+    if(conditions)ccrRefreshConditionsOnly();
+    return
+  }
   if(ccrRealtimeFull){
     ccrRealtimeFull=false;ccrRealtimeConditions=false;
     const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;
     ccrBattleRender(true);return
   }
-  if(window.__catlakBattleRoomV3Test?.render)window.__catlakBattleRoomV3Test.render(false);
   if(ccrRealtimeConditions)ccrRefreshConditionsOnly();
   ccrRealtimeConditions=false;
 }

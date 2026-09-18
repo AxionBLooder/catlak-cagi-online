@@ -357,7 +357,7 @@ function stableSelectors(kinds){
   if(kinds.has('visual'))add('[data-cc-hard-party-visual]');
   if(kinds.has('conditions'))add('[data-cc-hard-conditions]');
   if(kinds.has('abilities'))add('[data-cc-hard-abilities]');
-  if(kinds.has('combat'))add('section.hero','[data-cc-hard-abilities]','[data-cc-hard-conditions]');
+  // Combat turn/order changes belong to Savaş Odası; dedicated character/ability/condition events update this sheet.
   return [...out];
 }
 function patchStable(chars,x,kinds){
@@ -566,7 +566,7 @@ document.addEventListener('click',e=>{
   const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(b&&isPlayer()){ensureRaceNav();setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
-window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
+window.addEventListener('catlak:player-fast-ready',()=>{if(!ready())schedule(false,0)});
 window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;schedule(true,30)});
 new MutationObserver(rs=>{
   if(!isPlayer())return;
@@ -605,8 +605,6 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>queueSheetSync('conditions'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>queueSheetSync('abilities'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>queueSheetSync('abilities'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>queueSheetSync('combat'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>queueSheetSync('combat'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>queueSheetSync('visual'))
     .subscribe();
 }

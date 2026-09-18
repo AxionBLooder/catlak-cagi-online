@@ -110,8 +110,9 @@ function combatantHtml(x,current,all){
  const configured=!!attackFormula;
  const result=!isPlayer&&lastAttackResult&&String(lastAttackResult.creature_id||'')===id?lastAttackResult:null;
  const targetAction=isPlayer&&alive?`<button type="button" class="${targeted?'primary':''}" data-lcc-target="${esc(id)}">${targeted?'✓ HEDEF SEÇİLDİ':'🎯 Hedef Seç'}</button>`:'';
+ const hpEditor=!isPlayer?`<div class="lcc-hp-edit"><label>İyileştirme Miktarı<input type="number" min="1" step="1" value="1" data-lcc-hp-amount="${esc(id)}" aria-label="${esc(x.name||'Yaratık')} iyileştirme miktarı"></label><button type="button" data-lcc-hp-apply="${esc(id)}" data-mode="heal">+ İyileştir</button></div>`:'';
  const attackBox=!isPlayer?`<div class="lcc-attack-box"><div class="lcc-mini"><b>${esc(attackName)}</b> • Saldırı ${esc(attackFormula||'tanımsız')} • Hasar ${esc(damageFormula||'—')}</div><button type="button" class="primary wide" data-lcc-creature-attack="${esc(id)}" ${isCurrent&&alive&&target&&configured?'':'disabled'}>${!alive?'Yaratık Düştü':!isCurrent?'Sırası Değil':!configured?'Saldırı Zarı Tanımlı Değil':!target?'Önce Oyuncu Hedef Seç':'⚔ '+esc(target.name)+' → Saldır ve Turu Bitir'}</button>${result?`<div class="lcc-attack-result ${result.hit?'hit':'miss'}"><b>${esc(result.creature_name||x.name||'Yaratık')} → ${esc(result.target_name||'Hedef')}</b><div>Saldırı ${num(result.attack_total)} • ${result.hit?(result.critical?'KRİTİK İSABET':'İSABET'):'ISKA'}${result.hit?' • '+num(result.damage_total)+' hasar • HP '+num(result.target_hp)+'/'+num(result.target_hp_max):''}</div></div>`:''}</div>`:'';
- return `<article class="lcc-combatant ${isCurrent?'current':''} ${targeted?'targeted':''}" data-lcc-combatant="${esc(id)}"><div class="lcc-combatant-top"><div class="lcc-init">${num(x.initiative)}</div><div><b>${esc(x.name||'Savaşçı')}</b><div class="lcc-mini">${kind} • AC ${x.ac??'?'}${isCurrent?' • SIRA BUNDA':''}</div><div class="lcc-hp">HP ${x.hp_current??'?'} / ${x.hp_max??'?'}</div></div><button type="button" class="danger small" data-lcc-remove="${esc(id)}">Çıkar</button></div><div class="lcc-hp-edit"><label>HP Miktarı<input type="number" min="1" step="1" value="1" data-lcc-hp-amount="${esc(id)}" aria-label="${esc(x.name||'Savaşçı')} HP miktarı"></label><button type="button" class="danger" data-lcc-hp-apply="${esc(id)}" data-mode="damage">− Hasar</button><button type="button" data-lcc-hp-apply="${esc(id)}" data-mode="heal">+ İyileştir</button></div><div class="lcc-actions"><button type="button" data-lcc-init="${esc(id)}">İnisiyatif At</button>${targetAction}</div>${targeted?'<div class="lcc-target-note">🎯 YARATIK HEDEFİ • Sonraki yaratık saldırısı bu oyuncuya gider.</div>':''}${attackBox}</article>`;
+ return `<article class="lcc-combatant ${isCurrent?'current':''} ${targeted?'targeted':''}" data-lcc-combatant="${esc(id)}"><div class="lcc-combatant-top"><div class="lcc-init">${num(x.initiative)}</div><div><b>${esc(x.name||'Savaşçı')}</b><div class="lcc-mini">${kind} • AC ${x.ac??'?'}${isCurrent?' • SIRA BUNDA':''}</div><div class="lcc-hp">HP ${x.hp_current??'?'} / ${x.hp_max??'?'}</div></div><button type="button" class="danger small" data-lcc-remove="${esc(id)}">Çıkar</button></div>${hpEditor}<div class="lcc-actions"><button type="button" data-lcc-init="${esc(id)}">İnisiyatif At</button>${targetAction}</div>${targeted?'<div class="lcc-target-note">🎯 YARATIK HEDEFİ • Sonraki yaratık saldırısı bu oyuncuya gider.</div>':''}${attackBox}</article>`;
 }
 function boardHtml(d){
  const s=d.state||{},active=!!s.active,cs=d.combatants||[],current=s.current_combatant_id;
@@ -192,7 +193,8 @@ function lccSortInitiative(){
 }
 async function adjustHpInline(id,mode){
  if(actionBusy)return;const card=lccCard(id),input=card?.querySelector('[data-lcc-hp-amount]');
- const amount=Math.max(1,Math.trunc(Math.abs(num(input?.value)||1))),delta=mode==='heal'?amount:-amount;
+ if(mode!=='heal')return;
+ const amount=Math.max(1,Math.trunc(Math.abs(num(input?.value)||1))),delta=amount;
  actionBusy=true;holdFormInteraction(1200);localPatchUntil=Date.now()+1100;
  try{
   const r=await S.rpc('catlak_gm_combat_adjust_hp',{p_combatant_id:id,p_delta:delta});if(r.error)throw r.error;
@@ -203,7 +205,7 @@ async function adjustHpInline(id,mode){
   if(input){input.value=String(amount);input.focus({preventScroll:true});input.select?.()}
   if(next<=0)card?.querySelectorAll('[data-lcc-creature-attack],[data-lcc-target]').forEach(b=>b.disabled=true);
   window.__catlakRealtimeSync?.emit?.('combat',{action:'hp-adjust'});
-  toast((delta<0?'Hasar uygulandı • ':'İyileştirme uygulandı • ')+'HP: '+next);
+  toast('Yaratık iyileştirildi • HP: '+next);
   cachedBoardHtml='';liveSig='';
   setTimeout(()=>preloadBoard(),900);
  }catch(e){toast('HP değiştirilemedi: '+(e?.message||String(e)))}
