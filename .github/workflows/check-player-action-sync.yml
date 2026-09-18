@@ -162,8 +162,9 @@ jobs:
               const player=await browser.newPage();const errors=[];player.on('pageerror',e=>errors.push(String(e.message||e)));
               await player.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><header><span class="role">MİSAFİR</span></header><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
               await installMock(player,'MİSAFİR');
-              for(const file of ['stat-roll-patch.js','player-sheet-support-runtime.js','player-live-actions-patch.js','player-sheet-equipment-abilities-patch.js','player-sheet-hard-recovery.js'])await player.addScriptTag({path:path.resolve(file)});
-              await player.waitForSelector('main[data-cc-hard-sheet="1"] .cc-character-stack section.hero');
+              await player.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
+              await player.waitForSelector('main[data-cc-hard-sheet="1"] .cc-character-stack section.hero',{timeout:5000});
+              for(const file of ['stat-roll-patch.js','player-sheet-support-runtime.js','player-live-actions-patch.js','player-sheet-equipment-abilities-patch.js'])await player.addScriptTag({path:path.resolve(file)});
               await player.waitForSelector('.stat[data-sr-stat="DEX"]',{timeout:5000});
               await player.getByRole('button',{name:/DEX/}).first().click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_roll_stat'));
