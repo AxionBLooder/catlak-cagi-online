@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v34-fast-core' in html,
+            'sheet version':'player-hard-recovery-v35-guest-no-loop' in html,
             'canonical owner':'__catlakPlayerSheetHardRecoveryV32' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
@@ -52,6 +52,9 @@ jobs:
             'battle duplicate realtime removed':"table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle,
             'sheet fail-open core':'const coreX=' in sheet and 'CATLAK_PLAYER_SHEET_HYDRATE' in sheet,
             'battle fixed geometry':'ccr-battle-surface' in rooms and 'br3NormalizeMain' in battle,
+            'guest query tolerant':"6500,'character owner query'" in sheet and "5000,'character dom handoff'" in sheet,
+            'guest no auto retry':"setTimeout(()=>schedule(true,0),900)" not in sheet and "if(queued)return" in sheet,
+            'waiting card stable':'data-cc-hard-wait-text' in sheet,
           }
           bad=[name for name,ok in checks.items() if not ok]
           if bad: raise SystemExit('PLAYER_STABILITY_FAIL: '+', '.join(bad))
