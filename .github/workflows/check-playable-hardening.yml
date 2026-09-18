@@ -8,6 +8,7 @@ on:
       - 'browser-app.js'
       - 'runtime-health-guard.js'
       - 'app-action-stability.js'
+      - 'runtime-experience-patch.js'
       - 'player-sheet-hard-recovery.js'
       - 'battle-room-v3-patch.js'
       - 'room-system-patch.js'
@@ -41,6 +42,7 @@ jobs:
           core=read('browser-app.js')
           health=read('runtime-health-guard.js')
           action=read('app-action-stability.js')
+          experience=read('runtime-experience-patch.js')
           sheet=read('player-sheet-hard-recovery.js')
           hotfix=read('hotfix-patch.js')
           battle=read('battle-room-v3-patch.js')
@@ -167,6 +169,11 @@ jobs:
           ok('perf.sheet.cache','cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet)
 
           # 9. Error visibility / diagnostics.
+          ok('ux.runtime.loaded','runtime-experience-v1-connection-a11y' in html and '__catlakRuntimeExperienceV1' in experience)
+          ok('ux.connection.visible','catlak:realtime-status' in experience and 'navigator.onLine' in experience and 'cc-connection-state' in experience)
+          ok('ux.offline.write.guard','Bağlantı yok. İşlem gönderilmedi' in experience and 'mutationAction' in experience)
+          ok('ux.accessibility','aria-live' in experience and ':focus-visible' in experience)
+
           ok('diagnostics.buffer','__catlakRuntimeDiagnostics' in health)
           ok('diagnostics.reporter','__catlakReportError' in health)
           ok('diagnostics.bounded','diagnostics.length>30' in health)
@@ -183,6 +190,6 @@ jobs:
           print('PLAYABLE_HARDENING_OK')
           PY
 
-          for f in browser-app.js runtime-health-guard.js app-action-stability.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js gm-live-compact-v1.js live-combat-center-patch.js gm-ui-polish-v1.js presence-patch.js quality-of-life-patch.js event-rolls-patch.js visual-archive-map-flow-patch.js gm-nav-canonical.js; do
+          for f in browser-app.js runtime-health-guard.js app-action-stability.js runtime-experience-patch.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js gm-live-compact-v1.js live-combat-center-patch.js gm-ui-polish-v1.js presence-patch.js quality-of-life-patch.js event-rolls-patch.js visual-archive-map-flow-patch.js gm-nav-canonical.js; do
             node --check "$f"
           done
