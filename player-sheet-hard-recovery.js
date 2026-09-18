@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV21)return;
-window.__catlakPlayerSheetHardRecoveryV21=true;
+if(window.__catlakPlayerSheetHardRecoveryV22)return;
+window.__catlakPlayerSheetHardRecoveryV22=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -49,13 +49,8 @@ if(!document.getElementById('cc-player-hard-ui-style')){
 
   @media(min-width:1181px){
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr)!important;gap:14px!important;max-width:1280px!important}
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-left,
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-right{display:contents!important}
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-stats],
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-inventory],
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-party-visual]{grid-column:1!important}
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-equipment],
-    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-conditions]{grid-column:2!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-left{display:flex!important;grid-column:1!important;flex-direction:column!important;gap:14px!important;align-self:start!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-right{display:flex!important;grid-column:2!important;flex-direction:column!important;gap:14px!important;align-self:start!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{padding:14px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero .vitals{gap:8px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero [data-cc-hard-long-rest]{white-space:nowrap}
@@ -67,6 +62,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
 }
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
 let busy=false,queued=false,lastRun=0,realtimeStarted=false,stableBusy=false,stableAgain=false;
+let cachedSheetHtml='',cachedSheetAt=0;
 const stableKinds=new Set();
 
 const txt=e=>String(e?.textContent||'').trim();
@@ -117,6 +113,21 @@ window.__catlakShouldPreserveCurrentView=function(){
   try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
 };
 
+function cacheSheet(){
+  const m=main();if(!m||m.dataset.ccHardSheet!=='1'||!m.querySelector('.cc-character-stack[data-cc-hard-stack]'))return false;
+  cachedSheetHtml=m.innerHTML;cachedSheetAt=Date.now();return true;
+}
+function restoreCachedSheet(wantRace=false){
+  if(!cachedSheetHtml)return false;
+  const m=main();if(!m)return false;
+  m.className='';m.dataset.ccHardSheet='1';delete m.dataset.ccrBattle;delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
+  m.innerHTML=cachedSheetHtml;
+  ensureRaceNav();
+  raceMode=false;raceWanted=!!wantRace;window.__catlakRaceWantedEarly=raceWanted;
+  setRaceView(raceWanted);
+  applyLayers();
+  return true;
+}
 function release(){
   document.documentElement.classList.remove('cc-player-critical-pending');
   try{window.__catlakReleaseStartCover?.()}catch(_){}
@@ -344,6 +355,7 @@ function patchStable(chars,x,kinds){
     selectors.forEach(sel=>replaceStableSection(stack,fresh,sel));
   }
   APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
+  cacheSheet();
   window.scrollTo(sx,sy);requestAnimationFrame(()=>window.scrollTo(sx,sy));
 }
 async function refreshStable(kind='all'){
@@ -496,7 +508,7 @@ async function recover(force=false){
     delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
     m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
     ensureRaceNav();setRaceView(raceWanted);
-    applyLayers();release();
+    applyLayers();cacheSheet();release();
     return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
@@ -512,9 +524,9 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();const wasBattle=window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1';try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}if(wasBattle)restoreCachedSheet(true);raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view'))){e.preventDefault();e.stopImmediatePropagation();try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=false;window.__catlakRaceWantedEarly=false;setRaceView(false);return}
+  if(sheetNav&&isPlayer()&&(raceWanted||main()?.classList.contains('cc-hard-race-view')||window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1')){e.preventDefault();e.stopImmediatePropagation();const wasBattle=window.__catlakBattleRoomOpen===true||main()?.dataset.ccrBattle==='1';try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=false;window.__catlakRaceWantedEarly=false;if(wasBattle&&restoreCachedSheet(false))return;setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
   if(root){
     const hp=e.target.closest?.('[data-cc-hard-hp][data-id]');if(hp){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
@@ -560,5 +572,5 @@ setTimeout(()=>{if(!ready())schedule(true,0)},700);
 setTimeout(()=>{if(!ready())schedule(true,0)},1600);
 setTimeout(()=>{if(!ready())schedule(true,0)},3200);
 realtime();
-window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView};
+window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();
