@@ -5,6 +5,7 @@ window.__catlakLiveCombatCenterV2=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('gm-live-table','live-combat-center'))return;
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const txt=e=>String(e?.textContent||'').trim();
