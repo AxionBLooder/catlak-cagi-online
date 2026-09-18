@@ -1,0 +1,90 @@
+name: Check Interaction Stress Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'runtime-health-guard.js'
+      - 'player-sheet-hard-recovery.js'
+      - 'battle-room-v3-patch.js'
+      - 'room-system-patch.js'
+      - 'gm-clean-router-v1.js'
+      - 'live-combat-center-patch.js'
+      - 'event-rolls-patch.js'
+      - '.github/workflows/check-interaction-stress.yml'
+  workflow_dispatch:
+
+jobs:
+  interaction-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate rapid-interaction architecture
+        run: |
+          set -euo pipefail
+          for f in runtime-health-guard.js player-sheet-hard-recovery.js battle-room-v3-patch.js room-system-patch.js gm-clean-router-v1.js live-combat-center-patch.js event-rolls-patch.js; do
+            node --check "$f"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          read=lambda p: Path(p).read_text(encoding='utf-8')
+          html=read('index.html')
+          health=read('runtime-health-guard.js')
+          sheet=read('player-sheet-hard-recovery.js')
+          battle=read('battle-room-v3-patch.js')
+          rooms=read('room-system-patch.js')
+          gm=read('gm-clean-router-v1.js')
+          live=read('live-combat-center-patch.js')
+          rolls=read('event-rolls-patch.js')
+
+          checks={}
+
+          # First paint: never expose legacy Player Desk during critical startup.
+          checks['boot.player.hidden']="html.cc-player-critical-pending #app main{visibility:hidden!important" in html
+
+          # Atomic view infrastructure.
+          checks['view.runtime']="__catlakViewRuntime" in health and "viewMount" in health and "viewBatch" in health
+          checks['view.performance']="__catlakRuntimePerformance" in health
+          checks['view.owned.wait']="if(ROOT.dataset.ccViewTransition)return" in health
+
+          # Player Desk: cache + atomic mount + realtime batching.
+          checks['sheet.atomic.mount']="mount?.('player-sheet'" in sheet
+          checks['sheet.cache']="cachedSheetHtml" in sheet and "restoreCachedSheet" in sheet
+          checks['sheet.batch']="queueSheetSync" in sheet and "cc-player-hard-sheet-v3" in sheet
+          checks['sheet.fullwidth']='main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view){width:100%!important;max-width:none!important' in sheet
+
+          # Battle: transition begins before route selection and combat realtime has one player owner.
+          begin=rooms.find("begin?.('player-battle')")
+          select=rooms.find("ccrSelectOnly(b)", max(0,begin))
+          checks['battle.begin.before.paint']=begin>=0 and select>begin
+          checks['battle.batch']="ccrQueueRealtime" in rooms and "ccr-battle-live-v2" in rooms
+          checks['battle.single.combat.listener']="table:'catlak_combat_state'" not in battle and "table:'catlak_combatants'" not in battle
+          checks['battle.defer.preload']="catlak:player-fast-ready" in battle and "setTimeout(()=>{br3PreloadData()" not in battle
+          checks['battle.cache.shared']="cache?.('player-battle'" in battle and "restore?.('player-battle'" in battle
+
+          # GM Center: owned transition + stale-while-revalidate + batched realtime.
+          checks['gm.atomic']="gmViewBegin" in gm and "gmViewReady" in gm
+          checks['gm.swr']="setTimeout(()=>renderManagement(true),0)" in gm and "loadAbility(true)" in gm
+          checks['gm.batch']="queueGmcLive" in gm and "gmc-clean-live-v2" in gm
+
+          # Live table: cache and signature dedupe.
+          checks['live.cache']="cachedBoardHtml" in live and "restoreCachedBoard" in live
+          checks['live.dedup']="liveSig" in live and "sig===liveSig" in live
+          checks['live.form.lock']="formInteractionLocked" in live
+
+          # Roll flow should remain its single canonical owner.
+          checks['roll.owner']="__catlakUnifiedRollFlowV2" in rolls and "window.__catlakRollFlow" in rolls
+
+          # Performance budget.
+          for name,text in [('sheet',sheet),('battle',battle),('rooms',rooms),('gm',gm),('live',live)]:
+              checks['no.polling.'+name]='setInterval(' not in text
+
+          bad=[k for k,v in checks.items() if not v]
+          if bad:
+              raise SystemExit('INTERACTION_STRESS_CONTRACT_FAIL: '+', '.join(bad))
+          print('INTERACTION_STRESS_CONTRACT_OK', len(checks), 'checks')
+          PY
