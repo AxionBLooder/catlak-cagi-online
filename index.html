@@ -110,15 +110,15 @@
 
     async function loadPlayerBackground(){
       await loadParallel([
-        ['./presence-patch.js?v=presence-v5-shared-online','presence'],
+        ['./presence-patch.js?v=presence-v6-event-driven','presence'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster']
       ]);
     }
 
     async function loadGmCore(){
       await loadParallel([
-        ['./live-game-entry-guard.js?v=live-entry-v13-no-legacy-flash','live-entry-guard'],
-        ['./gm-view-stability.js?v=gm-view-stability-v1','gm-view-stability'],
+        ['./live-game-entry-guard.js?v=live-entry-v14-light-observer','live-entry-guard'],
+        ['./gm-view-stability.js?v=gm-view-stability-v2-no-cloak','gm-view-stability'],
         ['./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge','gm-clean-click'],
         ['./gm-ui-polish-v1.js?v=gm-ui-polish-v5','gm-ui-polish'],
         ['./gm-nav-canonical.js?v=gm-nav-canonical-v1','gm-nav-canonical'],
@@ -130,9 +130,9 @@
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v9-embedded-refresh','gm-clean-router'],
-        ['./gm-live-compact-v1.js?v=gm-live-compact-v11-no-legacy-flash','gm-live-compact']
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v12-light-observer','gm-live-compact']
       ]);
-      await load('./live-combat-center-patch.js?v=livecombat-v7-cached-live','live-combat-center-runtime');
+      await load('./live-combat-center-patch.js?v=livecombat-v8-light-observer','live-combat-center-runtime');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -142,14 +142,12 @@
         ['./special-character-abilities.js?v=special-char-v1','special-character-abilities'],
         ['./visual-archive-map-flow-patch.js?v=visual-flow-v2-safe','visual-map-flow'],
         ['./gm-controls-patch.js?v=recovery-3','gm-controls'],
-        ['./presence-patch.js?v=presence-v5-shared-online','presence'],
+        ['./presence-patch.js?v=presence-v6-event-driven','presence'],
         ['./dice-ux-patch.js?v=recovery-3','dice'],
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
-        ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-15-light-observer','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
-        ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
+        ['./battle-party-membership-guard.js?v=battle-party-v5-light-observer','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
       ]);
     }
