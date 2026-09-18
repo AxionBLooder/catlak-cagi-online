@@ -87,17 +87,17 @@ function ensureRaceNav(){
   let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.dataset.ccHardOwned='1';b.textContent='Irk Becerileri';sheet.after(b)}if(raceWanted)b.classList.add('on')
   return b;
 }
-let raceMode=false,raceWanted=false,sheetScrollY=0,raceScrollY=0;
+let raceMode=false,raceWanted=window.__catlakRaceWantedEarly===true,sheetScrollY=0,raceScrollY=0;
 function clearPlayerNavSelection(except){
   APP.querySelectorAll('.nav button.on').forEach(b=>{if(b!==except)b.classList.remove('on')});
   except?.classList.add('on');
 }
 function leaveRaceForForeignNav(){
   const m=main(),race=raceButton();if(!raceMode&&!m?.classList.contains('cc-hard-race-view'))return;
-  raceScrollY=window.scrollY;raceMode=false;raceWanted=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
+  raceScrollY=window.scrollY;raceMode=false;raceWanted=false;window.__catlakRaceWantedEarly=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
 }
 function setRaceView(on){
-  raceWanted=!!on;
+  raceWanted=!!on;window.__catlakRaceWantedEarly=raceWanted;
   const m=main(),sheet=sheetButton(),race=ensureRaceNav();if(!m||m.dataset.ccHardSheet!=='1'||!race)return false;
   if(on){
     if(!raceMode)sheetScrollY=window.scrollY;
