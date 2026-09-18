@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV16)return;
-window.__catlakPlayerSheetHardRecoveryV16=true;
+if(window.__catlakPlayerSheetHardRecoveryV17)return;
+window.__catlakPlayerSheetHardRecoveryV17=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -46,6 +46,23 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-party-visual]{overflow:hidden!important;border-color:#6e5b2f!important;background:linear-gradient(135deg,#151a20,#17131c)!important}
   #app.cc-player-hard-active [data-cc-hard-party-visual] .cc-hard-party-frame{display:flex;align-items:center;justify-content:center;min-height:180px;border:1px solid var(--line);border-radius:12px;background:#050b14;padding:8px;margin-top:10px}
   #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block;width:auto;height:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px}
+
+  @media(min-width:1181px){
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;max-width:1500px!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-left,
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) .cc-hard-right{display:contents!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-stats],
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-inventory],
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-party-visual]{grid-column:1!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-equipment],
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-conditions]{grid-column:2!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{grid-column:3!important;grid-row:2 / span 3!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{padding:14px!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero .vitals{gap:8px!important}
+    #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero [data-cc-hard-long-rest]{white-space:nowrap}
+    #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{display:block!important;grid-column:1/-1!important}
+    #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
+  }
   @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}}
   `;document.head.appendChild(st)
 }
@@ -63,7 +80,7 @@ const isPlayer=()=>{const r=txt(APP.querySelector('.role'));return !!r&&r!=='GM'
 const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
-const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main section.hero [data-a="hp"][data-id]');
+const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
 const sheetActive=()=>isPlayer()&&(!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
 function ensureRaceNav(){
   if(!isPlayer())return null;
@@ -282,7 +299,7 @@ function equipmentHtml(c,x){
 function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
   return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
-  <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
+  <div class="vitals"><div class="vital" data-cc-hard-hp-readout><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div><div class="actions"><button type="button" data-cc-hard-long-rest data-id="${esc(c.id)}" data-max="${num(c.hp)}">Uzun Dinlenme</button></div></section>
   <div class="cc-hard-left">
     <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
     <section class="card" data-cc-hard-inventory><div class="eyebrow">ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
@@ -409,6 +426,32 @@ async function hardVkp(btn){
     toast('KP: '+r.data);setTimeout(()=>refreshStable('character'),60);
   });
 }
+async function hardLongRest(btn){
+  const id=btn.dataset.id;if(!id)return;
+  return withAction('rest:'+id,btn,async()=>{
+    const S=await getRuntime();if(!S)throw new Error('Bağlantı hazır değil.');
+    let resetOk=false;
+    const rr=await S.rpc('catlak_player_long_rest');
+    if(!rr.error)resetOk=true;
+    else{
+      const ar=await S.rpc('catlak_player_abilities');
+      if(ar.error)throw rr.error;
+      const finite=(ar.data||[]).filter(a=>a.assignment_id&&a.uses_per_combat!=null);
+      if(finite.length){
+        const results=await Promise.all(finite.map(a=>S.from('catlak_character_abilities').update({uses_remaining:num(a.uses_per_combat)}).eq('id',a.assignment_id)));
+        const bad=results.find(x=>x.error);if(bad)throw rr.error||bad.error;
+      }
+      resetOk=true;
+    }
+    const max=Math.max(1,num(btn.dataset.max));
+    const hp=await S.rpc('catlak_update_my_hp',{p_character_id:id,p_hp:max});
+    if(hp.error)throw hp.error;
+    if(resetOk){
+      toast('Uzun dinlenme tamamlandı. HP ve sınırlı kullanımlar yenilendi.');
+      setTimeout(()=>refreshStable('all'),50);
+    }
+  });
+}
 async function hardAbility(btn){
   const id=btn.dataset.ccHardAbility;if(!id)return;
   const target=APP.querySelector('[data-cc-hard-ability-target="'+CSS.escape(id)+'"]')?.value||null;
@@ -471,7 +514,7 @@ document.addEventListener('click',e=>{
   const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
   if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();setRaceView(true);return}
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();if(setRaceView(true))return;clearPlayerNavSelection(raceNav);recover(true).then(ok=>{if(ok)setRaceView(true);else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(sheetNav&&isPlayer()&&main()?.classList.contains('cc-hard-race-view')){e.preventDefault();e.stopImmediatePropagation();setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
@@ -482,6 +525,7 @@ document.addEventListener('click',e=>{
     const equip=e.target.closest?.('[data-cc-hard-equip][data-id]');if(equip){e.preventDefault();e.stopImmediatePropagation();hardEquip(equip);return}
     const slot=e.target.closest?.('[data-ws-slot],[data-ws-remove]');if(slot){e.preventDefault();e.stopImmediatePropagation();hardSlot(slot);return}
     const vkp=e.target.closest?.('[data-cc-hard-vkp][data-id]');if(vkp){e.preventDefault();e.stopImmediatePropagation();hardVkp(vkp);return}
+    const rest=e.target.closest?.('[data-cc-hard-long-rest][data-id]');if(rest){e.preventDefault();e.stopImmediatePropagation();hardLongRest(rest);return}
     const ability=e.target.closest?.('[data-cc-hard-ability]');if(ability){e.preventDefault();e.stopImmediatePropagation();hardAbility(ability);return}
   }
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
