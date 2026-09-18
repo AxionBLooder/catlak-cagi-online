@@ -6,7 +6,7 @@ window.__catlakActionStabilityV2=true;
 const APP=document.getElementById('app');
 if(!APP)return;
 if(!document.getElementById('cc-entry-stability-style')){
-  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main{visibility:hidden!important}html.cc-race-entry-pending #app main{visibility:hidden!important}';document.head.appendChild(st);
+  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main>*{visibility:hidden!important}html.cc-race-entry-pending #app main>*{visibility:hidden!important}html.cc-battle-entry-pending #app main::before,html.cc-race-entry-pending #app main::before{display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}html.cc-battle-entry-pending #app main::before{content:"Savaş Odası hazırlanıyor…"}html.cc-race-entry-pending #app main::before{content:"Irk becerileri hazırlanıyor…"}';document.head.appendChild(st);
 }
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
