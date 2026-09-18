@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakRuntimeHealthGuardV4)return;
-window.__catlakRuntimeHealthGuardV4=true;
+if(window.__catlakRuntimeHealthGuardV5)return;
+window.__catlakRuntimeHealthGuardV5=true;
 const ROOT=document.documentElement,APP=document.getElementById('app');
 if(!APP)return;
 
@@ -17,7 +17,12 @@ const limits={
 if(!document.getElementById('cc-fast-nav-style')){
   const st=document.createElement('style');
   st.id='cc-fast-nav-style';
-  st.textContent='html.cc-fast-nav-switch #app main{visibility:hidden!important}';
+  st.textContent=`
+    html.cc-fast-nav-switch #app main{visibility:hidden!important;min-height:46vh!important}
+    html.cc-fast-nav-switch #app::after{content:'Ekran hazırlanıyor…';display:block;max-width:980px;margin:22px auto;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:800;box-sizing:border-box}
+    html.cc-player-critical-pending #app main{visibility:hidden!important;min-height:46vh!important}
+    html.cc-player-critical-pending #app::after{content:'Oyuncu Masası hazırlanıyor…';display:block;max-width:980px;margin:22px auto;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:800;box-sizing:border-box}
+  `;
   document.head.appendChild(st);
 }
 
@@ -88,5 +93,27 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 scan();
 window.__catlakRuntimeDiagnostics={list:()=>diagnostics.slice(),clear:()=>{diagnostics.length=0},report};
 window.__catlakRuntimeOwnership={claim,owner:surface=>owners.get(String(surface||''))||'',owns:(surface,owner)=>owners.get(String(surface||''))===String(owner||''),list:()=>Object.fromEntries(owners)};
+
+const viewBatches=new Map(),viewCache=new Map();
+function viewBegin(surface){
+  const key=String(surface||'');
+  if(key)ROOT.dataset.ccViewTransition=key;
+  ROOT.classList.add('cc-fast-nav-switch');
+  navSwitchArmed=true;arm('cc-fast-nav-switch');
+}
+function viewReady(surface){
+  const key=String(surface||''),current=String(ROOT.dataset.ccViewTransition||'');
+  if(!key||!current||current===key){delete ROOT.dataset.ccViewTransition;finishNavSwitch()}
+}
+function viewBatch(key,fn,delay=70){
+  const k=String(key||'default'),old=viewBatches.get(k);if(old)clearTimeout(old);
+  const id=setTimeout(()=>{viewBatches.delete(k);try{fn()}catch(e){report('batch',e,k)}},Math.max(0,Number(delay)||0));
+  viewBatches.set(k,id);return id;
+}
+function viewCacheSet(key,html){if(key&&typeof html==='string')viewCache.set(String(key),html)}
+function viewCacheRestore(key,main){
+  const html=viewCache.get(String(key||''));if(!html||!main)return false;main.innerHTML=html;return true
+}
+window.__catlakViewRuntime={begin:viewBegin,ready:viewReady,batch:viewBatch,cache:viewCacheSet,restore:viewCacheRestore,has:key=>viewCache.has(String(key||''))};
 window.__catlakRuntimeHealthGuard={scan,clear:clearClass,finishNavSwitch};
 })();
