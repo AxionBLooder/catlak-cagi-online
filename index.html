@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v21 -->
+<!-- clean-gm-runtime-v22 -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -100,7 +100,7 @@
           ['./player-live-actions-patch.js?v=player-sheet-v4c','player-actions'],
           ['./player-sheet-equipment-abilities-patch.js?v=player-sheet-v4c','player-equip']
         ]);
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v2','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v3','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{if(!app.querySelector('main section.hero'))window.__catlakPlayerSheetHardRecovery?.recover?.()}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           try{await awaitLimited(window.__catlakPlayerSheetBindFix?.repair?.(),700)}catch(_){}
@@ -147,6 +147,7 @@
         ['./gm-live-compact-v1.js?v=gm-live-compact-v8','gm-live-compact']
       ]);
       await load('./live-combat-center-loader.js?v=livecombat-loader-v7-fast','live-combat-loader');
+      await load('./gm-live-player-state.js?v=gm-live-player-state-v1','gm-live-player-state');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -182,6 +183,7 @@
           window.__catlakGmUiPolish?.maintain?.();
           window.__catlakGmLiveCompact?.maintain?.();
           window.__catlakLiveGameEntryGuard?.maintain?.();
+          window.__catlakGmLivePlayerState?.refresh?.(true);
           if(app.querySelector('.nav [data-tab="gm"].on'))window.__catlakLiveGameEntryGuard?.begin?.();
         }catch(_){}
         reveal();
