@@ -12,7 +12,7 @@ const num=x=>Number(x||0);
 const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const liveActive=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 const toast=m=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(m);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3800)};
-let busy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false;
+let busy=false,queued=false,refreshQueued=false,toolsWrapped=false,hubWrapped=false,autoEndBusy=false,hadEnemyInCurrentCombat=false;
 
 if(!document.querySelector('#lcc-style')){
  const st=document.createElement('style');st.id='lcc-style';st.textContent=`
@@ -90,6 +90,23 @@ function boardHtml(d){
  const creatureOptions=(d.templates||[]).map(t=>`<option value="${esc(t.id)}" data-name="${esc(t.name)}" data-hp="${num(t.hp)||1}" data-ac="${num(t.ac)||10}">${esc(t.name)} • HP ${num(t.hp)||1} • AC ${num(t.ac)||10}</option>`).join('');
  return `<section class="lcc-board" data-lcc-board><div class="lcc-columns"><section class="card lcc-col"><div class="lcc-head"><div><div class="eyebrow">SAVAŞ KONTROLÜ</div><h2>${active?esc(s.name||'Savaş'):'Savaş Hazır'}</h2><div class="lcc-mini">${active?`Round ${num(s.round)||1} • ${cs.length} katılımcı`:'Savaş başlatınca tur ve durum kontrolleri burada çalışır.'}</div></div><span class="lcc-status ${active?'on':''}">${active?'● AKTİF':'BEKLEMEDE'}</span></div>${active?`<div class="lcc-actions"><button type="button" class="primary" data-lcc-next>Sonraki Tur ▶</button><button type="button" class="danger" data-lcc-end>Savaşı Bitir</button></div><hr><div class="eyebrow">OYUNCU EKLE</div><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-add-char">${charOptions||'<option value="">Tüm canlı karakterler eklendi</option>'}</select></label><label>İnisiyatif<input id="lcc-char-init" type="number" placeholder="boş = otomatik"></label><button type="button" data-lcc-add-char>Oyuncu Ekle</button></div><hr><div class="eyebrow">DÜŞMAN EKLE</div><div class="lcc-toolbar"><label class="wide">Yaratık Kütüphanesi<select id="lcc-enemy-template"><option value="">Elle oluştur</option>${creatureOptions}</select></label><label class="wide">Ad<input id="lcc-enemy-name" placeholder="Örn. Çatlak Avcısı"></label><label>HP<input id="lcc-enemy-hp" type="number" min="1" value="10"></label><label>AC<input id="lcc-enemy-ac" type="number" value="10"></label><label>İnisiyatif<input id="lcc-enemy-init" type="number" placeholder="boş = d20"></label><button type="button" data-lcc-add-enemy>Düşman Ekle</button></div>`:`<div class="lcc-toolbar"><label class="wide">Savaş Adı<input id="lcc-combat-name" value="Karşılaşma"></label><button type="button" class="primary wide" data-lcc-start>Savaşı Başlat</button></div>`}</section><section class="card lcc-col"><div class="eyebrow">TUR SIRASI</div><h2>İnisiyatif</h2>${active?(cs.length?cs.map(x=>combatantHtml(x,current)).join(''):'<div class="lcc-empty">Henüz katılımcı eklenmedi.</div>'):'<div class="lcc-empty">Savaş başlatıldığında tur sırası burada görünür.</div>'}</section><section class="card lcc-col lcc-conditions"><div class="eyebrow">DURUM ETKİLERİ</div><h2>Karakter Durumları</h2><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-cond-char">${condOptions||'<option value="">Canlı karakter yok</option>'}</select></label><label class="wide">Hazır Durum<select id="lcc-cond-preset"><option>Zehirli</option><option>Sersemlemiş</option><option>Yanıyor</option><option>Kanıyor</option><option>Kör</option><option>Lanetli</option><option>Korkmuş</option><option>Yavaşlamış</option><option value="">Özel / Elle Yaz</option></select></label><label class="wide">Özel ad<input id="lcc-cond-name" placeholder="Hazır durum seçiliyse boş bırak"></label><label>Round<input id="lcc-cond-rounds" type="number" min="0" max="99" value="0" title="0 = süresiz"></label><label class="wide">Oyuncuya görünen not<textarea id="lcc-cond-note" placeholder="Örn. Saldırı zarlarına -1"></textarea></label><button type="button" class="primary wide" data-lcc-cond-add>Durum Ekle</button></div><hr>${conditions||'<div class="lcc-empty">Aktif durum etkisi yok.</div>'}</section></div></section>`;
 }
+async function autoEndClearedCombat(d){
+ const state=d?.state||{},enemies=(d?.combatants||[]).filter(x=>x.kind==='enemy');
+ if(!state.active){hadEnemyInCurrentCombat=false;return false}
+ if(enemies.length)hadEnemyInCurrentCombat=true;
+ if(!hadEnemyInCurrentCombat)return false;
+ if(enemies.some(x=>num(x.hp_current)>0))return false;
+ if(autoEndBusy)return false;
+ autoEndBusy=true;
+ try{
+  const r=await S.rpc('catlak_gm_combat_end');if(r.error)throw r.error;
+  d.state={...state,active:false,current_combatant_id:null};
+  toast('Tüm yaratıklar düştü • savaş otomatik sona erdi.');
+  hadEnemyInCurrentCombat=false;
+  return true;
+ }catch(e){console.warn('LCC_AUTO_END',e);return false}
+ finally{autoEndBusy=false}
+}
 async function render(force=false){
  wrapOldCombatRoute();
  if(!liveActive())return;
@@ -99,6 +116,7 @@ async function render(force=false){
  try{
   const d=await loadData();
   if(!liveActive()||APP.querySelector('main')!==main)return;
+  await autoEndClearedCombat(d);
   const anchor=main.querySelector('.cc-live-two');
   main.querySelector('[data-lcc-board]')?.remove();
   if(anchor?.parentNode)anchor.insertAdjacentHTML('afterend',boardHtml(d));
