@@ -52,7 +52,7 @@ jobs:
               if not cond: failures.append(name)
 
           # 1. Single renderer / screen ownership
-          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV28' in sheet)
+          ok('owner.player.sheet','__catlakPlayerSheetHardRecoveryV29' in sheet)
           ok('owner.player.battle','window.__catlakBattleRoomV3Test' in battle and 'br3RestoreCached' in battle)
           ok('owner.gm.center','window.__catlakGmCleanRouter=' in gm)
           ok('owner.gm.live','window.__catlakLiveCombatCenter=' in live and 'cc-live-battle-only' in compact)
@@ -110,7 +110,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v28-race-left-right-owner' in html)
+          ok('version.sheet','player-hard-recovery-v29-race-columns-stable' in html)
           ok('version.health','runtime-health-v4-ownership' in html)
           ok('version.action','action-stability-v7-canonical-router' in html)
 
