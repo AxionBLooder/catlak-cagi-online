@@ -1,15 +1,15 @@
 (function(){
 'use strict';
-if(window.__catlakLiveGameEntryGuardV10)return;
-window.__catlakLiveGameEntryGuardV10=true;
+if(window.__catlakLiveGameEntryGuardV11)return;
+window.__catlakLiveGameEntryGuardV11=true;
 const APP=document.getElementById('app'),ROOT=document.documentElement;
 if(!APP)return;
 let liveFallback=0,liveRaf=0,initiativeBusy=false,playerFailsafe=0,queued=false,combatKick=0,liveStartedAt=0;
 const oldStyle=document.getElementById('cc-live-entry-guard-style');if(oldStyle)oldStyle.remove();
 const style=document.createElement('style');style.id='cc-live-entry-guard-style';style.textContent=`
 html.cc-live-entry-pending #app main{visibility:hidden!important}
-html body #app main[data-cc-simple-live="1"]{max-width:940px!important;margin:0 auto!important;padding:14px 16px 30px!important}
-html body #app main[data-cc-simple-live="1"] .cc-live-two{display:flex!important;flex-direction:column!important;gap:12px!important;max-width:760px!important;margin:8px auto 14px!important;align-items:stretch!important}
+html body #app main[data-cc-simple-live="1"]{max-width:1500px!important;margin:0 auto!important;padding:14px 16px 30px!important}
+html body #app main[data-cc-simple-live="1"] .cc-live-two{display:grid!important;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr)!important;gap:14px!important;max-width:none!important;margin:8px auto 14px!important;align-items:start!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{box-sizing:border-box!important;width:100%!important;margin:0!important;padding:12px 14px!important;height:auto!important;max-height:340px!important;overflow:auto!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two .section-title{margin-bottom:6px!important;gap:6px!important}
 html body #app main[data-cc-simple-live="1"] .cc-live-two h2{font-size:.94rem!important;margin:.05em 0 .2em!important}
@@ -26,13 +26,14 @@ html body #app main[data-cc-simple-live="1"] .cc-simple-player b{font-size:.72re
 html body #app main[data-cc-simple-live="1"] .cc-simple-player small{font-size:.59rem!important}
 html body #app main[data-cc-simple-live="1"] label:has(#lcc-char-init){display:none!important}
 html body #app main[data-cc-simple-live="1"] [data-cc-dex-init-note]{grid-column:1/-1;font-size:.66rem;color:var(--muted);padding:2px 0}
-html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:760px!important;margin:0 auto!important}
-html body #app main[data-cc-simple-live="1"] .lcc-columns{display:flex!important;flex-direction:column!important;gap:12px!important;align-items:stretch!important}
+html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:none!important;margin:0 auto!important}
+html body #app main[data-cc-simple-live="1"] .lcc-columns{display:grid!important;grid-template-columns:repeat(3,minmax(280px,1fr))!important;gap:14px!important;align-items:start!important}
 html body #app main[data-cc-simple-live="1"] .lcc-col,html body #app main[data-cc-simple-live="1"] .lcc-conditions{width:100%!important;padding:12px 14px!important;margin:0!important;max-height:none!important;overflow:visible!important;border-radius:12px!important;border:1px solid #1d2d39!important;background:#060c12!important;background-image:none!important;box-shadow:0 10px 28px #0005!important}
 html body #app main[data-cc-simple-live="1"] .lcc-combatant{padding:6px!important;margin-top:5px!important}
 html body #app main[data-cc-simple-live="1"] .lcc-actions{gap:4px!important;margin-top:5px!important}
 html body #app main[data-cc-simple-live="1"] .lcc-actions button,#app main[data-cc-simple-live="1"] .lcc-toolbar button{padding:5px 7px!important;font-size:.68rem!important}
-@media(max-width:820px){html body #app main[data-cc-simple-live="1"]{padding:8px!important}html body #app main[data-cc-simple-live="1"] .cc-live-two,html body #app main[data-cc-simple-live="1"] .lcc-board{max-width:none!important}html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{max-height:300px!important}}
+@media(max-width:1100px){html body #app main[data-cc-simple-live="1"] .lcc-columns{grid-template-columns:1fr 1fr!important}html body #app main[data-cc-simple-live="1"] .lcc-conditions{grid-column:1/-1!important}}
+@media(max-width:760px){html body #app main[data-cc-simple-live="1"]{padding:8px!important}html body #app main[data-cc-simple-live="1"] .cc-live-two{grid-template-columns:1fr!important}html body #app main[data-cc-simple-live="1"] .lcc-columns{grid-template-columns:1fr!important}html body #app main[data-cc-simple-live="1"] .lcc-conditions{grid-column:auto!important}html body #app main[data-cc-simple-live="1"] .cc-live-two>.card{max-height:320px!important}}
 `;
 document.head.appendChild(style);
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
