@@ -1,23 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Source Sanity Check
 on:
-  push:
-    paths:
-      - 'index.html'
-      - 'browser-app.js'
-      - 'gm-tools-patch.js'
-      - 'gm-hub-v2-patch.js'
-      - 'gm-center-router-core.js'
-      - 'gm-management-room-patch.js'
-      - 'gm-nav-cleanup-patch.js'
-      - 'class-bonus-patch.js'
-      - 'visual-archive-map-flow-patch.js'
-      - 'room-guard-patch.js'
-      - 'room-system-patch.js'
-      - 'player-sheet-patch.js'
-      - 'player-live-actions-patch.js'
-      - 'stat-roll-patch.js'
-      - '.github/workflows/check-live.yml'
   workflow_dispatch:
+
 jobs:
   check:
     runs-on: ubuntu-latest
