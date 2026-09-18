@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakLiveCombatCenterV1)return;
-window.__catlakLiveCombatCenterV1=true;
+if(window.__catlakLiveCombatCenterV2)return;
+window.__catlakLiveCombatCenterV2=true;
 const APP=document.querySelector('#app');
 const S=window.__catlakSupabase;
 if(!APP||!S)return;
@@ -66,14 +66,15 @@ function wrapOldCombatRoute(){
 }
 
 async function loadData(){
- const [sr,br,cr,kr]=await Promise.all([
+ const [sr,br,cr,kr,tr]=await Promise.all([
   S.from('catlak_combat_state').select('*').eq('id',1).maybeSingle(),
   S.from('catlak_combatants').select('*').order('initiative',{ascending:false}).order('created_at',{ascending:true}),
-  S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_stats,play_status,created_at').eq('play_status','active').order('created_at',{ascending:true}),
-  S.from('catlak_character_conditions').select('*').eq('active',true).order('created_at',{ascending:true})
+  S.from('catlak_characters').select('id,name,hp_current,hp_max,base_ac,base_stats,play_status,data,created_at').eq('play_status','active').order('created_at',{ascending:true}),
+  S.from('catlak_character_conditions').select('*').eq('active',true).order('created_at',{ascending:true}),
+  S.from('catlak_creature_templates').select('id,name,creature_type,hp,ac,attack_name,attack_formula,damage_formula').order('name',{ascending:true})
  ]);
- for(const r of [sr,br,cr,kr])if(r.error)throw r.error;
- return {state:sr.data||{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:br.data||[],chars:cr.data||[],conditions:kr.data||[]};
+ for(const r of [sr,br,cr,kr,tr])if(r.error)throw r.error;
+ return {state:sr.data||{id:1,active:false,name:'Savaş',round:1,current_combatant_id:null},combatants:br.data||[],chars:cr.data||[],conditions:kr.data||[],templates:tr.data||[]};
 }
 function combatantHtml(x,current){
  const kind=x.kind==='player'?'OYUNCU':'DÜŞMAN';
@@ -81,11 +82,13 @@ function combatantHtml(x,current){
 }
 function boardHtml(d){
  const s=d.state||{},active=!!s.active,cs=d.combatants||[],current=s.current_combatant_id;
- const available=d.chars.filter(c=>!cs.some(x=>String(x.character_id)===String(c.id)));
+ const partyChars=(d.chars||[]).filter(c=>c.data?.cc_party_member===true);
+ const available=partyChars.filter(c=>!cs.some(x=>String(x.character_id)===String(c.id)));
  const charOptions=available.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
- const condOptions=d.chars.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
- const conditions=d.conditions.map(x=>{const c=d.chars.find(y=>String(y.id)===String(x.character_id));return `<div class="lcc-cond"><div><b>${esc(c?.name||'Karakter')} • ${esc(x.name)}</b><div class="lcc-mini">${x.remaining_rounds==null?'Süresiz':x.remaining_rounds+' round'}${x.note?' • '+esc(x.note):''}</div></div><button type="button" class="danger small" data-lcc-cond-remove="${esc(x.id)}">Kaldır</button></div>`}).join('');
- return `<section class="lcc-board" data-lcc-board><div class="lcc-columns"><section class="card lcc-col"><div class="lcc-head"><div><div class="eyebrow">SAVAŞ KONTROLÜ</div><h2>${active?esc(s.name||'Savaş'):'Savaş Hazır'}</h2><div class="lcc-mini">${active?`Round ${num(s.round)||1} • ${cs.length} katılımcı`:'Savaş başlatınca tur ve durum kontrolleri burada çalışır.'}</div></div><span class="lcc-status ${active?'on':''}">${active?'● AKTİF':'BEKLEMEDE'}</span></div>${active?`<div class="lcc-actions"><button type="button" class="primary" data-lcc-next>Sonraki Tur ▶</button><button type="button" class="danger" data-lcc-end>Savaşı Bitir</button></div><hr><div class="eyebrow">OYUNCU EKLE</div><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-add-char">${charOptions||'<option value="">Tüm canlı karakterler eklendi</option>'}</select></label><label>İnisiyatif<input id="lcc-char-init" type="number" placeholder="boş = otomatik"></label><button type="button" data-lcc-add-char>Oyuncu Ekle</button></div><hr><div class="eyebrow">DÜŞMAN EKLE</div><div class="lcc-toolbar"><label class="wide">Ad<input id="lcc-enemy-name" placeholder="Örn. Çatlak Avcısı"></label><label>HP<input id="lcc-enemy-hp" type="number" min="1" value="10"></label><label>AC<input id="lcc-enemy-ac" type="number" value="10"></label><label>İnisiyatif<input id="lcc-enemy-init" type="number" placeholder="boş = d20"></label><button type="button" data-lcc-add-enemy>Düşman Ekle</button></div>`:`<div class="lcc-toolbar"><label class="wide">Savaş Adı<input id="lcc-combat-name" value="Karşılaşma"></label><button type="button" class="primary wide" data-lcc-start>Savaşı Başlat</button></div>`}</section><section class="card lcc-col"><div class="eyebrow">TUR SIRASI</div><h2>İnisiyatif</h2>${active?(cs.length?cs.map(x=>combatantHtml(x,current)).join(''):'<div class="lcc-empty">Henüz katılımcı eklenmedi.</div>'):'<div class="lcc-empty">Savaş başlatıldığında tur sırası burada görünür.</div>'}</section><section class="card lcc-col lcc-conditions"><div class="eyebrow">DURUM ETKİLERİ</div><h2>Karakter Durumları</h2><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-cond-char">${condOptions||'<option value="">Canlı karakter yok</option>'}</select></label><label class="wide">Hazır Durum<select id="lcc-cond-preset"><option>Zehirli</option><option>Sersemlemiş</option><option>Yanıyor</option><option>Kanıyor</option><option>Kör</option><option>Lanetli</option><option>Korkmuş</option><option>Yavaşlamış</option><option value="">Özel / Elle Yaz</option></select></label><label class="wide">Özel ad<input id="lcc-cond-name" placeholder="Hazır durum seçiliyse boş bırak"></label><label>Round<input id="lcc-cond-rounds" type="number" min="0" max="99" value="0" title="0 = süresiz"></label><label class="wide">Oyuncuya görünen not<textarea id="lcc-cond-note" placeholder="Örn. Saldırı zarlarına -1"></textarea></label><button type="button" class="primary wide" data-lcc-cond-add>Durum Ekle</button></div><hr>${conditions||'<div class="lcc-empty">Aktif durum etkisi yok.</div>'}</section></div></section>`;
+ const condOptions=partyChars.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+ const conditions=(d.conditions||[]).filter(x=>partyChars.some(c=>String(c.id)===String(x.character_id))).map(x=>{const c=partyChars.find(y=>String(y.id)===String(x.character_id));return `<div class="lcc-cond"><div><b>${esc(c?.name||'Karakter')} • ${esc(x.name)}</b><div class="lcc-mini">${x.remaining_rounds==null?'Süresiz':x.remaining_rounds+' round'}${x.note?' • '+esc(x.note):''}</div></div><button type="button" class="danger small" data-lcc-cond-remove="${esc(x.id)}">Kaldır</button></div>`}).join('');
+ const creatureOptions=(d.templates||[]).map(t=>`<option value="${esc(t.id)}" data-name="${esc(t.name)}" data-hp="${num(t.hp)||1}" data-ac="${num(t.ac)||10}">${esc(t.name)} • HP ${num(t.hp)||1} • AC ${num(t.ac)||10}</option>`).join('');
+ return `<section class="lcc-board" data-lcc-board><div class="lcc-columns"><section class="card lcc-col"><div class="lcc-head"><div><div class="eyebrow">SAVAŞ KONTROLÜ</div><h2>${active?esc(s.name||'Savaş'):'Savaş Hazır'}</h2><div class="lcc-mini">${active?`Round ${num(s.round)||1} • ${cs.length} katılımcı`:'Savaş başlatınca tur ve durum kontrolleri burada çalışır.'}</div></div><span class="lcc-status ${active?'on':''}">${active?'● AKTİF':'BEKLEMEDE'}</span></div>${active?`<div class="lcc-actions"><button type="button" class="primary" data-lcc-next>Sonraki Tur ▶</button><button type="button" class="danger" data-lcc-end>Savaşı Bitir</button></div><hr><div class="eyebrow">OYUNCU EKLE</div><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-add-char">${charOptions||'<option value="">Tüm canlı karakterler eklendi</option>'}</select></label><label>İnisiyatif<input id="lcc-char-init" type="number" placeholder="boş = otomatik"></label><button type="button" data-lcc-add-char>Oyuncu Ekle</button></div><hr><div class="eyebrow">DÜŞMAN EKLE</div><div class="lcc-toolbar"><label class="wide">Yaratık Kütüphanesi<select id="lcc-enemy-template"><option value="">Elle oluştur</option>${creatureOptions}</select></label><label class="wide">Ad<input id="lcc-enemy-name" placeholder="Örn. Çatlak Avcısı"></label><label>HP<input id="lcc-enemy-hp" type="number" min="1" value="10"></label><label>AC<input id="lcc-enemy-ac" type="number" value="10"></label><label>İnisiyatif<input id="lcc-enemy-init" type="number" placeholder="boş = d20"></label><button type="button" data-lcc-add-enemy>Düşman Ekle</button></div>`:`<div class="lcc-toolbar"><label class="wide">Savaş Adı<input id="lcc-combat-name" value="Karşılaşma"></label><button type="button" class="primary wide" data-lcc-start>Savaşı Başlat</button></div>`}</section><section class="card lcc-col"><div class="eyebrow">TUR SIRASI</div><h2>İnisiyatif</h2>${active?(cs.length?cs.map(x=>combatantHtml(x,current)).join(''):'<div class="lcc-empty">Henüz katılımcı eklenmedi.</div>'):'<div class="lcc-empty">Savaş başlatıldığında tur sırası burada görünür.</div>'}</section><section class="card lcc-col lcc-conditions"><div class="eyebrow">DURUM ETKİLERİ</div><h2>Karakter Durumları</h2><div class="lcc-toolbar"><label class="wide">Karakter<select id="lcc-cond-char">${condOptions||'<option value="">Canlı karakter yok</option>'}</select></label><label class="wide">Hazır Durum<select id="lcc-cond-preset"><option>Zehirli</option><option>Sersemlemiş</option><option>Yanıyor</option><option>Kanıyor</option><option>Kör</option><option>Lanetli</option><option>Korkmuş</option><option>Yavaşlamış</option><option value="">Özel / Elle Yaz</option></select></label><label class="wide">Özel ad<input id="lcc-cond-name" placeholder="Hazır durum seçiliyse boş bırak"></label><label>Round<input id="lcc-cond-rounds" type="number" min="0" max="99" value="0" title="0 = süresiz"></label><label class="wide">Oyuncuya görünen not<textarea id="lcc-cond-note" placeholder="Örn. Saldırı zarlarına -1"></textarea></label><button type="button" class="primary wide" data-lcc-cond-add>Durum Ekle</button></div><hr>${conditions||'<div class="lcc-empty">Aktif durum etkisi yok.</div>'}</section></div></section>`;
 }
 async function render(force=false){
  wrapOldCombatRoute();
@@ -124,7 +127,20 @@ async function startCombat(){
    const restored=await Promise.all(changed.map(x=>S.from('catlak_character_abilities').update({uses_remaining:before.get(String(x.id))}).eq('id',x.id)));
    const bad=restored.find(x=>x.error);if(bad?.error)throw new Error('Savaş başladı ancak yetenek hakları korunamadı: '+bad.error.message)
   }
-  toast('Savaş başlatıldı. Yetenek hakları uzun dinlenmeye kadar korundu.');
+  const [partyR,combatR]=await Promise.all([
+   S.from('catlak_characters').select('id,name,data,play_status').eq('play_status','active').order('created_at',{ascending:true}),
+   S.from('catlak_combatants').select('id,character_id,kind')
+  ]);
+  if(partyR.error)throw partyR.error;if(combatR.error)throw combatR.error;
+  const existing=new Set((combatR.data||[]).filter(x=>x.kind==='player').map(x=>String(x.character_id||'')));
+  const party=(partyR.data||[]).filter(c=>c.data?.cc_party_member===true);
+  let added=0;
+  for(const c of party){
+    if(existing.has(String(c.id)))continue;
+    const a=await S.rpc('catlak_gm_combat_add_character',{p_character_id:c.id,p_initiative:null});
+    if(a.error)throw a.error;added++;
+  }
+  toast('Savaş başlatıldı • '+party.length+' parti üyesi hazır'+(added?' • '+added+' otomatik eklendi':'')+'.');
  }catch(e){toast('Savaş başlatılamadı: '+(e?.message||String(e)))}
  finally{busy=false;setTimeout(()=>render(true),20)}
 }
@@ -135,18 +151,26 @@ APP.addEventListener('click',e=>{
  if(e.target.closest?.('[data-lcc-end]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş sona erdirilsin mi?'))rpc('catlak_gm_combat_end',{},'Savaş sona erdi.');return}
  if(e.target.closest?.('[data-lcc-next]')){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_next_turn',{},d=>`Sıra: ${d?.name||'?'} • Round ${d?.round||1}`);return}
  if(e.target.closest?.('[data-lcc-add-char]')){e.preventDefault();e.stopImmediatePropagation();const cid=APP.querySelector('#lcc-add-char')?.value,raw=APP.querySelector('#lcc-char-init')?.value;if(!cid)return toast('Eklenecek oyuncu yok.');rpc('catlak_gm_combat_add_character',{p_character_id:cid,p_initiative:raw===''?null:Number(raw)},'Oyuncu savaşa eklendi.');return}
- if(e.target.closest?.('[data-lcc-add-enemy]')){e.preventDefault();e.stopImmediatePropagation();const name=APP.querySelector('#lcc-enemy-name')?.value||'',hp=Math.max(1,num(APP.querySelector('#lcc-enemy-hp')?.value)||1),ac=num(APP.querySelector('#lcc-enemy-ac')?.value)||10,raw=APP.querySelector('#lcc-enemy-init')?.value;rpc('catlak_gm_combat_add_enemy',{p_name:name,p_hp:hp,p_ac:ac,p_initiative:raw===''?null:Number(raw)},'Düşman savaşa eklendi.');return}
+ if(e.target.closest?.('[data-lcc-add-enemy]')){e.preventDefault();e.stopImmediatePropagation();const tid=APP.querySelector('#lcc-enemy-template')?.value||'';if(tid){rpc('catlak_gm_combat_add_template_batch',{p_template_id:tid,p_count:1},'Kütüphaneden 1 yaratık savaşa eklendi.');return}const name=APP.querySelector('#lcc-enemy-name')?.value||'',hp=Math.max(1,num(APP.querySelector('#lcc-enemy-hp')?.value)||1),ac=num(APP.querySelector('#lcc-enemy-ac')?.value)||10,raw=APP.querySelector('#lcc-enemy-init')?.value;rpc('catlak_gm_combat_add_enemy',{p_name:name,p_hp:hp,p_ac:ac,p_initiative:raw===''?null:Number(raw)},'Düşman savaşa eklendi.');return}
  const rm=e.target.closest?.('[data-lcc-remove]');if(rm){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_remove',{p_combatant_id:rm.dataset.lccRemove},'Savaşçı çıkarıldı.');return}
  const hp=e.target.closest?.('[data-lcc-hp]');if(hp){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_adjust_hp',{p_combatant_id:hp.dataset.lccHp,p_delta:Number(hp.dataset.d)},d=>'HP: '+d);return}
  const ini=e.target.closest?.('[data-lcc-init]');if(ini){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_combat_roll_initiative',{p_combatant_id:ini.dataset.lccInit},d=>'İnisiyatif: '+d);return}
  if(e.target.closest?.('[data-lcc-cond-add]')){e.preventDefault();e.stopImmediatePropagation();const cid=APP.querySelector('#lcc-cond-char')?.value,preset=APP.querySelector('#lcc-cond-preset')?.value||'',custom=APP.querySelector('#lcc-cond-name')?.value.trim()||'',name=custom||preset,note=APP.querySelector('#lcc-cond-note')?.value||'',rounds=num(APP.querySelector('#lcc-cond-rounds')?.value)||0;if(!cid||!name)return toast('Karakter ve durum adı gerekli.');rpc('catlak_gm_add_condition',{p_character_id:cid,p_name:name,p_note:note,p_rounds:rounds||null},'Durum oyuncuya gönderildi.');return}
  const cr=e.target.closest?.('[data-lcc-cond-remove]');if(cr){e.preventDefault();e.stopImmediatePropagation();rpc('catlak_gm_remove_condition',{p_condition_id:cr.dataset.lccCondRemove},'Durum kaldırıldı.');return}
 },true);
+APP.addEventListener('change',e=>{
+ if(!isGM()||e.target?.id!=='lcc-enemy-template')return;
+ const o=e.target.selectedOptions?.[0];if(!o||!o.value)return;
+ const name=APP.querySelector('#lcc-enemy-name'),hp=APP.querySelector('#lcc-enemy-hp'),ac=APP.querySelector('#lcc-enemy-ac');
+ if(name)name.value=o.dataset.name||o.textContent.split(' • ')[0]||'';
+ if(hp)hp.value=String(num(o.dataset.hp)||1);
+ if(ac)ac.value=String(num(o.dataset.ac)||10);
+},true);
 
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;wrapOldCombatRoute();if(liveActive())render(false);else APP.querySelector('[data-lcc-board]')?.remove()})}
 new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
 const refresh=()=>{if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;if(liveActive())render(true)},35)};
-S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).subscribe();
+S.channel('cc-live-combat-center').on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'catlak_creature_templates'},refresh).subscribe();
 setTimeout(schedule,120);setTimeout(schedule,700);setTimeout(schedule,1600);
 window.__catlakLiveCombatCenter={render:()=>render(true),open:openLive,removeLegacy:removeOldCombatEntry,start:startCombat};
 })();
