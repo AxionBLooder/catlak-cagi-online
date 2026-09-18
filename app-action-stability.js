@@ -1,12 +1,12 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV2)return;
-window.__catlakActionStabilityV2=true;
+if(window.__catlakActionStabilityV3)return;
+window.__catlakActionStabilityV3=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
 if(!document.getElementById('cc-entry-stability-style')){
-  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main>*{visibility:hidden!important}html.cc-race-entry-pending #app main>*{visibility:hidden!important}html.cc-battle-entry-pending #app main::before,html.cc-race-entry-pending #app main::before{display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}html.cc-battle-entry-pending #app main::before{content:"Savaş Odası hazırlanıyor…"}html.cc-race-entry-pending #app main::before{content:"Irk becerileri hazırlanıyor…"}';document.head.appendChild(st);
+  const st=document.createElement('style');st.id='cc-entry-stability-style';st.textContent='html.cc-battle-entry-pending #app main>*{visibility:hidden!important}html.cc-battle-entry-pending #app main::before{content:"Savaş Odası hazırlanıyor…";display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}';document.head.appendChild(st);
 }
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
@@ -45,37 +45,10 @@ function queueRestore(){
   restoreTimer=setTimeout(()=>{snap=null},1900);
 }
 let battleFallback=0;
-function beginBattleEntry(){
-  document.documentElement.classList.add('cc-battle-entry-pending');
-  clearTimeout(battleFallback);battleFallback=setTimeout(()=>document.documentElement.classList.remove('cc-battle-entry-pending'),2200);
-}
 function finishBattleEntry(){
   clearTimeout(battleFallback);document.documentElement.classList.remove('cc-battle-entry-pending');
 }
-window.addEventListener('pointerdown',e=>{
-  if(e.button!=null&&e.button!==0)return;
-  if(e.target?.closest?.('[data-ccr-battle]'))beginBattleEntry();
-  if(isCommitButton(e.target))take();
-},true);
-window.addEventListener('click',e=>{
-  const race=e.target?.closest?.('[data-cc-hard-race-nav]');
-  if(race&&role()!=='GM'){
-    e.preventDefault();e.stopImmediatePropagation();
-    window.__catlakRaceWantedEarly=true;
-    const h=window.__catlakPlayerSheetHardRecovery;
-    if(h?.setRaceView?.(true)){document.documentElement.classList.remove('cc-race-entry-pending');return}
-    document.documentElement.classList.add('cc-race-entry-pending');
-    Promise.resolve(h?.recover?.()).then(()=>{h?.ensureRaceNav?.();h?.setRaceView?.(true);document.documentElement.classList.remove('cc-race-entry-pending')}).catch(()=>document.documentElement.classList.remove('cc-race-entry-pending'));
-    return;
-  }
-  const sheet=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(sheet&&window.__catlakRaceWantedEarly===true&&role()!=='GM'){
-    const h=window.__catlakPlayerSheetHardRecovery;
-    if(h?.setRaceView){
-      e.preventDefault();e.stopImmediatePropagation();window.__catlakRaceWantedEarly=false;h.setRaceView(false);return;
-    }
-  }
-},true);
+window.addEventListener('pointerdown',e=>{if(e.button!=null&&e.button!==0)return;if(isCommitButton(e.target))take()},true);
 window.addEventListener('click',e=>{if(isCommitButton(e.target)){if(!snap)take();queueRestore()}},true);
 window.addEventListener('submit',e=>{
   const form=e.target;
