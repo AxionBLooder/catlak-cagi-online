@@ -329,6 +329,13 @@ async function ccrBattleRollStat(stat){
 }
 function ccrOpenBattle(){
   if(!ccrPartyKnown||!ccrPartyMember){ccrRefreshPartyAccess();ccrToast('Savaş Odası yalnız partiye alınmış oyunculara açıktır.');return}
+  const currentMain=CCR_APP.querySelector('main');
+  if(ccrBattleOpen&&window.__catlakBattleRoomOpen===true&&currentMain?.dataset.ccrBattle==='1'){
+    const currentButton=ccrNav()?.querySelector('button[data-ccr-battle]');
+    ccrSelectOnly(currentButton);
+    try{Promise.resolve(window.__catlakBattleRoomV3Test?.render?.(false)).catch(()=>{})}catch(_){}
+    return;
+  }
   ccrHubOpen=false;ccrBattleOpen=true;ccrLastCanonicalReset='open';ccrCanonicalBattleOwned=false;window.__catlakBattleRoomOpen=true;
   try{window.__catlakViewRuntime?.begin?.('player-battle')}catch(_){}
   document.documentElement.classList.add('cc-battle-entry-pending');
@@ -347,7 +354,7 @@ document.addEventListener('click',e=>{
   if(hub){e.preventDefault();e.stopImmediatePropagation();ccrHubOpen=true;ccrBattleOpen=false;window.__catlakBattleRoomOpen=false;ccrSwitchHub(ccrManagedTabs.has(ccrBaseTab())?ccrBaseTab():ccrHubTab);return}
   const ht=e.target.closest?.('[data-ccr-hub-tab]');
   if(ht){e.preventDefault();e.stopImmediatePropagation();ccrSwitchHub(ht.dataset.ccrHubTab);return}
-  const battle=e.target.closest?.('button[data-ccr-battle]');
+  const battle=e.target.closest?.('#app .nav button[data-ccr-battle]');
   if(battle){e.preventDefault();e.stopImmediatePropagation();ccrOpenBattle();return}
   const retry=e.target.closest?.('[data-ccr-battle-retry]');
   if(retry){e.preventDefault();e.stopImmediatePropagation();ccrLastCanonicalReset='retry';ccrCanonicalBattleOwned=false;document.documentElement.classList.add('cc-battle-entry-pending');const main=CCR_APP.querySelector('main');if(main)delete main.dataset.ccrBattle;ccrBattleRender(true);return}
