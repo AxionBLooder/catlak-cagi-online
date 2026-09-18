@@ -6,7 +6,7 @@ const APP=document.querySelector('#app'),S=window.__catlakSupabase;if(!APP||!S)r
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isPlayer=()=>txt(APP.querySelector('.role'))!=='GM';
-const isSheet=()=>isPlayer()&&APP.querySelector('.nav button.on[data-tab]')?.dataset.tab==='sheet';
+const isSheet=()=>isPlayer()&&APP.querySelector('.nav button.on[data-tab]')?.dataset.tab==='sheet'&&APP.querySelector('main')?.dataset.ccHardSheet!=='1';
 const charId=stack=>stack?.querySelector('section.hero [data-a="hp"][data-id]')?.dataset.id||'';
 const slots=['main_weapon','off_weapon','armor','accessory_1','accessory_2'];
 const slotName=k=>({main_weapon:'1. Silah',off_weapon:'2. Silah',armor:'Zırh',accessory_1:'Aksesuar 1',accessory_2:'Aksesuar 2'})[k]||k;
