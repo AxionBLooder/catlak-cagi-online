@@ -1,14 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Production Runtime Clean
 on:
-  push:
-    paths:
-      - 'index.html'
-      - 'gm-clean-click-guard.js'
-      - 'gm-clean-router-v1.js'
-      - 'party-room-stable-v2.js'
-      - 'session-log-delete-fix.js'
-      - '.github/workflows/check-production-runtime-clean.yml'
   workflow_dispatch:
+
 jobs:
   production:
     runs-on: ubuntu-latest
