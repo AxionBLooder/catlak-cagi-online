@@ -7,7 +7,7 @@ const pseaEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 const pseaNum=x=>Number(x||0);
 const pseaIsGM=()=>pseaTxt(PSEA_APP.querySelector('.role'))==='GM';
 const pseaTab=()=>PSEA_APP.querySelector('.nav button.on[data-tab]')?.dataset.tab||'';
-const pseaIsSheet=()=>!pseaIsGM()&&pseaTab()==='sheet';
+const pseaIsSheet=()=>!pseaIsGM()&&pseaTab()==='sheet'&&PSEA_APP.querySelector('main')?.dataset.ccHardSheet!=='1';
 const pseaToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(pseaToast.t);pseaToast.t=setTimeout(()=>t.classList.add('hidden'),4200)};
 let pseaBusy=false,pseaTimer=null,pseaAbilities=[],pseaSnap={},pseaSig='',pseaActionBusy=false;
 
