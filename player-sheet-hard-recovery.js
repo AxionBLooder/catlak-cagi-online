@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV15)return;
-window.__catlakPlayerSheetHardRecoveryV15=true;
+if(window.__catlakPlayerSheetHardRecoveryV16)return;
+window.__catlakPlayerSheetHardRecoveryV16=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -37,6 +37,15 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy b{display:block;color:#f2d284;font-size:.76rem;letter-spacing:.04em}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span.muted{color:var(--muted)}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race]{display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:block!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>:not([data-cc-hard-race]){display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]{display:block!important;max-width:980px!important;margin:0 auto!important}
+  #app.cc-player-hard-active [data-cc-hard-party-visual]{overflow:hidden!important;border-color:#6e5b2f!important;background:linear-gradient(135deg,#151a20,#17131c)!important}
+  #app.cc-player-hard-active [data-cc-hard-party-visual] .cc-hard-party-frame{display:flex;align-items:center;justify-content:center;min-height:180px;border:1px solid var(--line);border-radius:12px;background:#050b14;padding:8px;margin-top:10px}
+  #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block;width:auto;height:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px}
   @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}}
   `;document.head.appendChild(st)
 }
@@ -62,14 +71,25 @@ function ensureRaceNav(){
   let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.textContent='Irk Becerileri';sheet.after(b)}
   return b;
 }
+let raceMode=false,sheetScrollY=0,raceScrollY=0;
+function clearPlayerNavSelection(except){
+  APP.querySelectorAll('.nav button.on').forEach(b=>{if(b!==except)b.classList.remove('on')});
+  except?.classList.add('on');
+}
+function leaveRaceForForeignNav(){
+  const m=main(),race=raceButton();if(!raceMode&&!m?.classList.contains('cc-hard-race-view'))return;
+  raceScrollY=window.scrollY;raceMode=false;m?.classList.remove('cc-hard-race-view');race?.classList.remove('on');
+}
 function setRaceView(on){
   const m=main(),sheet=sheetButton(),race=ensureRaceNav();if(!m||m.dataset.ccHardSheet!=='1'||!race)return false;
-  m.classList.remove('cc-hard-race-view');
-  sheet?.classList.toggle('on',!on);
-  race.classList.toggle('on',!!on);
   if(on){
-    const target=m.querySelector('[data-cc-hard-race]');
-    if(target)requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'center'}));
+    if(!raceMode)sheetScrollY=window.scrollY;
+    raceMode=true;m.classList.add('cc-hard-race-view');clearPlayerNavSelection(race);
+    requestAnimationFrame(()=>window.scrollTo({top:raceScrollY||Math.max(0,m.offsetTop-10),behavior:'auto'}));
+  }else{
+    if(raceMode)raceScrollY=window.scrollY;
+    raceMode=false;m.classList.remove('cc-hard-race-view');clearPlayerNavSelection(sheet);
+    requestAnimationFrame(()=>window.scrollTo({top:sheetScrollY||Math.max(0,m.offsetTop-10),behavior:'auto'}));
   }
   return true;
 }
@@ -122,16 +142,17 @@ async function safeRpc(S,name,args={},fallback=null,ms=1800){
 async function extras(S,chars){
   const ids=chars.map(c=>c.id).filter(Boolean);
   const species=[...new Set(chars.map(c=>c.species_name).filter(Boolean))];
-  const [inv,items,powers,paths,conditions,abilities,combat]=await Promise.all([
+  const [inv,items,powers,paths,conditions,abilities,combat,partyVisual]=await Promise.all([
     ids.length?safeQuery(S.from('catlak_inventory').select('*').in('character_id',ids).order('granted_at',{ascending:true}),[],1800):[],
     safeQuery(S.from('catlak_items').select('*').order('created_at',{ascending:true}),[],1800),
     species.length?safeQuery(S.from('catlak_species_powers').select('*').in('species_name',species).order('unlock_level',{ascending:true}),[],1800):[],
     species.length?safeQuery(S.from('catlak_special_paths').select('*').in('species_name',species).order('sort_order',{ascending:true}),[],1800):[],
     ids.length?safeQuery(S.from('catlak_character_conditions').select('*').in('character_id',ids).eq('active',true).order('created_at',{ascending:true}),[],1800):[],
     safeRpc(S,'catlak_player_abilities',{},[],1800),
-    safeRpc(S,'catlak_player_combat_snapshot',{}, {},1800)
+    safeRpc(S,'catlak_player_combat_snapshot',{}, {},1800),
+    safeQuery(S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle(),null,1800)
   ]);
-  return {inv,items,powers,paths,conditions,abilities,combat};
+  return {inv,items,powers,paths,conditions,abilities,combat,partyVisual};
 }
 function derived(c,x){
   const stats={...(c.base_stats||{})};
@@ -231,6 +252,16 @@ function vampHtml(c){
   const max=3+(num(c.level)>=4?1:0)+(num(c.level)>=14?2:0),kp=Math.max(0,Math.min(max,num(c?.data?.vampire_kp??3)));
   return `<section class="card vampire"><div class="section-title"><div><div class="eyebrow">VAMPİR • KIRMIZI PUANI</div><h2>KP ${kp}/${max}</h2></div><div class="actions"><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="-1">KP −</button><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="1">KP +</button></div></div></section>`;
 }
+function partyVisualHtml(c,x){
+  const p=x?.partyVisual,allowed=c?.data?.cc_party_member===true&&p?.image_url;
+  if(!allowed)return '<section class="card" data-cc-hard-party-visual hidden></section>';
+  const kind=p.kind==='npc'?'NPC':p.kind==='map'?'HARİTA':'PARTİ GÖRSELİ';
+  return `<section class="card cc-party-show" data-cc-hard-party-visual>
+    <div class="eyebrow">GM • ${kind}</div><h2>${esc(p.title||'Partiye Yansıtılan Görsel')}</h2>
+    <div class="cc-hard-party-frame"><img src="${esc(p.image_url)}" alt="${esc(p.title||'Parti görseli')}" loading="lazy"></div>
+    ${p.note?`<p class="muted">${esc(p.note)}</p>`:''}
+  </section>`;
+}
 function equipmentHtml(c,x){
   const itemMap=new Map((x.items||[]).map(i=>[String(i.id),i]));
   const rows=(x.inv||[]).filter(r=>String(r.character_id)===String(c.id)&&r.equipped);
@@ -254,6 +285,7 @@ function charHtml(raw,x){
   <div class="cc-hard-left">
     <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
     <section class="card" data-cc-hard-inventory><div class="eyebrow">ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
+    ${partyVisualHtml(c,x)}
   </div>
   <aside class="cc-hard-right">
     ${equipmentHtml(c,x)}
@@ -277,11 +309,12 @@ function replaceStableSection(stack,fresh,selector){
   return false;
 }
 function stableSelectors(kinds){
-  if(kinds.has('all'))return ['section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]','[data-cc-hard-inventory]'];
+  if(kinds.has('all'))return ['section.hero','[data-cc-hard-stats]','[data-cc-hard-race]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]','[data-cc-hard-inventory]','[data-cc-hard-party-visual]'];
   const out=new Set();
   const add=(...xs)=>xs.forEach(x=>out.add(x));
-  if(kinds.has('character'))add('section.hero');
+  if(kinds.has('character'))add('section.hero','[data-cc-hard-party-visual]');
   if(kinds.has('inventory'))add('section.hero','[data-cc-hard-stats]','[data-cc-hard-equipment]','[data-cc-hard-inventory]');
+  if(kinds.has('visual'))add('[data-cc-hard-party-visual]');
   if(kinds.has('conditions'))add('[data-cc-hard-conditions]');
   if(kinds.has('abilities'))add('[data-cc-hard-abilities]');
   if(kinds.has('combat'))add('section.hero','[data-cc-hard-abilities]','[data-cc-hard-conditions]');
@@ -434,6 +467,8 @@ function schedule(force=false,delay=0){
   setTimeout(()=>recover(force),Math.max(0,delay));
 }
 document.addEventListener('click',e=>{
+  const foreignNav=e.target?.closest?.('#app .nav button:not([data-cc-hard-race-nav]):not([data-tab="sheet"])');
+  if(foreignNav&&isPlayer())leaveRaceForForeignNav();
   const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
   if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();setRaceView(true);return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
@@ -471,6 +506,7 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>sync('abilities'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},()=>sync('combat'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>sync('combat'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>sync('visual'))
     .subscribe();
 }
 setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},80);
