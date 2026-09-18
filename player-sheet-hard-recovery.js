@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV24)return;
-window.__catlakPlayerSheetHardRecoveryV24=true;
+if(window.__catlakPlayerSheetHardRecoveryV25)return;
+window.__catlakPlayerSheetHardRecoveryV25=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -501,6 +501,7 @@ async function recover(force=false){
     if(!chars.length){if(!hadReady)showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return hadReady}
     if(!sheetActive())return false;
     const x=await extras(S,chars);
+    window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
     if(!sheetActive())return false;
     const m=main();if(!m)return false;
     m.className='';
@@ -554,12 +555,19 @@ document.addEventListener('click',e=>{
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
 window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;schedule(true,30)});
-new MutationObserver(()=>{
+new MutationObserver(rs=>{
   if(!isPlayer())return;
+  const nav=APP.querySelector('.nav'),m=main();
+  const structural=rs.some(r=>{
+    if(r.target===APP)return true;
+    if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+    return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role')||n.querySelector?.('main,.nav,.role')));
+  });
+  if(!structural&&(!sheetActive()||m?.dataset.ccHardSheet==='1'&&ready()&&(!raceWanted||m.classList.contains('cc-hard-race-view'))))return;
   ensureRaceNav();
   if(!sheetActive())return;
-  const m=main();if(!m)return;
-  if(raceWanted&&!m.classList.contains('cc-hard-race-view')){schedule(true,0);return}
+  const cur=main();if(!cur)return;
+  if(raceWanted&&!cur.classList.contains('cc-hard-race-view')){schedule(true,0);return}
   if(ready())return;
   schedule(false,20);
 }).observe(APP,{childList:true,subtree:true});
@@ -578,10 +586,7 @@ async function realtime(){
     .subscribe();
 }
 setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},80);
-setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},180);
-setTimeout(()=>{if(!ready())schedule(true,0)},700);
-setTimeout(()=>{if(!ready())schedule(true,0)},1600);
-setTimeout(()=>{if(!ready())schedule(true,0)},3200);
+setTimeout(()=>{if(!ready())schedule(true,0)},900);
 realtime();
 window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();
