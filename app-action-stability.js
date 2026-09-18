@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV6)return;
-window.__catlakActionStabilityV6=true;
+if(window.__catlakActionStabilityV7)return;
+window.__catlakActionStabilityV7=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -44,7 +44,7 @@ function activeNav(){
 }
 function take(){
   let gmRoute='';
-  try{gmRoute=String(window.__catlakGmCenterRouterCore?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){}
+  try{gmRoute=String(window.__catlakGmCleanRouter?.current?.()||window.__catlakGmCenterRouterCore?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){}
   snap={at:Date.now(),role:role(),gmRoute,nav:activeNav(),x:window.scrollX,y:window.scrollY};
 }
 function restore(){
@@ -52,9 +52,12 @@ function restore(){
   const s=snap;
   if(s.role==='GM'&&s.gmRoute){
     let current='';
-    try{current=String(window.__catlakGmCenterRouterCore?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){}
+    try{current=String(window.__catlakGmCleanRouter?.current?.()||window.__catlakGmCenterRouterCore?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){}
     if(current!==s.gmRoute){
-      try{window.__catlakGmCenterRouterCore?.route?.(s.gmRoute)}catch(_){}
+      try{
+        if(window.__catlakGmCleanRouter?.route)window.__catlakGmCleanRouter.route(s.gmRoute);
+        else window.__catlakGmCenterRouterCore?.route?.(s.gmRoute)
+      }catch(e){window.__catlakReportError?.('gm-route-restore',e)}
     }
   }
   requestAnimationFrame(()=>{if(Math.abs(window.scrollY-s.y)>80)window.scrollTo({left:s.x,top:s.y,behavior:'auto'})});
