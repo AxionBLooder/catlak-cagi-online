@@ -45,7 +45,10 @@ function ccPrCollectOnline(){
   }
   const before=[...ccPrOnline].sort().join('|'),after=[...next].sort().join('|');
   ccPrOnline=next;
-  if(before!==after){ccPrLastGmSig='';ccPrRenderGm()}
+  if(before!==after){
+    ccPrLastGmSig='';ccPrRenderGm();
+    window.dispatchEvent(new CustomEvent('catlak:presence-changed',{detail:{online:[...ccPrOnline]}}));
+  }
 }
 
 async function ccPrLoadGmChars(force=false){
@@ -135,5 +138,10 @@ ccPrWatch=CC_PRES_S.channel('cc-presence-character-watch').on('postgres_changes'
 }).subscribe();
 window.addEventListener('beforeunload',()=>{try{ccPrChannel?.untrack()}catch{}});
 setInterval(()=>ccPrTick(false),700);
+window.__catlakPresence={
+  isOnline:id=>ccPrOnline.has(String(id)),
+  onlineIds:()=>[...ccPrOnline],
+  refresh:()=>{ccPrCollectOnline();ccPrTick(true)}
+};
 ccPrStart().catch(e=>console.warn('CC_PRES_START',e));
 ccPrTick(true);
