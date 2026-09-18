@@ -90,7 +90,15 @@ html body #app main[data-cc-simple-live="1"] .lcc-actions button,html body #app 
 document.head.appendChild(st);
 cleanNav();decorateLive();
 let q=false;function maintain(){q=false;cleanNav();decorateLive()}function schedule(){if(q)return;q=true;requestAnimationFrame(maintain)}
-new MutationObserver(schedule).observe(APP,{childList:true,subtree:true});
-setTimeout(schedule,0);setTimeout(schedule,400);setTimeout(schedule,1200);
+new MutationObserver(rs=>{
+ const nav=APP.querySelector('.nav'),main=APP.querySelector('main');
+ const relevant=rs.some(r=>{
+  if(r.target===APP||r.target===main)return true;
+  if(nav&&(r.target===nav||nav.contains(r.target)))return true;
+  return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role,.cc-live-two,[data-lcc-board]')||n.querySelector?.('main,.nav,.role,.cc-live-two,[data-lcc-board]')));
+ });
+ if(relevant)schedule();
+}).observe(APP,{childList:true,subtree:true});
+setTimeout(schedule,0);setTimeout(schedule,500);
 window.__catlakGmLiveCompact={maintain:schedule};
 })();
