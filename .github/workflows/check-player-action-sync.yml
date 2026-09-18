@@ -159,7 +159,7 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox','--disable-gpu']});
             try{
-              const player=await browser.newPage();const errors=[];player.on('pageerror',e=>errors.push(String(e.message||e)));
+              const player=await browser.newPage();player.setDefaultTimeout(7000);const errors=[];player.on('pageerror',e=>errors.push(String(e.message||e)));
               await player.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><header><span class="role">MİSAFİR</span></header><nav class="nav"><button class="on" data-tab="sheet">Oyuncu Masası</button><button data-tab="account">Oturum</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
               await installMock(player,'MİSAFİR');
               await player.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
@@ -195,7 +195,7 @@ jobs:
               if(pout.hp!=='9/20'||!pout.rolls.some(x=>x.includes('DEX'))||!pout.rolls.some(x=>x.includes('Kılıcı'))||!pout.race||!pout.condition||!pout.ability)throw new Error('PLAYER_ACTION_SYNC_FAILED '+JSON.stringify(pout));
               if(errors.length)throw new Error('PLAYER_PAGE_ERRORS '+errors.join(' | '));
 
-              const gm=await browser.newPage();const gerr=[];gm.on('pageerror',e=>gerr.push(String(e.message||e)));
+              const gm=await browser.newPage();gm.setDefaultTimeout(7000);const gerr=[];gm.on('pageerror',e=>gerr.push(String(e.message||e)));
               await gm.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style><div id="app"><header><span class="role">GM</span></header><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main data-cc-simple-live="1"><div class="cc-live-two"><section class="card"><div class="eyebrow">ZAR AKIŞI</div></section><section class="card"><div class="eyebrow">OYUNCULAR</div><div class="cc-simple-player"><b>Eeliot</b><br><small>● CANLI</small></div></section></div></main></div><div id="toast" class="hidden"></div>`);
               await installMock(gm,'GM');
               await gm.evaluate(()=>{
