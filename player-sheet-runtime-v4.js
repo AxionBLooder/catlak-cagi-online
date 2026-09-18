@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetRuntimeV6)return;
-window.__catlakPlayerSheetRuntimeV6=true;
+if(window.__catlakPlayerSheetRuntimeV7)return;
+window.__catlakPlayerSheetRuntimeV7=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
 const txt=e=>String(e?.textContent||'').trim();
@@ -55,7 +55,7 @@ function ensureRaceNav(){
  b.classList.toggle('on',raceOpen)
 }
 function hardStable(main){return main?.dataset.ccHardSheet==='1'&&[...main.querySelectorAll('.cc-character-stack')].every(s=>s.dataset.psv4Ready==='1')}
-function apply(){scheduled=false;if(applying)return;applying=true;try{ensureRaceNav();const main=APP.querySelector('main');if(!main)return;if(isGM()||tab()!=='sheet'||raceOpen){main.classList.remove('psv4-sheet');return}main.classList.add('psv4-sheet');if(hardStable(main))return;[...main.querySelectorAll('.cc-character-stack')].forEach(arrange)}finally{applying=false}}
+function apply(){scheduled=false;if(applying)return;applying=true;try{ensureRaceNav();const main=APP.querySelector('main');if(!main)return;if(isGM()||tab()!=='sheet'||raceOpen){main.classList.remove('psv4-sheet');return}if(main.dataset.ccHardSheet==='1'){main.classList.remove('psv4-sheet');return}main.classList.add('psv4-sheet');if(hardStable(main))return;[...main.querySelectorAll('.cc-character-stack')].forEach(arrange)}finally{applying=false}}
 function schedule(){if(scheduled)return;const main=APP.querySelector('main');if(hardStable(main))return;scheduled=true;requestAnimationFrame(apply)}
 async function editHp(el){
  const id=el.dataset.psv4Hp;if(!id)return;const m=txt(el).match(/(\d+)\s*\/\s*(\d+)/);if(!m)return;
