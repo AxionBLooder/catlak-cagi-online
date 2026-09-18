@@ -92,7 +92,7 @@
     async function loadPlayerCritical(){
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
-        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v20-race-abilities-stable','player-hard-recovery');
+        await load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v21-race-ability-live','player-hard-recovery');
         if(app.querySelector('.nav [data-tab="sheet"].on')){
           try{await awaitLimited(window.__catlakPlayerSheetHardRecovery?.recover?.(),3200)}catch(e){console.warn('CATLAK_PLAYER_HARD_START',e)}
           await Promise.race([waitForPlayerSheet(),new Promise(function(resolve){setTimeout(function(){resolve(false)},1800)})]);
@@ -104,14 +104,16 @@
     }
 
     async function loadPlayerBackground(){
+      // Enhanced battle runtime loads first; the Savaş Odası nav is created only afterwards.
+      // This prevents the legacy/base battle layout from flashing before v3/v4 enhancement.
+      await load('./battle-room-v3-patch.js?v=battle-v4-stable-local-target','battle-room-v3');
       await loadParallel([
         ['./presence-patch.js?v=player-bg-v4-single-owner','presence'],
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-        ['./room-system-patch.js?v=player-bg-v8-race-battle-separated','rooms'],
+        ['./room-system-patch.js?v=player-bg-v9-enhanced-first','rooms'],
         ['./party-roster-patch.js?v=player-bg-v4-single-owner','party-roster'],
         ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
       ]);
-      await load('./battle-room-v3-patch.js?v=battle-v3-usability-v3-direct-ability','battle-room-v3');
     }
 
     async function loadGmCore(){
@@ -141,7 +143,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-8-race-battle-separated','rooms'],
+        ['./room-system-patch.js?v=recovery-9-enhanced-first','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
