@@ -30,7 +30,7 @@ jobs:
           node --check gm-live-player-state.js
           node --check live-combat-center-patch.js
           grep -Fq 'player-hard-recovery-v6' index.html
-          grep -Fq 'gm-live-player-state-v2' index.html
+          grep -Fq 'gm-live-player-state-v3' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Player and GM action synchronization
@@ -213,11 +213,13 @@ jobs:
                 window.__db.catlak_characters[0].hp_current=9;
                 window.__db.catlak_combatants[0].hp_current=9;
                 window.__snapshot.order[0].hp_current=9;
+                window.__db.catlak_rolls=[{id:'roll-live',character_id:'char-1',label:'DEX Testi',roll_kind:'stat',formula:'1d20',modifier:2,total:17,created_at:new Date().toISOString()}];
               });
               await gm.addScriptTag({path:path.resolve('gm-live-player-state.js')});
               await gm.addScriptTag({path:path.resolve('live-combat-center-patch.js')});
               await gm.waitForFunction(()=>document.querySelector('.glps-state')?.textContent.includes('HP 9/20'),null,{timeout:5000});
               await gm.waitForFunction(()=>document.querySelector('.glps-state')?.textContent.includes('Zehirli'),null,{timeout:5000});
+              await gm.waitForFunction(()=>document.querySelector('[data-cc-roll-id="roll-live"]')?.textContent.includes('DEX Testi'),null,{timeout:5000});
               await gm.waitForSelector('[data-lcc-board]',{timeout:5000});
 
               await gm.selectOption('#lcc-cond-char','char-1');
@@ -236,9 +238,10 @@ jobs:
                 hp:document.querySelector('.glps-state')?.textContent,
                 combat:document.querySelector('.lcc-hp')?.textContent,
                 calls:window.__rpcCalls.map(x=>x.name),
-                zehir:document.querySelector('.glps-state')?.textContent.includes('Zehirli')
+                zehir:document.querySelector('.glps-state')?.textContent.includes('Zehirli'),
+                roll:document.querySelector('[data-cc-roll-id="roll-live"]')?.textContent
               }));
-              if(!gout.hp?.includes('4/20')||!gout.combat?.includes('4 / 20')||!gout.calls.includes('catlak_gm_add_condition')||!gout.calls.includes('catlak_gm_remove_condition')||!gout.calls.includes('catlak_gm_combat_adjust_hp')||!gout.zehir)throw new Error('GM_ACTION_SYNC_FAILED '+JSON.stringify(gout));
+              if(!gout.hp?.includes('4/20')||!gout.combat?.includes('4 / 20')||!gout.calls.includes('catlak_gm_add_condition')||!gout.calls.includes('catlak_gm_remove_condition')||!gout.calls.includes('catlak_gm_combat_adjust_hp')||!gout.zehir||!gout.roll?.includes('DEX Testi'))throw new Error('GM_ACTION_SYNC_FAILED '+JSON.stringify(gout));
               if(gerr.length)throw new Error('GM_PAGE_ERRORS '+gerr.join(' | '));
               console.log('PLAYER_GM_ACTION_SYNC_OK',JSON.stringify({player:pout,gm:gout}));
             }finally{await browser.close()}
