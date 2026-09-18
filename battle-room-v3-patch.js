@@ -269,15 +269,44 @@ function br3SelectTarget(id){
   br3SyncEnemyAbilityTargets();
   br3CacheCurrent();
 }
-document.addEventListener('pointerdown',e=>{if(e.target?.matches?.('[data-br3-hp-amount]'))br3HoldInteraction(1800)},true);
+const BR3_ACTION_SEL='[data-br3-target],[data-br3-strike],[data-br3-use],[data-br3-hp-change],[data-br3-end-turn],[data-br3-clear-log]';
+let br3PressKey='',br3PressUntil=0;
+function br3ActionKey(el){
+  if(!el)return'';
+  if(el.dataset.br3Target)return'target:'+el.dataset.br3Target;
+  if(el.dataset.br3Strike)return'strike:'+el.dataset.br3Strike;
+  if(el.dataset.br3Use)return'use:'+el.dataset.br3Use;
+  if(el.dataset.br3HpChange)return'hp:'+el.dataset.br3HpChange;
+  if(el.hasAttribute('data-br3-end-turn'))return'end-turn';
+  if(el.hasAttribute('data-br3-clear-log'))return'clear-log';
+  return'';
+}
+function br3DispatchAction(el){
+  if(!el)return false;
+  if(el.dataset.br3Target!=null){br3SelectTarget(el.dataset.br3Target);return true}
+  if(el.dataset.br3Strike!=null){br3Strike(el).catch(x=>br3Toast('Saldırı başarısız: '+(x?.message||String(x))));return true}
+  if(el.dataset.br3Use!=null){br3Use(el).catch(x=>br3Toast(x?.message||String(x)));return true}
+  if(el.dataset.br3HpChange!=null){br3HpChange(el).catch(x=>br3Toast('HP güncellenemedi: '+(x?.message||String(x))));return true}
+  if(el.hasAttribute('data-br3-end-turn')){br3EndTurn().catch(x=>br3Toast(x?.message||String(x)));return true}
+  if(el.hasAttribute('data-br3-clear-log')){if(confirm('Savaş Canlı Akışı temizlensin mi?'))br3ClearBattleLog().catch(x=>br3Toast(x?.message||String(x)));return true}
+  return false;
+}
+document.addEventListener('pointerdown',e=>{
+  if(e.target?.matches?.('[data-br3-hp-amount]')){br3HoldInteraction(1800);return}
+  if(e.button!=null&&e.button!==0)return;
+  const a=e.target.closest?.(BR3_ACTION_SEL);if(!a)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const key=br3ActionKey(a);br3PressKey=key;br3PressUntil=Date.now()+950;
+  br3DispatchAction(a);
+},true);
 document.addEventListener('focusin',e=>{if(e.target?.matches?.('[data-br3-hp-amount]'))br3HoldInteraction(1800)},true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest?.('[data-br3-target]');if(t){e.preventDefault();e.stopImmediatePropagation();br3SelectTarget(t.dataset.br3Target);return}
-  const s=e.target.closest?.('[data-br3-strike]');if(s){e.preventDefault();e.stopImmediatePropagation();br3Strike(s).catch(x=>br3Toast('Saldırı başarısız: '+(x?.message||String(x))));return}
-  const u=e.target.closest?.('[data-br3-use]');if(u){e.preventDefault();e.stopImmediatePropagation();br3Use(u).catch(x=>br3Toast(x?.message||String(x)));return}
-  const hp=e.target.closest?.('[data-br3-hp-change]');if(hp){e.preventDefault();e.stopImmediatePropagation();br3HpChange(hp).catch(x=>br3Toast('HP güncellenemedi: '+(x?.message||String(x))));return}
-  if(e.target.closest?.('[data-br3-end-turn]')){e.preventDefault();e.stopImmediatePropagation();br3EndTurn().catch(x=>br3Toast(x?.message||String(x)));return}
-  if(e.target.closest?.('[data-br3-clear-log]')){e.preventDefault();e.stopImmediatePropagation();if(confirm('Savaş Canlı Akışı temizlensin mi?'))br3ClearBattleLog().catch(x=>br3Toast(x?.message||String(x)));return}
+  const a=e.target.closest?.(BR3_ACTION_SEL);if(!a)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const key=br3ActionKey(a);
+  if(key&&key===br3PressKey&&Date.now()<br3PressUntil)return;
+  br3PressKey='';br3PressUntil=0;
+  br3DispatchAction(a);
 },true);
 new MutationObserver(rs=>{
   const main=BR3_APP.querySelector('main'),nav=BR3_APP.querySelector('.nav');
