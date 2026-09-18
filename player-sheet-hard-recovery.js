@@ -53,6 +53,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack{display:grid!important;grid-template-columns:1fr!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-party-visual]{display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;column-gap:clamp(18px,2.5vw,44px)!important;row-gap:16px!important;justify-content:stretch!important;align-items:start!important;width:100%!important;max-width:none!important;margin:0!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>:not([data-cc-hard-race]):not([data-cc-hard-abilities]){display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]{display:block!important;grid-column:1!important;grid-row:1!important;justify-self:stretch!important;width:100%!important;max-width:none!important;margin:0!important;align-self:start!important;min-height:0!important}
@@ -368,7 +369,14 @@ function freshStack(c,x){
 function replaceStableSection(stack,fresh,selector){
   const old=stack.querySelector(selector),next=fresh.querySelector(selector);
   if(old&&next){old.replaceWith(next);return true}
-  if(!old&&next){const grid=stack.querySelector(':scope > .psv4-grid .psv4-detail')||stack;grid.appendChild(next);return true}
+  if(!old&&next){
+    let target=null;
+    if(selector==='[data-cc-hard-party-visual]')target=stack.querySelector(':scope > .cc-hard-left');
+    else if(['[data-cc-hard-race]','[data-cc-hard-path]','[data-cc-hard-vampire]','[data-cc-hard-conditions]','[data-cc-hard-abilities]','[data-cc-hard-equipment]'].includes(selector))target=stack.querySelector(':scope > .cc-hard-right');
+    else if(['[data-cc-hard-stats]','[data-cc-hard-inventory]'].includes(selector))target=stack.querySelector(':scope > .cc-hard-left');
+    if(!target)target=stack.querySelector(':scope > .psv4-grid .psv4-detail')||stack;
+    target.appendChild(next);return true
+  }
   if(old&&!next){old.remove();return true}
   return false;
 }
