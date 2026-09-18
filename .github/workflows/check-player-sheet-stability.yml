@@ -31,13 +31,15 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v30-race-fullwidth' in html,
-            'canonical owner':'__catlakPlayerSheetHardRecoveryV30' in sheet,
+            'sheet version':'player-hard-recovery-v31-race-no-shell' in html,
+            'canonical owner':'__catlakPlayerSheetHardRecoveryV31' in sheet,
             'sheet cache':'cachedSheetHtml' in sheet and 'restoreCachedSheet' in sheet,
             'race nav':'data-cc-hard-race-nav' in sheet and 'setRaceView' in sheet,
             'race powers left':'[data-cc-hard-race]{display:block!important;grid-column:1!important;grid-row:1!important;justify-self:stretch!important' in sheet,
             'abilities right':'[data-cc-hard-abilities]{display:block!important;grid-column:2!important;grid-row:1!important;justify-self:stretch!important' in sheet,
             'two independent columns':'grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important' in sheet,
+            'race main full width':'main.cc-hard-race-view[data-cc-hard-sheet="1"]{width:100%!important;max-width:none!important' in sheet,
+            'outer race shell removed':'border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important' in sheet,
             'each list grows downward':'[data-cc-hard-race]>.grid' in sheet and '[data-cc-hard-abilities]>.grid' in sheet and 'grid-template-columns:1fr!important' in sheet,
             'mobile fallback':'main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important' in sheet and '[data-cc-hard-abilities]{grid-column:1!important;grid-row:2!important' in sheet,
             'single roll result':'showRollFlash(cid,roll);\n    toast(' not in sheet,
