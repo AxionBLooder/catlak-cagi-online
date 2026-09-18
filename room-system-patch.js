@@ -20,8 +20,8 @@ if(!document.querySelector('#ccr-style')){
   const s=document.createElement('style');
   s.id='ccr-style';
   s.textContent=`
-    html.cc-battle-entry-pending #app main>*{visibility:hidden!important}
-    html.cc-battle-entry-pending #app main::before{content:'Savaş Odası hazırlanıyor…';display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}
+    html.cc-battle-entry-pending #app main>*,#app main.ccr-base-building>*{visibility:hidden!important}
+    html.cc-battle-entry-pending #app main::before,#app main.ccr-base-building::before{content:'Savaş Odası hazırlanıyor…';display:block;visibility:visible!important;margin:20px auto;max-width:980px;padding:18px;border:1px solid #284254;border-radius:12px;background:#08131c;color:#91a7bb;font-weight:700}
     .ccr-managed-hidden{display:none!important}
     .ccr-room-head{position:relative;z-index:2}
     .ccr-room-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -115,6 +115,8 @@ function ccrEnsureBattleNav(){
       const race=nav.querySelector('[data-cc-hard-race-nav]'),sheet=nav.querySelector('[data-tab="sheet"]');
       race?race.before(b):sheet?sheet.after(b):nav.prepend(b);
     }
+    const race=nav.querySelector('[data-cc-hard-race-nav]');
+    if(b&&race&&b.nextElementSibling!==race)race.before(b);
     if(ccrBattleOpen)ccrSelectOnly(b);
   }else{
     b?.remove();
@@ -227,7 +229,7 @@ async function ccrBattleRender(force=false){
   try{
     const d=await ccrBattleData();
     if(!ccrBattleOpen||gen!==ccrBattleGen||CCR_APP.querySelector('main')!==main)return;
-    ccrEnsureBattleNav();main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
+    ccrEnsureBattleNav();main.classList.add('ccr-base-building');main.innerHTML=ccrBattleHtml(d);main.dataset.ccrBattle='1';
     if(document.documentElement.classList.contains('cc-battle-entry-pending')){
       for(let i=0;i<40&&!window.__catlakBattleRoomV3Test?.render;i++)await new Promise(r=>setTimeout(r,10));
       if(window.__catlakBattleRoomV3Test?.render)await window.__catlakBattleRoomV3Test.render(true);
@@ -237,8 +239,11 @@ async function ccrBattleRender(force=false){
       }
       if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
         document.documentElement.classList.remove('cc-battle-entry-pending');
+        main.classList.remove('ccr-base-building');
         try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
       }
+    }else if(main.querySelector('[data-br3-turn]')&&main.querySelector('[data-br3-abilities]')){
+      main.classList.remove('ccr-base-building');
     }
     requestAnimationFrame(()=>window.scrollTo(0,oldY));
   }catch(e){ccrToast('Savaş Odası yüklenemedi: '+(e?.message||String(e)))}finally{ccrBattleBusy=false}
