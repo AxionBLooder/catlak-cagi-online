@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV27)return;
-window.__catlakPlayerSheetHardRecoveryV27=true;
+if(window.__catlakPlayerSheetHardRecoveryV28)return;
+window.__catlakPlayerSheetHardRecoveryV28=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -40,9 +40,10 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-race],#app.cc-player-hard-active main[data-cc-hard-sheet="1"]:not(.cc-hard-race-view) [data-cc-hard-abilities]{display:none!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
-  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:16px!important;align-items:start!important;max-width:1280px!important;margin:0 auto!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:grid!important;grid-template-columns:minmax(0,560px) minmax(0,560px)!important;column-gap:clamp(28px,7vw,110px)!important;row-gap:16px!important;justify-content:space-between!important;align-items:start!important;width:100%!important;max-width:1380px!important;margin:0 auto!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>:not([data-cc-hard-race]):not([data-cc-hard-abilities]){display:none!important}
-  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race],#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{display:block!important;width:100%!important;max-width:none!important;margin:0!important;align-self:start!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]{display:block!important;grid-column:1!important;justify-self:start!important;width:100%!important;max-width:none!important;margin:0!important;align-self:start!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]{display:block!important;grid-column:2!important;justify-self:end!important;width:100%!important;max-width:none!important;margin:0!important;align-self:start!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]>.grid,
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]>.grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]>article.power{margin-top:10px!important}
@@ -57,7 +58,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero{padding:14px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero .vitals{gap:8px!important}
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] section.hero [data-cc-hard-long-rest]{white-space:nowrap}
-    #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-column:1/-1!important}
+    #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{display:grid!important;grid-template-columns:minmax(0,560px) minmax(0,560px)!important;justify-content:space-between!important;grid-column:1/-1!important}
     #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
   }
   @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}#app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-template-columns:1fr!important;max-width:760px!important}}
