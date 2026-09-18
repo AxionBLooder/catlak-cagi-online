@@ -1,0 +1,98 @@
+name: Check GM Builder and Item Slots
+on:
+  push:
+    paths:
+      - 'gm-clean-router-v1.js'
+      - 'gm-item-slot-patch.js'
+      - 'item-system-patch.js'
+      - 'index.html'
+      - '.github/workflows/check-gm-builder-item-slots.yml'
+  workflow_dispatch:
+
+jobs:
+  gm-builder-item-slots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check gm-clean-router-v1.js
+          node --check gm-item-slot-patch.js
+          node --check item-system-patch.js
+          grep -Fq '__catlakGmCleanRoute' gm-item-slot-patch.js
+          grep -Fq '__catlakGmCleanRoute' item-system-patch.js
+          grep -Fq 'gmcNativeBridge' gm-clean-router-v1.js
+          grep -Fq 'gm-clean-router-v5-builder' index.html
+          grep -Fq 'gm-item-slot-v4-route' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Browser regression
+        run: |
+          cat > gm-builder-item-slots-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+          function mockScript(){
+            return () => {
+              function query(table){
+                const q={
+                  select(){return q},eq(){return q},in(){return q},not(){return q},order(){return q},limit(){return q},
+                  maybeSingle(){q.single=true;return q},
+                  then(ok,bad){
+                    let data=[];
+                    if(table==='catlak_items')data=[{id:'weapon-1',name:'Test Kılıcı',item_type:'weapon',effects:{}}];
+                    if(q.single)data=data[0]||null;
+                    return Promise.resolve({data,error:null}).then(ok,bad)
+                  }
+                };return q
+              }
+              const channel={on(){return channel},subscribe(){return channel}};
+              window.__catlakSupabase={from:query,channel:()=>channel,rpc:async()=>({data:null,error:null})};
+            };
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
+            try{
+              const builder=await browser.newPage();builder.setDefaultTimeout(5000);
+              await builder.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-tab="gm">Canlı Oyun Masası</button></nav><main></main></div><div id="toast" class="hidden"></div>`);
+              await builder.evaluate(mockScript());
+              await builder.evaluate(()=>{
+                document.querySelector('#app').addEventListener('click',e=>{
+                  const b=e.target.closest('button[data-tab]');
+                  if(b?.dataset.tab==='builder')document.querySelector('#app main').innerHTML='<section class="builder"><div class="card">KARAKTER OLUŞTURUCU HAZIR</div></section>';
+                });
+              });
+              await builder.addScriptTag({path:path.resolve('gm-clean-router-v1.js')});
+              const routed=await builder.evaluate(()=>window.__catlakGmCleanRouter.route('builder'));
+              if(!routed)throw new Error('Builder route returned false');
+              await builder.waitForSelector('main .builder');
+              const bad=await builder.locator('#toast').textContent();
+              if(/yerel ekran|bulunamadı/i.test(bad||''))throw new Error('Builder still reports missing local screen: '+bad);
+
+              const slots=await browser.newPage();slots.setDefaultTimeout(5000);
+              await slots.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-gmc-open>GM Merkezi</button></nav><main><section><div class="form"><label>Karakter<select id="iw-give-char"><option value="char-1">Eeliot</option></select></label><label>Kayıt<select id="iw-give-item"><option value="weapon-1">Test Kılıcı</option></select></label><label>Adet<input id="iw-give-qty" value="1"></label></div><button data-iw-give>Oyuncuya Ver</button></section></main></div><div id="toast" class="hidden"></div>`);
+              await slots.evaluate(mockScript());
+              await slots.evaluate(()=>window.__catlakGmCleanRoute='items');
+              await slots.addScriptTag({path:path.resolve('gm-item-slot-patch.js')});
+              await slots.waitForSelector('#gms-give-slot');
+              await slots.waitForFunction(()=>[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='main_weapon')&&[...document.querySelectorAll('#gms-give-slot option')].some(o=>o.value==='off_weapon'));
+              const out=await slots.evaluate(()=>({
+                values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),
+                labels:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.textContent),
+                disabled:document.querySelector('#gms-give-slot').disabled,
+                owned:!!document.querySelector('[data-gms-give]')
+              }));
+              if(out.disabled||!out.values.includes('main_weapon')||!out.values.includes('off_weapon')||!out.owned)throw new Error('Item slot regression '+JSON.stringify(out));
+              console.log('GM_BUILDER_ITEM_SLOTS_OK',JSON.stringify(out));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node gm-builder-item-slots-smoke.cjs
