@@ -1,17 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Party Privacy and Combat Flow
 on:
-  push:
-    paths:
-      - 'player-sheet-hard-recovery.js'
-      - 'room-system-patch.js'
-      - 'battle-party-membership-guard.js'
-      - 'party-room-stable-v2.js'
-      - 'live-combat-center-patch.js'
-      - 'live-combat-center-loader.js'
-      - 'gm-clean-click-guard.js'
-      - 'browser-app.js'
-      - 'index.html'
-      - '.github/workflows/check-party-privacy-combat-flow.yml'
   workflow_dispatch:
 
 jobs:
