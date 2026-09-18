@@ -1,13 +1,8 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check World Upload
 on:
-  push:
-    paths:
-      - 'simple-world-upload-patch.js'
-      - 'visual-archive-map-flow-patch.js'
-      - 'browser-app.js'
-      - 'index.html'
-      - '.github/workflows/check-world-upload.yml'
   workflow_dispatch:
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
