@@ -1,10 +1,21 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV6)return;
-window.__catlakPlayerSheetHardRecoveryV6=true;
+if(window.__catlakPlayerSheetHardRecoveryV7)return;
+window.__catlakPlayerSheetHardRecoveryV7=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
+APP.classList.add('cc-player-hard-active');
+if(!document.getElementById('cc-player-hard-ui-style')){
+  const st=document.createElement('style');st.id='cc-player-hard-ui-style';st.textContent=`
+  #app.cc-player-hard-active main .cc-desk-intro{display:none!important}
+  #app.cc-player-hard-active [data-cc-hard-stats] .eyebrow{display:none!important}
+  #app.cc-player-hard-active [data-cc-hard-stats] .stat{cursor:pointer!important;pointer-events:auto!important}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot{display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot:last-child{border-bottom:0}
+  #app.cc-player-hard-active [data-cc-hard-equipment] .gmt-slot b{color:var(--gold)}
+  `;document.head.appendChild(st)
+}
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
 let busy=false,queued=false,lastRun=0,realtimeStarted=false;
 
@@ -171,15 +182,30 @@ function vampHtml(c){
   const max=3+(num(c.level)>=4?1:0)+(num(c.level)>=14?2:0),kp=Math.max(0,Math.min(max,num(c?.data?.vampire_kp??3)));
   return `<section class="card vampire"><div class="section-title"><div><div class="eyebrow">VAMPİR • KIRMIZI PUANI</div><h2>KP ${kp}/${max}</h2></div><div class="actions"><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="-1">KP −</button><button data-a="vkp" data-cc-hard-vkp="1" data-id="${esc(c.id)}" data-d="1">KP +</button></div></div></section>`;
 }
+function equipmentHtml(c,x){
+  const itemMap=new Map((x.items||[]).map(i=>[String(i.id),i]));
+  const rows=(x.inv||[]).filter(r=>String(r.character_id)===String(c.id)&&r.equipped);
+  const slot=(key)=>{const hit=rows.find(r=>String(r.equipped_slot||'')===key),it=hit&&itemMap.get(String(hit.item_id));return it?.name||'Boş'};
+  return `<section class="card gmt-player-panel" data-gmt-player-panel="${esc(c.id)}" data-cc-hard-equipment>
+    <div class="gmt-player-two"><div data-gmt-equip-pane><div class="eyebrow">TAKILI TEÇHİZAT</div><h2>Silah Yuvaları</h2><div data-pssr-slots>
+      <div class="gmt-slot" data-gmt-slot="main_weapon"><b>1. Silah</b><span class="${slot('main_weapon')==='Boş'?'muted':''}">${esc(slot('main_weapon'))}</span></div>
+      <div class="gmt-slot" data-gmt-slot="off_weapon"><b>2. Silah</b><span class="${slot('off_weapon')==='Boş'?'muted':''}">${esc(slot('off_weapon'))}</span></div>
+      <div class="gmt-slot" data-gmt-slot="armor"><b>Zırh</b><span class="${slot('armor')==='Boş'?'muted':''}">${esc(slot('armor'))}</span></div>
+      <div class="gmt-slot" data-gmt-slot="accessory_1"><b>Aksesuar 1</b><span class="${slot('accessory_1')==='Boş'?'muted':''}">${esc(slot('accessory_1'))}</span></div>
+      <div class="gmt-slot" data-gmt-slot="accessory_2"><b>Aksesuar 2</b><span class="${slot('accessory_2')==='Boş'?'muted':''}">${esc(slot('accessory_2'))}</span></div>
+    </div></div></div>
+  </section>`;
+}
 function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
   return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
   <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
-  <section class="card"><div class="section-title"><div><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))} • d20 at</small></button>`).join('')}</div></section>
+  <section class="card" data-cc-hard-stats><div class="section-title"><div><h2>Statlar</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))}</small></button>`).join('')}</div></section>
   ${vampHtml(c)}${pathHtml(c,x)}
   <section class="card"><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
   ${conditionsHtml(c,x)}
   ${abilitiesHtml(c,x)}
+  ${equipmentHtml(c,x)}
   <section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
   <section class="card"><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
 }
@@ -284,6 +310,7 @@ async function recover(force=false){
     const base={inv:[],items:[],rolls:[],powers:[],paths:[],conditions:[],abilities:[],combat:{}};
     m.className='';
     m.dataset.ccHardSheet='1';
+    APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
     delete m.dataset.ccDesk;delete m.dataset.ccPage;
     m.innerHTML=chars.map(c=>charHtml(c,base)).join('');
     try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
@@ -293,6 +320,7 @@ async function recover(force=false){
       if(!sheetActive())return;
       const cur=main();if(!cur||cur.dataset.ccHardSheet!=='1')return;
       cur.innerHTML=chars.map(c=>charHtml(c,x)).join('');
+      APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
       try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
       applyLayers();release();
     }).catch(e=>console.warn('CATLAK_PLAYER_SHEET_EXTRAS',e));
