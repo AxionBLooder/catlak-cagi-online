@@ -21,9 +21,9 @@ jobs:
           node --check player-sheet-hard-recovery.js
           node --check player-sheet-runtime-v4.js
           node --check player-sheet-bind-fix.js
-          grep -Fq 'player-hard-recovery-v8' index.html
-          grep -Fq 'player-sheet-v6-stable' index.html
-          grep -Fq 'player-bind-v4' index.html
+          grep -Fq 'player-hard-recovery-v9' index.html
+          grep -Fq 'player-sheet-v7-hard-owned' index.html
+          grep -Fq 'player-bind-v5' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify stat card does not rerender or jump
@@ -77,11 +77,16 @@ jobs:
               await page.addScriptTag({path:path.resolve('player-sheet-hard-recovery.js')});
               await page.waitForSelector('[data-cc-hard-stat="DEX"]');
               await page.addScriptTag({path:path.resolve('player-sheet-runtime-v4.js')});
-              await page.waitForFunction(()=>document.querySelector('.cc-character-stack')?.dataset.psv4Ready==='1');
+              await page.addScriptTag({path:path.resolve('player-sheet-bind-fix.js')});
+              await page.addScriptTag({path:path.resolve('player-sheet-support-runtime.js')});
+              await page.addScriptTag({path:path.resolve('player-live-actions-patch.js')});
+              await page.addScriptTag({path:path.resolve('player-sheet-equipment-abilities-patch.js')});
+              await page.waitForTimeout(350);
               const before=await page.evaluate(()=>{
                 const el=document.querySelector('[data-cc-hard-stat="DEX"]');
                 window.__stableStat=el;
-                return {top:el.getBoundingClientRect().top,parent:el.closest('section')?.parentElement?.className||''};
+                const inv=document.querySelector('[data-cc-hard-inventory]');
+                return {top:el.getBoundingClientRect().top,parent:el.closest('section')?.parentElement?.className||'',statTop:el.closest('section').getBoundingClientRect().top,invTop:inv?.getBoundingClientRect().top,title:document.querySelector('section.hero .eyebrow')?.textContent||'',loading:document.body.textContent.includes('Envanter yükleniyor'),psv4:document.querySelector('main')?.classList.contains('psv4-sheet')};
               });
               await page.locator('[data-cc-hard-stat="DEX"]').click();
               await page.waitForFunction(()=>window.__calls.some(x=>x.name==='catlak_roll_stat'));
@@ -101,7 +106,7 @@ jobs:
                 top:document.querySelector('[data-cc-hard-stat="DEX"]')?.getBoundingClientRect().top
               }));
               const drift1=Math.abs((afterRoll.top??0)-before.top),drift2=Math.abs((afterHp.top??0)-before.top);
-              if(!afterRoll.same||!afterRoll.connected||!afterHp.same||!afterHp.connected||drift1>2||drift2>2)
+              if(before.loading||before.psv4||before.title.includes('CANLI KARAKTER KAĞIDI')||!(before.statTop<before.invTop)||!afterRoll.same||!afterRoll.connected||!afterHp.same||!afterHp.connected||drift1>2||drift2>2)
                 throw new Error('PLAYER_SHEET_JUMP '+JSON.stringify({before,afterRoll,afterHp,drift1,drift2}));
               console.log('PLAYER_SHEET_STABLE_OK',JSON.stringify({before,afterRoll,afterHp}));
             }finally{await browser.close()}
