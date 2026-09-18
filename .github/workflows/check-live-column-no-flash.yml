@@ -1,0 +1,80 @@
+name: Check Live Column No Flash
+on:
+  push:
+    paths:
+      - 'live-game-entry-guard.js'
+      - 'gm-live-compact-v1.js'
+      - 'index.html'
+      - '.github/workflows/check-live-column-no-flash.yml'
+  workflow_dispatch:
+
+jobs:
+  live-column:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check live-game-entry-guard.js
+          node --check gm-live-compact-v1.js
+          grep -Fq 'live-entry-v9' index.html
+          grep -Fq 'flex-direction:column!important' gm-live-compact-v1.js
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify old screen remains hidden until live is ready
+        run: |
+          cat > live-column-no-flash-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
+            try{
+              const page=await browser.newPage();page.setDefaultTimeout(6000);
+              await page.setContent(`<!doctype html><meta charset="utf-8">
+                <div id="app" class="gmc-gm"><header><span class="role">GM</span></header>
+                <nav class="nav"><button class="on" data-gmc-open>GM Merkezi</button><button data-tab="gm">Canlı Oyun Masası</button></nav>
+                <main><section class="card" id="old-screen">ESKİ GM EKRANI</section></main></div><div id="toast" class="hidden"></div>`);
+              await page.addScriptTag({path:path.resolve('live-game-entry-guard.js')});
+              await page.addScriptTag({path:path.resolve('gm-live-compact-v1.js')});
+              const btn=page.locator('[data-tab="gm"]');
+              await btn.dispatchEvent('pointerdown',{button:0});
+              await page.waitForTimeout(120);
+              const pendingBefore=await page.evaluate(()=>({
+                pending:document.documentElement.classList.contains('cc-live-entry-pending'),
+                visibility:getComputedStyle(document.querySelector('#app main')).visibility,
+                gmActive:document.querySelector('[data-tab="gm"]').classList.contains('on')
+              }));
+              if(!pendingBefore.pending||pendingBefore.visibility!=='hidden'||pendingBefore.gmActive)
+                throw new Error('PRECLICK_FLASH_GUARD_FAILED '+JSON.stringify(pendingBefore));
+              await page.evaluate(()=>{
+                document.querySelector('[data-gmc-open]').classList.remove('on');
+                document.querySelector('[data-tab="gm"]').classList.add('on');
+                document.querySelector('#app main').outerHTML=`<main data-cc-simple-live="1"><div class="cc-live-two">
+                  <section class="card"><div class="eyebrow">OYUNCULAR</div><div class="cc-simple-player"><b>Eeliot</b></div></section>
+                  <section class="card"><div class="eyebrow">ZAR AKIŞI</div><div class="cc-simple-roll"><div class="cc-simple-total">17</div><div><b>Eeliot</b></div></div></section>
+                </div></main>`;
+              });
+              await page.waitForFunction(()=>!document.documentElement.classList.contains('cc-live-entry-pending'));
+              const out=await page.evaluate(()=>({
+                direction:getComputedStyle(document.querySelector('.cc-live-two')).flexDirection,
+                display:getComputedStyle(document.querySelector('.cc-live-two')).display,
+                visibility:getComputedStyle(document.querySelector('#app main')).visibility,
+                players:document.querySelector('[data-glc-kind="players"]')?.style.order,
+                rolls:document.querySelector('[data-glc-kind="rolls"]')?.style.order
+              }));
+              if(out.direction!=='column'||out.visibility!=='visible'||out.players!=='10'||out.rolls!=='20')
+                throw new Error('LIVE_COLUMN_FAILED '+JSON.stringify(out));
+              console.log('LIVE_COLUMN_NO_FLASH_OK',JSON.stringify({pendingBefore,out}));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node live-column-no-flash-smoke.cjs
