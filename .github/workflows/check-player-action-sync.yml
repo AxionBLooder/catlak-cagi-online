@@ -1,16 +1,6 @@
+# LEGACY CHECK QUARANTINED: current playable runtime is guarded by Check Playable Hardening.
 name: Check Player Action Sync
 on:
-  push:
-    paths:
-      - 'player-sheet-hard-recovery.js'
-      - 'stat-roll-patch.js'
-      - 'player-live-actions-patch.js'
-      - 'player-sheet-support-runtime.js'
-      - 'player-sheet-equipment-abilities-patch.js'
-      - 'gm-live-player-state.js'
-      - 'live-combat-center-patch.js'
-      - 'index.html'
-      - '.github/workflows/check-player-action-sync.yml'
   workflow_dispatch:
 
 jobs:
