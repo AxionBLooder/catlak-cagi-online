@@ -24,7 +24,7 @@ if(!document.querySelector('#br3-style')){
   .br3-turn{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.br3-turn.ready{border-color:var(--gold)}.br3-turn button{min-width:150px}.br3-result{margin-top:10px;border:1px solid var(--line);border-radius:11px;padding:10px;background:#09131e}.br3-result.good{border-color:#4f7b4e}.br3-result.bad{border-color:#8b3f46;background:#1d1116}.br3-result.bad b{color:#ffb2b8}.br3-ability.spell .eyebrow{color:#bba7ff}.br3-ability.skill .eyebrow{color:#8fd4ff}.br3-ability.special .eyebrow{color:#f1c36f}.br3-gm-clear{margin-top:10px}.br3-warning{margin-top:8px;padding:8px 10px;border:1px solid #725d34;border-radius:10px;background:#211d12;color:#f3d58d;font-size:.78rem}
   @media(min-width:1050px){
     #app main.br3-live-layout .ccr-battle-grid>div:first-child{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;align-items:start!important}
-    #app main.br3-live-layout [data-br3-turn],#app main.br3-live-layout .br3-order-section,#app main.br3-live-layout [data-br3-creatures],#app main.br3-live-layout [data-br3-hp],#app main.br3-live-layout .br3-weapons-section{grid-column:1!important;margin:0!important}
+    #app main.br3-live-layout [data-br3-turn],#app main.br3-live-layout .br3-order-section,#app main.br3-live-layout [data-br3-creatures],#app main.br3-live-layout .br3-weapons-section{grid-column:1!important;margin:0!important}
     #app main.br3-live-layout .ccr-battle-grid>aside{display:flex!important;flex-direction:column!important;gap:12px!important}
     #app main.br3-live-layout [data-br3-abilities]{margin:0!important}
   }
@@ -114,6 +114,15 @@ function br3EnhanceWeapons(s){
     }
   });
 }
+function br3SyncHeroVitals(s){
+  const hero=BR3_APP.querySelector('main section.hero'),self=(s?.order||[]).find(x=>x.is_self);if(!hero||!self)return;
+  hero.querySelectorAll('.vital').forEach(v=>{
+    const label=br3Txt(v.querySelector('span')).toUpperCase(),b=v.querySelector('b');
+    if(!b)return;
+    if(label==='HP')b.textContent=br3Num(self.hp_current)+'/'+br3Num(self.hp_max);
+    else if(label==='AC'&&self.ac!=null)b.textContent=String(br3Num(self.ac));
+  });
+}
 function br3Node(html){const h=document.createElement('div');h.innerHTML=html;return h.firstElementChild}
 function br3ReplaceIfChanged(current,next){
   if(!current)return next;
@@ -145,6 +154,7 @@ function br3Insert(d){
     if(conditions)conditions.insertAdjacentElement('afterend',abilities);else aside.appendChild(abilities);
   }else main.appendChild(abilities);
   main.querySelectorAll('[data-br3-log]').forEach(x=>x.remove());
+  br3SyncHeroVitals(d.snap);
   br3EnhanceWeapons(d.snap);
   document.documentElement.classList.remove('cc-battle-entry-pending');
   try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
@@ -156,7 +166,7 @@ async function br3Render(force=false){
     if(gen!==br3Gen||BR3_APP.querySelector('main')!==main||!br3BattleView())return;
     br3NormalizeTarget(d.snap);br3LastSnap=d.snap;br3LastData=d;
     const sig=JSON.stringify([d.snap?.active,d.snap?.round,d.snap?.current_combatant_id,d.snap?.in_combat,d.snap?.is_my_turn,(d.snap?.order||[]).map(x=>[x.id,x.name,x.kind,x.hp_current,x.hp_max,x.ac,x.is_current,x.creature_type]),d.abilities.map(a=>[a.assignment_id,a.name,a.ability_type,a.effect_type,a.target_type,a.formula,a.requires_attack,a.attack_bonus,a.uses_per_combat,a.uses_remaining,a.description]),d.warnings]);
-    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
+    if(!force&&sig===br3Sig&&main.querySelector('[data-br3-creatures]')&&main.querySelector('[data-br3-abilities]')){br3SyncHeroVitals(d.snap);br3EnhanceWeapons(d.snap);br3SyncEnemyAbilityTargets();return}
     br3Sig=sig;br3Insert(d);
   }catch(e){if(force)br3Toast('Savaş Odası v3 yüklenemedi: '+(e?.message||String(e)))}finally{br3Busy=false;if(br3Queued){br3Queued=false;setTimeout(()=>br3Render(false),0)}}
 }
