@@ -8,6 +8,8 @@ on:
       - 'player-sheet-support-runtime.js'
       - 'player-live-actions-patch.js'
       - 'player-sheet-equipment-abilities-patch.js'
+      - 'browser-app.js'
+      - 'live-game-entry-guard.js'
       - 'index.html'
       - '.github/workflows/check-player-sheet-stability.yml'
   workflow_dispatch:
@@ -24,9 +26,13 @@ jobs:
           node --check player-sheet-hard-recovery.js
           node --check player-sheet-runtime-v4.js
           node --check player-sheet-bind-fix.js
-          grep -Fq 'player-hard-recovery-v9' index.html
+          grep -Fq 'player-hard-recovery-v10' index.html
           grep -Fq 'player-sheet-v7-hard-owned' index.html
           grep -Fq 'player-bind-v5' index.html
+          grep -Fq 'live-entry-v10' index.html
+          grep -Fq 'recovery-core-12-stable-player-sheet' index.html
+          grep -Fq 'g.dataset.ccDesk==="1"||g.dataset.ccHardSheet==="1"' browser-app.js
+          grep -Fq 'function hardSheetOwned()' live-game-entry-guard.js
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
       - name: Verify stat card does not rerender or jump
