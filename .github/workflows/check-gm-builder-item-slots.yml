@@ -42,14 +42,24 @@ jobs:
           }
           function mockScript(){
             return () => {
+              const items=[
+                {id:'weapon-1',name:'Test Kılıcı',item_type:'weapon',effects:{}},
+                {id:'armor-1',name:'Test Zırhı',item_type:'armor',effects:{}},
+                {id:'accessory-1',name:'Test Tılsımı',item_type:'item',effects:{item_mode:'accessory'}}
+              ];
               function query(table){
+                const st={eq:[],single:false,limit:null};
                 const q={
-                  select(){return q},eq(){return q},in(){return q},not(){return q},order(){return q},limit(){return q},
-                  maybeSingle(){q.single=true;return q},
+                  select(){return q},
+                  eq(k,v){st.eq.push([k,v]);return q},
+                  in(){return q},not(){return q},order(){return q},
+                  limit(n){st.limit=n;return q},
+                  maybeSingle(){st.single=true;return q},
                   then(ok,bad){
-                    let data=[];
-                    if(table==='catlak_items')data=[{id:'weapon-1',name:'Test Kılıcı',item_type:'weapon',effects:{}}];
-                    if(q.single)data=data[0]||null;
+                    let data=table==='catlak_items'?items.slice():[];
+                    for(const [k,v] of st.eq)data=data.filter(x=>String(x?.[k])===String(v));
+                    if(st.limit!=null)data=data.slice(0,st.limit);
+                    if(st.single)data=data[0]||null;
                     return Promise.resolve({data,error:null}).then(ok,bad)
                   }
                 };return q
@@ -78,7 +88,7 @@ jobs:
               if(/yerel ekran|bulunamadı/i.test(bad||''))throw new Error('Builder still reports missing local screen: '+bad);
 
               const slots=await browser.newPage();slots.setDefaultTimeout(5000);
-              await slots.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-gmc-open>GM Merkezi</button></nav><main><section><div class="form"><label>Karakter<select id="iw-give-char"><option value="char-1">Eeliot</option></select></label><label>Kayıt<select id="iw-give-item"><option value="weapon-1">Test Kılıcı</option></select></label><label>Adet<input id="iw-give-qty" value="1"></label></div><button data-iw-give>Oyuncuya Ver</button></section></main></div><div id="toast" class="hidden"></div>`);
+              await slots.setContent(`<!doctype html><div id="app"><span class="role">GM</span><nav class="nav"><button class="on" data-gmc-open>GM Merkezi</button></nav><main><section><div class="form"><label>Karakter<select id="iw-give-char"><option value="char-1">Eeliot</option></select></label><label>Kayıt<select id="iw-give-item"><option value="weapon-1">Test Kılıcı</option><option value="armor-1">Test Zırhı</option><option value="accessory-1">Test Tılsımı</option></select></label><label>Adet<input id="iw-give-qty" value="1"></label></div><button data-iw-give>Oyuncuya Ver</button></section></main></div><div id="toast" class="hidden"></div>`);
               await slots.evaluate(mockScript());
               await slots.evaluate(()=>window.__catlakGmCleanRoute='items');
               await slots.addScriptTag({path:path.resolve('gm-item-slot-patch.js')});
@@ -91,10 +101,18 @@ jobs:
                 owned:!!document.querySelector('[data-gms-give]')
               }));
               if(out.disabled||!out.values.includes('main_weapon')||!out.values.includes('off_weapon')||out.selected!=='main_weapon'||!out.owned)throw new Error('Weapon slot regression '+JSON.stringify(out));
-              await slots.evaluate(()=>{
-                const q=window.__dbItems||(window.__dbItems={});
-              });
-              console.log('GM_BUILDER_ITEM_SLOTS_OK',JSON.stringify(out));
+
+              await slots.selectOption('#iw-give-item','armor-1');
+              await slots.waitForFunction(()=>document.querySelector('#gms-give-slot')?.value==='armor');
+              const armor=await slots.evaluate(()=>({values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),selected:document.querySelector('#gms-give-slot').value}));
+              if(!armor.values.includes('')||!armor.values.includes('armor')||armor.values.includes('main_weapon')||armor.selected!=='armor')throw new Error('Armor slot regression '+JSON.stringify(armor));
+
+              await slots.selectOption('#iw-give-item','accessory-1');
+              await slots.waitForFunction(()=>document.querySelector('#gms-give-slot')?.value==='accessory_1');
+              const accessory=await slots.evaluate(()=>({values:[...document.querySelectorAll('#gms-give-slot option')].map(o=>o.value),selected:document.querySelector('#gms-give-slot').value}));
+              if(!accessory.values.includes('')||!accessory.values.includes('accessory_1')||!accessory.values.includes('accessory_2')||accessory.values.includes('armor')||accessory.selected!=='accessory_1')throw new Error('Accessory slot regression '+JSON.stringify(accessory));
+
+              console.log('GM_BUILDER_ITEM_SLOTS_OK',JSON.stringify({weapon:out,armor,accessory}));
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
