@@ -44,7 +44,7 @@
   })();
   </script>
 
-  <script src="./live-game-entry-guard.js?v=live-entry-v12-no-legacy-row"></script>
+  <script src="./live-game-entry-guard.js?v=live-entry-v13-no-legacy-flash"></script>
   <script src="./gm-view-stability.js?v=gm-view-stability-v1"></script>
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v9-center-bridge"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
@@ -91,8 +91,8 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v23-instant-tabs','player-hard-recovery'),
-          load('./battle-room-v3-patch.js?v=battle-v8-cached-final-view','battle-room-v3')
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v24-instant-all-tabs','player-hard-recovery'),
+          load('./battle-room-v3-patch.js?v=battle-v9-entry-deadlock-fix','battle-room-v3')
         ]);
         var recoverPromise=Promise.resolve(true);
         if(app.querySelector('.nav [data-tab="sheet"].on')){
@@ -105,7 +105,7 @@
         }
         var roomPromise=loadParallel([
           ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
-          ['./room-system-patch.js?v=player-bg-v12-no-legacy-flash','rooms'],
+          ['./room-system-patch.js?v=player-bg-v13-entry-failsafe','rooms'],
           ['./battle-party-membership-guard.js?v=player-bg-v6-party-only','battle-party-guard']
         ]);
         await Promise.all([recoverPromise,roomPromise]);
@@ -133,9 +133,9 @@
       await loadParallel([
         ['./seal-character-controls-patch.js?v=clean-seal-controls-v3-fast','seal-character-controls'],
         ['./gm-clean-router-v1.js?v=gm-clean-router-v9-embedded-refresh','gm-clean-router'],
-        ['./gm-live-compact-v1.js?v=gm-live-compact-v10-combat-only','gm-live-compact']
+        ['./gm-live-compact-v1.js?v=gm-live-compact-v11-no-legacy-flash','gm-live-compact']
       ]);
-      await load('./live-combat-center-patch.js?v=livecombat-v6-autoend-stable','live-combat-center-runtime');
+      await load('./live-combat-center-patch.js?v=livecombat-v7-cached-live','live-combat-center-runtime');
       try{window.__catlakGmCleanRouter?.ensure?.();window.__catlakPartyEeliotHotfix?.ensureNav?.();window.__catlakGmUiPolish?.maintain?.();window.__catlakGmLiveCompact?.maintain?.();window.__catlakLiveGameEntryGuard?.maintain?.()}catch(e){console.warn('CATLAK_CLEAN_GM_REFRESH',e)}
     }
 
@@ -150,7 +150,7 @@
         ['./item-system-patch.js?v=item-system-v5-direct-slots','items'],
         ['./event-rolls-patch.js?v=recovery-3','events'],
         ['./room-guard-patch.js?v=recovery-3','room-guard'],
-        ['./room-system-patch.js?v=recovery-12-no-legacy-flash','rooms'],
+        ['./room-system-patch.js?v=recovery-13-entry-failsafe','rooms'],
         ['./party-roster-patch.js?v=recovery-3','party-roster'],
         ['./battle-party-membership-guard.js?v=battle-party-v4-party-only','battle-party-guard'],
         ['./session-log-delete-fix.js?v=session-log-v4-clean-route','session-log-delete']
