@@ -30,12 +30,20 @@ if(!document.getElementById('cc-unified-roll-style')){
  .ccrf-tag{display:inline-flex;padding:3px 7px;border:1px solid var(--line);border-radius:999px;font-size:.65rem;font-weight:900;letter-spacing:.08em;color:var(--muted)}
  .ccrf-event{border-color:#6b5930}.ccrf-event .ccrf-total{border-color:#806934;color:var(--gold)}
  .ccrf-gm{border-color:#394c69}.ccrf-player{border-color:#31516e}
+ .ccrf-flash{position:fixed;right:18px;bottom:18px;z-index:120;min-width:240px;max-width:360px;padding:14px 16px;border:1px solid #3f6d88;border-radius:13px;background:rgba(7,18,28,.97);box-shadow:0 16px 42px rgba(0,0,0,.42);pointer-events:none}
+ .ccrf-flash b{display:block;font-size:.78rem;color:var(--muted);letter-spacing:.07em}.ccrf-flash strong{display:block;margin-top:3px;font-size:2rem;color:var(--text)}.ccrf-flash span{display:block;margin-top:3px;color:#8fd7ff}
  .ccrf-empty{padding:32px;border:1px dashed var(--line);border-radius:15px;text-align:center;color:var(--muted)}
  @media(max-width:900px){.ccrf-feed{grid-template-columns:1fr}.ccrf-hero{flex-direction:column}.ccrf-actions{justify-content:flex-start}}
  @media(max-width:520px){#app main[data-cc-roll-flow="1"]{padding:12px}.ccrf-roll{grid-template-columns:72px 1fr}.ccrf-total{width:64px;height:64px;font-size:1.75rem}}
  `;document.head.appendChild(st)
 }
 
+function showFlash(label,data){
+ APP.querySelector('.ccrf-flash')?.remove();
+ const box=document.createElement('div');box.className='ccrf-flash';
+ box.innerHTML=`<b>${esc(label||'Zar')}</b><strong>${data?.total==null?'?':esc(data.total)}</strong><span>${esc(data?.dm_ruling||'')}</span>`;
+ APP.appendChild(box);clearTimeout(showFlash.t);showFlash.t=setTimeout(()=>box.remove(),2200);
+}
 function source(r){
  const kind=String(r.roll_kind||'');
  if(r.character_id!=null)return['OYUNCU','player'];
@@ -85,12 +93,12 @@ async function render(force=false){
 }
 async function privateRoll(kind){
  if(busy)return;busy=true;
- try{const fn=kind==='d100'?'catlak_gm_roll_d100':'catlak_gm_roll_d20',r=await S.rpc(fn);if(r.error)throw r.error;cacheAt=0;await render(true)}
+ try{const fn=kind==='d100'?'catlak_gm_roll_d100':'catlak_gm_roll_d20',r=await S.rpc(fn);if(r.error)throw r.error;showFlash('GM '+kind,r.data);cacheAt=0;await render(true)}
  catch(e){toast('GM zarı atılamadı: '+(e?.message||String(e)))}finally{busy=false}
 }
 async function eventRoll(kind){
  if(busy)return;busy=true;
- try{const r=await S.rpc('catlak_gm_roll_event',{p_table:kind});if(r.error)throw r.error;cacheAt=0;await render(true)}
+ try{const r=await S.rpc('catlak_gm_roll_event',{p_table:kind});if(r.error)throw r.error;showFlash('Olay '+kind,r.data);cacheAt=0;await render(true)}
  catch(e){toast('Olay zarı atılamadı: '+(e?.message||String(e)))}finally{busy=false}
 }
 async function clearAll(){
