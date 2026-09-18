@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakActionStabilityV5)return;
-window.__catlakActionStabilityV5=true;
+if(window.__catlakActionStabilityV6)return;
+window.__catlakActionStabilityV6=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -48,7 +48,7 @@ function take(){
   snap={at:Date.now(),role:role(),gmRoute,nav:activeNav(),x:window.scrollX,y:window.scrollY};
 }
 function restore(){
-  if(!snap||Date.now()-snap.at>1800)return;
+  if(!snap||Date.now()-snap.at>5200)return;
   const s=snap;
   if(s.role==='GM'&&s.gmRoute){
     let current='';
