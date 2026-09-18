@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV2)return;
-window.__catlakPlayerSheetHardRecoveryV2=true;
+if(window.__catlakPlayerSheetHardRecoveryV3)return;
+window.__catlakPlayerSheetHardRecoveryV3=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -139,21 +139,39 @@ function vampHtml(c){
 }
 function charHtml(raw,x){
   const c=derived(raw,x),lv=Math.max(1,num(c.level)||1);
-  return `<section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
-  <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
-  <section class="card"><div class="section-title"><div><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))} • d20 at</small></button>`).join('')}</div></section>
+  return `<div class="cc-character-stack ps-player-sheet" data-cc-hard-stack="${esc(c.id)}"><section class="card hero" data-cc-hard-recovery-hero="${esc(c.id)}"><div><div class="eyebrow">CANLI KARAKTER KAĞIDI</div><h1>${esc(c.name||'Karakter')}</h1><p>${esc(c.species_name||'-')} • ${esc(c.class_name||'-')} ${lv} • ${esc(c.background_name||'-')}</p></div>
+  <div class="vitals"><div class="vital"><span>HP</span><b>${num(c.hp_current)}/${num(c.hp)}</b><div class="row center"><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="-1">−</button><button class="small" data-a="hp" data-cc-hard-hp="1" data-id="${esc(c.id)}" data-d="1">+</button></div></div><div class="vital"><span>AC</span><b>${num(c.ac)}</b></div><div class="vital"><span>HIZ</span><b>${num(c.speed)}</b></div><div class="vital"><span>SEVİYE</span><b>${lv}</b></div></div></section>
+  <section class="card"><div class="section-title"><div><div class="eyebrow">D20 TESTLERİ</div><h2>Statına bas, zarını at</h2></div><span class="live">● CANLI</span></div><div class="stats">${STATS.map(k=>`<button class="stat" data-a="stat" data-cc-hard-stat="${k}" data-cc-hard-character="${esc(c.id)}" data-id="${esc(c.id)}" data-stat="${k}"><b>${k}</b><strong>${num(c.ds?.[k])}</strong><small>${signed(mod(c.ds?.[k]))} • d20 at</small></button>`).join('')}</div></section>
   ${vampHtml(c)}${pathHtml(c,x)}
   <section class="card"><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}</section>
   <section class="card"><div class="eyebrow">CANLI ENVANTER</div><h2>Silah • Zırh • Eşya</h2>${inventoryHtml(c,x)}</section>
-  <section class="card"><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section>`;
+  <section class="card"><div class="eyebrow">SON ZARLAR</div>${rollsHtml(c,x)}</section></div>`;
 }
 function applyLayers(){
-  try{window.__catlakPlayerSheetBindFix?.bind?.()}catch(_){}
   try{window.__catlakPlayerSheetTest?.apply?.()}catch(_){}
+  try{window.__catlakStatRollTest?.ensure?.()}catch(_){}
   try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}
   try{window.__catlakPlayerLiveTest?.refresh?.(true)}catch(_){}
   try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}
   try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
+  setTimeout(()=>{try{window.__catlakStatRollTest?.ensure?.()}catch(_){}try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}try{window.__catlakPlayerSheetEquipmentAbilitiesTest?.paint?.(true)}catch(_){}},120);
+}
+let actionBusy=false;
+async function hardHp(btn){
+  if(actionBusy)return;
+  const id=btn.dataset.id,delta=num(btn.dataset.d);if(!id||!delta)return;
+  const stack=btn.closest('.cc-character-stack'),vital=btn.closest('.vital'),label=vital?.querySelector('b');
+  const m=String(label?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/),current=num(m?.[1]),max=num(m?.[2]);
+  const next=Math.max(0,Math.min(max,current+delta));
+  actionBusy=true;btn.disabled=true;
+  try{
+    const S=await getRuntime();if(!S)throw new Error('Bağlantı hazır değil.');
+    const r=await S.rpc('catlak_update_my_hp',{p_character_id:id,p_hp:next});if(r.error)throw r.error;
+    if(label)label.textContent=next+'/'+max;
+    try{window.__catlakPlayerSheetSupport?.refresh?.(true)}catch(_){}
+    setTimeout(()=>recover(true),80);
+  }catch(e){console.warn('CATLAK_HARD_HP',e);showWaiting('HP güncellenemedi: '+(e?.message||String(e)))}
+  finally{actionBusy=false;if(btn.isConnected)btn.disabled=false}
 }
 function showWaiting(message){
   const m=main();if(!m||!sheetActive())return;
@@ -207,6 +225,8 @@ function schedule(force=false,delay=0){
   setTimeout(()=>recover(force),Math.max(0,delay));
 }
 document.addEventListener('click',e=>{
+  const hp=e.target?.closest?.('[data-cc-hard-hp][data-id]');
+  if(hp&&hp.closest('main[data-cc-hard-sheet="1"]')){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
   const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(b&&isPlayer()){setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
@@ -225,6 +245,10 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},rerun)
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_inventory'},rerun)
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_rolls'},rerun)
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},rerun)
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},rerun)
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combatants'},rerun)
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},rerun)
     .subscribe();
 }
 setTimeout(()=>schedule(true,0),180);
