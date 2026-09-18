@@ -254,7 +254,15 @@ async function ccrBattleRender(force=false){
       main.classList.remove('ccr-base-building');
     }
     requestAnimationFrame(()=>window.scrollTo(0,oldY));
-  }catch(e){ccrToast('Savaş Odası yüklenemedi: '+(e?.message||String(e)))}finally{ccrBattleBusy=false}
+  }catch(e){
+    document.documentElement.classList.remove('cc-battle-entry-pending');
+    main.classList.remove('ccr-base-building');
+    try{window.__catlakActionStability?.finishBattleEntry?.()}catch(_){}
+    if(ccrBattleOpen&&CCR_APP.querySelector('main')===main){
+      main.innerHTML='<section class="card"><div class="eyebrow">⚔ SAVAŞ ODASI</div><h2>Savaş Odası yüklenemedi</h2><p class="muted">'+ccrEsc(e?.message||String(e))+'</p><button type="button" data-ccr-battle-retry>Yeniden Dene</button></section>';
+    }
+    ccrToast('Savaş Odası yüklenemedi: '+(e?.message||String(e)))
+  }finally{ccrBattleBusy=false}
 }
 async function ccrBattleRollWeapon(invId,kind){
   const r=await CCR_S.rpc('catlak_roll_weapon',{p_inventory_id:invId,p_action:kind});if(r.error)throw r.error;
