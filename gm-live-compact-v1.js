@@ -1,8 +1,8 @@
 (function(){
 'use strict';
-if(window.__catlakGmLiveCompactV7)return;
-window.__catlakGmLiveCompactV7=true;
-['glc-style-v2','glc-style-v3','glc-style-v4','glc-style-v5','glc-style-v6'].forEach(id=>document.getElementById(id)?.remove());
+if(window.__catlakGmLiveCompactV8)return;
+window.__catlakGmLiveCompactV8=true;
+['glc-style-v2','glc-style-v3','glc-style-v4','glc-style-v5','glc-style-v6','glc-style-v7'].forEach(id=>document.getElementById(id)?.remove());
 const APP=document.getElementById('app');if(!APP)return;
 
 function cleanNav(){
@@ -15,15 +15,14 @@ function cleanNav(){
  nav.querySelectorAll('[data-prh-manager]').forEach(x=>{if(x!==party)x.remove()});
  nav.querySelectorAll('[data-cc-management-room]').forEach(x=>{if(x!==management)x.remove()});
  [...nav.querySelectorAll('button')].forEach(b=>{
-  const label=String(b.textContent||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr-TR');
-  if(label==='parti odası'&&b!==party)b.remove();
-  if(label==='yönetim odası'&&b!==management)b.remove();
+  const label=String(b.textContent||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr-TR').replace(/^[^a-z0-9çğıöşü]+/i,'');
+  if(label.includes('parti odası')&&b!==party)b.remove();
+  if(label.includes('yönetim odası')&&b!==management)b.remove();
  });
  if(gm&&party&&gm.nextElementSibling!==party)gm.after(party);
  if(party&&management&&party.nextElementSibling!==management)party.after(management);
  else if(gm&&!party&&management&&gm.nextElementSibling!==management)gm.after(management);
- const native=nav.querySelector('[data-tab="characters"]');
- if(native){native.hidden=true;native.style.display='none';native.setAttribute('aria-hidden','true');native.setAttribute('tabindex','-1')}
+ nav.querySelectorAll('[data-tab="characters"]').forEach(native=>native.remove())
 }
 
 function decorateLive(){
@@ -41,7 +40,7 @@ function decorateLive(){
  });
 }
 
-const st=document.createElement('style');st.id='glc-style-v7';st.textContent=`
+const st=document.createElement('style');st.id='glc-style-v8';st.textContent=`
 #app.gmc-gm .nav [data-gmc-open]{order:10!important}
 #app.gmc-gm .nav [data-prh-manager]{order:20!important}
 #app.gmc-gm .nav [data-cc-management-room]{order:30!important}
