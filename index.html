@@ -51,7 +51,7 @@
   <script src="./gm-clean-click-guard.js?v=gm-clean-click-v8-no-ghost"></script>
   <script src="./gm-ui-polish-v1.js?v=gm-ui-polish-v5"></script>
   <script src="./gm-nav-canonical.js?v=gm-nav-canonical-v1"></script>
-  <script src="./app-action-stability.js?v=action-stability-v4-global-save-stable"></script>
+  <script src="./app-action-stability.js?v=action-stability-v5-all-save-stable"></script>
 
   <script>
   (function(){
@@ -106,7 +106,7 @@
     async function loadPlayerBackground(){
       // Enhanced battle runtime loads first; the Savaş Odası nav is created only afterwards.
       // This prevents the legacy/base battle layout from flashing before v3/v4 enhancement.
-      await load('./battle-room-v3-patch.js?v=battle-v5-stable-actions-hp','battle-room-v3');
+      await load('./battle-room-v3-patch.js?v=battle-v6-target-hp-vitals','battle-room-v3');
       await loadParallel([
         ['./presence-patch.js?v=presence-v5-shared-online','presence'],
         ['./room-guard-patch.js?v=player-bg-v4-single-owner','room-guard'],
