@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakGmLivePlayerStateV3)return;
-window.__catlakGmLivePlayerStateV3=true;
+if(window.__catlakGmLivePlayerStateV4)return;
+window.__catlakGmLivePlayerStateV4=true;
 const APP=document.getElementById('app'),S=window.__catlakSupabase;if(!APP||!S)return;
 const txt=e=>String(e?.textContent||'').trim();
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,16 +9,18 @@ const isGM=()=>txt(APP.querySelector('.role'))==='GM';
 const active=()=>isGM()&&APP.querySelector('.nav [data-tab="gm"].on');
 let busy=false,timer=0,last='';
 
-if(!document.getElementById('glps-style')){
- const st=document.createElement('style');st.id='glps-style';st.textContent=`
- #app .glps-player-table{display:block!important;border:1px solid #223746!important;border-radius:10px!important;overflow:hidden!important;background:#071018!important}
- #app .glps-player-table .cc-simple-player{display:grid!important;grid-template-columns:minmax(150px,1.25fr) minmax(105px,.8fr) minmax(115px,.9fr) 70px 95px 60px 70px minmax(120px,1fr)!important;gap:8px!important;align-items:center!important;margin:0!important;padding:8px 10px!important;border:0!important;border-bottom:1px solid #172934!important;border-radius:0!important;background:#08131c!important;min-height:42px!important}
+if(!document.getElementById('glps-style-v4')){
+ const st=document.createElement('style');st.id='glps-style-v4';st.textContent=`
+ #app .glps-player-table{display:flex!important;flex-direction:column!important;gap:0!important;border:1px solid #284254!important;border-radius:10px!important;overflow:hidden!important;background:#071018!important;width:100%!important}
+ #app .glps-player-table .cc-simple-player{display:grid!important;grid-template-columns:minmax(180px,1.35fr) minmax(130px,.85fr) minmax(105px,.65fr)!important;gap:12px!important;align-items:center!important;margin:0!important;padding:8px 11px!important;border:0!important;border-bottom:1px solid #172934!important;border-radius:0!important;background:#08131c!important;min-height:0!important;height:auto!important;box-shadow:none!important}
  #app .glps-player-table .cc-simple-player:last-child{border-bottom:0!important}
- #app .glps-name{min-width:0}.glps-name b{display:block;font-size:.82rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.glps-name small{display:block;font-size:.62rem!important;color:#7890a2!important}
- #app .glps-cell{font-size:.72rem;color:#cbd7e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.glps-cell strong{color:#edf6ff}
- #app .glps-conds{display:flex;gap:4px;flex-wrap:wrap}.glps-cond{display:inline-flex;border:1px solid #4b6174;border-radius:999px;padding:2px 6px;font-size:.62rem;color:#ffd08a;background:#0b1824}
- @media(max-width:1050px){#app .glps-player-table .cc-simple-player{grid-template-columns:minmax(140px,1.3fr) repeat(3,minmax(72px,.7fr)) minmax(120px,1fr)!important}#app .glps-player-table .glps-race,#app .glps-player-table .glps-speed,#app .glps-player-table .glps-ac{display:none!important}}
- @media(max-width:650px){#app .glps-player-table .cc-simple-player{grid-template-columns:minmax(120px,1fr) 72px 72px!important}.glps-class,.glps-race,.glps-speed,.glps-ac,.glps-level,.glps-status{display:none!important}}
+ #app .glps-player-head{display:grid!important;grid-template-columns:minmax(180px,1.35fr) minmax(130px,.85fr) minmax(105px,.65fr)!important;gap:12px!important;padding:7px 11px!important;background:#0d1d29!important;border-bottom:1px solid #284254!important;color:#7890a2!important;font-size:.63rem!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+ #app .glps-char-main,#app .glps-race-main,#app .glps-hp-main{min-width:0!important}
+ #app .glps-char-main b{display:block!important;font-size:.82rem!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#edf6ff!important}
+ #app .glps-sub{display:block!important;margin-top:2px!important;font-size:.62rem!important;line-height:1.2!important;color:#7890a2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ #app .glps-race-main strong,#app .glps-hp-main strong{display:block!important;font-size:.76rem!important;line-height:1.2!important;color:#dce9f2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ #app .glps-conds{display:flex!important;gap:3px!important;flex-wrap:wrap!important;margin-top:3px!important}.glps-cond{display:inline-flex!important;border:1px solid #4b6174!important;border-radius:999px!important;padding:1px 5px!important;font-size:.56rem!important;color:#ffd08a!important;background:#0b1824!important}
+ @media(max-width:720px){#app .glps-player-table .cc-simple-player,#app .glps-player-head{grid-template-columns:minmax(130px,1fr) minmax(105px,.8fr)!important}#app .glps-player-head span:last-child,#app .glps-hp-main{display:none!important}}
  `;document.head.appendChild(st)
 }
 async function load(){
@@ -36,20 +38,15 @@ function paint(d){
  const cards=[...APP.querySelectorAll('main[data-cc-simple-live="1"] .cc-simple-player')];
  if(!cards.length)return false;
  const byName=new Map(d.chars.map(c=>[String(c.name||'').trim().toLocaleLowerCase('tr-TR'),c])),byId=new Map(d.chars.map(c=>[String(c.id),c]));
- cards[0].parentElement?.classList.add('glps-player-table');
+ const parent=cards[0].parentElement;parent?.classList.add('glps-player-table');if(parent&&!parent.querySelector(':scope > .glps-player-head')){const h=document.createElement('div');h.className='glps-player-head';h.innerHTML='<span>Karakter</span><span>Irk</span><span>Can / Durum</span>';parent.insertBefore(h,parent.firstChild)}
  for(const card of cards){
   const originalName=card.dataset.glpsName||txt(card.querySelector('b')),c=byId.get(String(card.dataset.glpsCharId||''))||byName.get(originalName.toLocaleLowerCase('tr-TR'));if(!c)continue;
   card.dataset.glpsCharId=String(c.id);card.dataset.glpsName=String(c.name||originalName);
   const cs=d.conds.filter(x=>String(x.character_id)===String(c.id)),combat=d.combatants.find(x=>String(x.character_id||'')===String(c.id));
   const hpCur=combat?.hp_current!=null?Number(combat.hp_current):Number(c.hp_current||0),hpMax=combat?.hp_max!=null?Number(combat.hp_max):Number(c.hp_max||0);
-  card.innerHTML=`<div class="glps-name"><b>${esc(c.name||'Karakter')}</b><small>AKTİF OYUNCU</small></div>
-  <div class="glps-cell glps-race">Irk <strong>${esc(c.species_name||'—')}</strong></div>
-  <div class="glps-cell glps-class">Sınıf <strong>${esc(c.class_name||'—')}</strong></div>
-  <div class="glps-cell glps-level">Sv <strong>${Number(c.level||1)}</strong></div>
-  <div class="glps-cell">HP <strong>${hpCur}/${hpMax}</strong></div>
-  <div class="glps-cell glps-ac">AC <strong>${Number(c.base_ac||0)}</strong></div>
-  <div class="glps-cell glps-speed">Hız <strong>${Number(c.base_speed||0)}</strong></div>
-  <div class="glps-status">${cs.length?`<div class="glps-conds">${cs.map(x=>`<span class="glps-cond">${esc(x.name||'Durum')}${x.remaining_rounds==null?'':' • '+Number(x.remaining_rounds)+'r'}</span>`).join('')}</div>`:'<span class="glps-cell">Durum —</span>'}</div>`;
+  card.innerHTML=`<div class="glps-char-main"><b>${esc(c.name||'Karakter')}</b><span class="glps-sub">${esc(c.class_name||'—')} • Sv ${Number(c.level||1)}</span></div>
+  <div class="glps-race-main"><strong>${esc(c.species_name||'—')}</strong><span class="glps-sub">AC ${Number(c.base_ac||0)} • Hız ${Number(c.base_speed||0)}</span></div>
+  <div class="glps-hp-main"><strong>${hpCur}/${hpMax} HP</strong>${cs.length?`<div class="glps-conds">${cs.map(x=>`<span class="glps-cond">${esc(x.name||'Durum')}${x.remaining_rounds==null?'':' • '+Number(x.remaining_rounds)+'r'}</span>`).join('')}</div>`:'<span class="glps-sub">Durum yok</span>'}</div>`;
  }
  const wrap=APP.querySelector('main[data-cc-simple-live="1"] .cc-live-two');
  if(wrap){
