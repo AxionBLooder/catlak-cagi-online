@@ -5,6 +5,7 @@ window.__catlakGmCleanRouterV7=true;
 window.__catlakGmCleanRouterV1=true;
 const APP=document.querySelector('#app'),S=window.__catlakSupabase;
 if(!APP||!S)return;
+if(window.__catlakRuntimeOwnership&&!window.__catlakRuntimeOwnership.claim('gm-center','gm-clean-router'))return;
 const ROUTES=[['ability','Yetenek'],['items','Eşya'],['stats','Stat'],['races','Irk'],['builder','Karakter Oluşturucu'],['events','Olay Atölyesi'],['logs','Oturum Günlüğü'],['creatures','Yaratık Kütüphanesi'],['reputation','İtibar Odası'],['seals','Mühür Odası'],['rules','Kaynaklar'],['account','Hesap'] ];
 const PAGES_BASE='https://axionblooder.github.io/catlak-cagi-online/';
 const txt=e=>String(e?.textContent||'').trim();
