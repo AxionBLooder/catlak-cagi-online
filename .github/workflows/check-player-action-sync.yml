@@ -29,7 +29,7 @@ jobs:
           node --check player-sheet-equipment-abilities-patch.js
           node --check gm-live-player-state.js
           node --check live-combat-center-patch.js
-          grep -Fq 'player-hard-recovery-v4' index.html
+          grep -Fq 'player-hard-recovery-v5' index.html
           grep -Fq 'gm-live-player-state-v1' index.html
       - name: Install browser driver
         run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
@@ -180,8 +180,8 @@ jobs:
 
               await player.waitForFunction(()=>document.body.textContent.includes('İnsan Direnci'),null,{timeout:5000});
               await player.waitForFunction(()=>document.body.textContent.includes('Zehirli'),null,{timeout:5000});
-              await player.waitForSelector('[data-psea-use="assign-1"]',{timeout:5000});
-              await player.locator('[data-psea-use="assign-1"]').click();
+              await player.waitForSelector('[data-cc-hard-ability="assign-1"]',{timeout:5000});
+              await player.locator('[data-cc-hard-ability="assign-1"]').click();
               await player.waitForFunction(()=>window.__rpcCalls.some(x=>x.name==='catlak_player_use_ability'));
 
               const pout=await player.evaluate(()=>({
