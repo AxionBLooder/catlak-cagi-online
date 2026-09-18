@@ -112,9 +112,9 @@ jobs:
           ok('safety.save.hold','__catlakActionStabilityV8' in action and 'actionHoldUntil' in action)
           ok('safety.battle.action.lock','br3ActionBusy' in battle)
           ok('safety.live.action.lock','actionBusy' in live)
-ok('safety.live.inline.hp','adjustHpInline' in live and 'data-lcc-hp-amount' in live)
-ok('safety.live.inline.initiative','rollInitiativeInline' in live and 'data-lcc-order-list' in live)
-ok('gm.ability.optional.ac','AC Kuralı (İsteğe Bağlı)' in gm and 'p_requires_attack' in gm)
+          ok('safety.live.inline.hp','adjustHpInline' in live and 'data-lcc-hp-amount' in live)
+          ok('safety.live.inline.initiative','rollInitiativeInline' in live and 'data-lcc-order-list' in live)
+          ok('gm.ability.optional.ac','AC Kuralı (İsteğe Bağlı)' in gm and 'p_requires_attack' in gm)
           ok('safety.delete.confirm',"confirm(" in qol)
 
           # 8. Performance budget.
