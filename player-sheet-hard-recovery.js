@@ -87,6 +87,7 @@ const isPlayer=()=>{const r=txt(APP.querySelector('.role'));return !!r&&r!=='GM'
 const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
 const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
+const coreSheetVisible=()=>{const m=main();return !!(m&&m.dataset.ccHardSheet!=='1'&&m.querySelector('[data-a="hp"][data-id]'))};
 const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
 let sheetWantedUntil=0;
 const sheetActive=()=>isPlayer()&&(Date.now()<sheetWantedUntil||!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
@@ -513,49 +514,34 @@ async function recover(force=false){
   const hadReady=ready(),hardOwned=main()?.dataset.ccHardSheet==='1';
   if(hadReady&&hardOwned){if(force)refreshStable('all');ensureRaceNav();return true}
   if(busy)return hadReady;
-  const now=Date.now();if(!force&&now-lastRun<180)return hadReady;lastRun=now;busy=true;
+  const now=Date.now();if(!force&&now-lastRun<500)return hadReady;lastRun=now;busy=true;
   try{
     const S=await getRuntime();if(!S)return hadReady;
-    const ses=await getSession(S);if(!ses?.user?.id){if(!hadReady)showWaiting('Oyuncu oturumu henüz hazır değil.');return hadReady}
-    if(!hadReady&&main()?.dataset.ccHardSheet!=='waiting')showWaiting('Karakter bilgileri yükleniyor…');
+    const ses=await getSession(S);if(!ses?.user?.id)return hadReady;
+    // Never replace a working/core player sheet with a loading card.
     const chars=await ownedRows(S,ses.user.id);
-    if(!chars.length){
-      if(!hadReady)showWaiting('Karakter bağlantısı henüz görünmüyor. Tekrar Dene düğmesini kullanabilirsin.');
-      return hadReady
-    }
+    if(!chars.length)return hadReady;
     if(!sheetActive())return false;
+    const x=await extras(S,chars);
     if(!sheetActive())return false;
-    const partyAllowed=chars.some(c=>c?.data?.cc_party_member===true);
-    window.__catlakPlayerPartyAllowedEarly=partyAllowed;
-    const coreX={inv:[],items:[],powers:[],paths:[],conditions:[],abilities:[],combat:{},partyVisual:null,partyAllowed};
+    window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
     const m=main();if(!m)return false;
     m.className='';
     m.dataset.ccHardSheet='1';
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
-    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccrBattle;delete m.dataset.ccViewMount;
-    const html=chars.map(c=>charHtml(c,coreX)).join('');
+    delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;delete m.dataset.ccrBattle;delete m.dataset.ccViewMount;delete m.dataset.ccHardWait;
+    const html=chars.map(c=>charHtml(c,x)).join('');
     const mounted=window.__catlakViewRuntime?.mount?.('player-sheet',m,html);
     if(!mounted||!m.querySelector('.cc-character-stack[data-cc-hard-stack]'))m.innerHTML=html;
     ensureRaceNav();setRaceView(raceWanted);
     applyLayers();cacheSheet();release();
     try{window.__catlakViewRuntime?.ready?.('player-sheet')}catch(_){}
-    sheetWantedUntil=0;
-    window.dispatchEvent(new CustomEvent('catlak:player-fast-ready'));
-    // Heavy inventory/ability/species data must never block the sheet from opening.
-    Promise.resolve().then(async()=>{
-      try{
-        const x=await extras(S,chars);
-        if(!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return;
-        window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed;
-        patchStable(chars,x,new Set(['all']));
-        try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
-      }catch(e){console.warn('CATLAK_PLAYER_SHEET_HYDRATE',e)}
-    });
+    window.dispatchEvent(new CustomEvent('catlak:player-hard-ready'));
     return ready();
   }catch(e){
     console.warn('CATLAK_PLAYER_SHEET_HARD_RECOVERY',e);
-    showWaiting(e?.message||'Karakter verisi yüklenemedi.');
-    return false;
+    // Fail open: leave the core player sheet untouched.
+    return hadReady||coreSheetVisible();
   }finally{busy=false}
 }
 function schedule(force=false,delay=0){
@@ -570,15 +556,17 @@ document.addEventListener('click',e=>{
   if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();sheetWantedUntil=Date.now()+8000;try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}raceWanted=true;window.__catlakRaceWantedEarly=true;clearPlayerNavSelection(raceNav);if(restoreCachedSheet(true))return;if(setRaceView(true))return;recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(true)}else toast('Irk Becerileri yüklenemedi. Tekrar dene.')});return}
   const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
   if(sheetNav&&isPlayer()){
-    sheetWantedUntil=Date.now()+8000;
     const alreadyClean=sheetNav.classList.contains('on')&&main()?.dataset.ccHardSheet==='1'&&!main()?.classList.contains('cc-hard-race-view')&&ready();
     if(alreadyClean)return;
-    e.preventDefault();e.stopImmediatePropagation();
-    try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}
     raceWanted=false;window.__catlakRaceWantedEarly=false;
-    clearPlayerNavSelection(sheetNav);
-    if(restoreCachedSheet(false))return;
-    recover(true).then(ok=>{if(ok){ensureRaceNav();setRaceView(false)}else toast('Oyuncu Masası yüklenemedi. Tekrar dene.')});
+    if(cachedSheetHtml){
+      e.preventDefault();e.stopImmediatePropagation();
+      try{window.__catlakRoomSystemTest?.closeBattle?.()}catch(_){}
+      clearPlayerNavSelection(sheetNav);
+      if(restoreCachedSheet(false))return;
+    }
+    // No hard sheet yet: allow the core app's own tab handler to render first.
+    setTimeout(()=>schedule(false,120),120);
     return
   }
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
@@ -592,39 +580,29 @@ document.addEventListener('click',e=>{
     const rest=e.target.closest?.('[data-cc-hard-long-rest][data-id]');if(rest){e.preventDefault();e.stopImmediatePropagation();hardLongRest(rest);return}
   }
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
-  const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(b&&isPlayer()){ensureRaceNav();setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
-window.addEventListener('catlak:player-fast-ready',()=>{if(!ready())schedule(false,0)});
-window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;if(main()?.dataset.ccHardSheet==='waiting')return;schedule(false,60)});
+window.addEventListener('catlak:player-fast-ready',()=>{if(!ready())schedule(false,160)});
+window.addEventListener('catlak:data-refreshed',()=>{
+  if(!sheetActive())return;
+  if(main()?.dataset.ccHardSheet==='1'&&ready())refreshStable('');
+});
 new MutationObserver(rs=>{
   if(!isPlayer())return;
-  const nav=APP.querySelector('.nav'),m=main();
-  const structural=rs.some(r=>{
-    if(r.target===APP)return true;
-    if(nav&&(r.target===nav||nav.contains(r.target)))return true;
-    return [...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('main,.nav,.role')||n.querySelector?.('main,.nav,.role')));
-  });
-  if(!structural&&(!sheetActive()||m?.dataset.ccHardSheet==='1'&&ready()&&(!raceWanted||m.classList.contains('cc-hard-race-view'))))return;
   ensureRaceNav();
-  if(!sheetActive())return;
-  const cur=main();if(!cur)return;
-  if(raceWanted&&!cur.classList.contains('cc-hard-race-view')){schedule(true,0);return}
-  if(ready())return;
-  schedule(false,20);
+  const m=main();
+  if(m?.dataset.ccHardSheet!=='1'||!ready())return;
+  if(raceWanted&&!m.classList.contains('cc-hard-race-view'))setRaceView(true);
 }).observe(APP,{childList:true,subtree:true});
 let syncTimer=0,syncNeedsRecover=false;
 function queueSheetSync(kind){
-  if(!sheetActive())return;
+  if(!sheetActive()||!(main()?.dataset.ccHardSheet==='1'&&ready()))return;
   if(kind)stableKinds.add(kind);
-  if(!(main()?.dataset.ccHardSheet==='1'&&ready()))syncNeedsRecover=true;
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>{
     syncTimer=0;
-    if(!sheetActive()){stableKinds.clear();syncNeedsRecover=false;return}
-    if(syncNeedsRecover){syncNeedsRecover=false;schedule(true,0);return}
+    if(!sheetActive()||main()?.dataset.ccHardSheet!=='1'){stableKinds.clear();return}
     refreshStable('');
-  },80);
+  },120);
 }
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
@@ -637,8 +615,7 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>queueSheetSync('visual'))
     .subscribe();
 }
-setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},80);
-setTimeout(()=>{if(!ready())schedule(true,0)},900);
+setTimeout(()=>ensureRaceNav(),80);
 realtime();
 window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView,cache:cacheSheet,restore:restoreCachedSheet,cached:()=>!!cachedSheetHtml};
 })();
