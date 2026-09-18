@@ -34,14 +34,14 @@ async function getSession(S){
 }
 async function ownedRows(S,uid){
   try{
-    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),2200,'character owner query');
+    const r=await timeout(S.from('catlak_characters').select('*').eq('owner_id',uid).order('created_at',{ascending:true}),1200,'character owner query');
     if(!r.error&&r.data?.length)return r.data;
   }catch(_){}
   try{
-    const snap=await timeout(S.rpc('catlak_player_combat_snapshot'),1800,'combat snapshot');
+    const snap=await timeout(S.rpc('catlak_player_combat_snapshot'),1200,'combat snapshot');
     const id=snap?.data?.character_id;
     if(id){
-      const q=await timeout(S.from('catlak_characters').select('*').eq('id',id).maybeSingle(),1800,'character fallback');
+      const q=await timeout(S.from('catlak_characters').select('*').eq('id',id).maybeSingle(),1200,'character fallback');
       if(!q.error&&q.data)return [q.data];
     }
   }catch(_){}
@@ -169,14 +169,15 @@ async function recover(force=false){
   try{
     const S=await getRuntime();if(!S)return false;
     const ses=await getSession(S);if(!ses?.user?.id){showWaiting('Oyuncu oturumu henüz hazır değil.');return false}
+    showWaiting('Karakter bilgileri yükleniyor…');
     let chars=[];
-    for(const wait of [0,100,220,450,800]){
+    for(const wait of [0,180,500]){
       if(wait)await new Promise(r=>setTimeout(r,wait));
       chars=await ownedRows(S,ses.user.id);
       if(chars.length)break;
       if(!sheetActive())return false;
     }
-    if(!chars.length){showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Birkaç saniye içinde otomatik tekrar denenecek.');return false}
+    if(!chars.length){showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return false}
     if(!sheetActive())return false;
     const m=main();if(!m)return false;
     const base={inv:[],items:[],rolls:[],powers:[],paths:[]};
