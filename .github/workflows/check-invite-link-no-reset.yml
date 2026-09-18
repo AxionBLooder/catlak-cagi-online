@@ -1,0 +1,79 @@
+name: Check Invite Link No Reset
+on:
+  push:
+    paths:
+      - 'gm-ui-polish-v1.js'
+      - 'index.html'
+      - '.github/workflows/check-invite-link-no-reset.yml'
+  workflow_dispatch:
+
+jobs:
+  invite-no-reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          node --check gm-ui-polish-v1.js
+          grep -Fq '__catlakGmUiPolishV5' gm-ui-polish-v1.js
+          grep -Fq 'gm-ui-polish-v5' index.html
+      - name: Install browser driver
+        run: npm install --no-save --no-package-lock --no-audit --no-fund playwright-core
+      - name: Verify invite generation keeps management screen mounted
+        run: |
+          cat > invite-no-reset-smoke.cjs <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execFileSync}=require('child_process');
+          const path=require('path');
+          function chromePath(){
+            for(const c of ['google-chrome','google-chrome-stable','chromium']){
+              try{const p=execFileSync('bash',['-lc',`command -v ${c}`],{encoding:'utf8'}).trim();if(p)return p}catch{}
+            }
+            throw new Error('Chrome missing');
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:chromePath(),args:['--no-sandbox']});
+            try{
+              const page=await browser.newPage();page.setDefaultTimeout(6000);
+              await page.setContent(`<!doctype html><meta charset="utf-8"><style>.hidden{display:none}</style>
+              <div id="app" class="gmc-gm"><span class="role">GM</span><nav class="nav">
+                <button data-gmc-open>GM Merkezi</button><button data-prh-manager>Parti Odası</button><button data-cc-management-room>Yönetim Odası</button>
+              </nav><main></main></div><div id="toast" class="hidden"></div>`);
+              await page.evaluate(()=>{
+                const chars=[{id:'c1',name:'Eeliot',play_status:'prepared',owner_id:null,species_name:'İnsan',class_name:'Büyücü',background_name:'Portal Araştırmacısı',level:3,hp_current:22,hp_max:22,base_ac:13,data:{},created_at:'2026-01-01'}];
+                function q(table){const st={single:false};const o={
+                  select(){return o},order(){return o},eq(){return o},maybeSingle(){st.single=true;return o},update(){return o},delete(){return o},
+                  then(ok,bad){let data=table==='catlak_characters'?chars.slice():[];if(st.single)data=data[0]||null;return Promise.resolve({data,error:null}).then(ok,bad)}
+                };return o}
+                const channel={on(){return channel},subscribe(){return channel}};
+                window.__catlakSupabase={
+                  from:q,channel:()=>channel,
+                  rpc:async(name,args)=>name==='catlak_generate_character_claim'?{data:'TEST-TOKEN-123',error:null}:{data:null,error:null}
+                };
+                navigator.clipboard={writeText:async()=>true};
+              });
+              await page.addScriptTag({path:path.resolve('gm-ui-polish-v1.js')});
+              await page.evaluate(()=>window.__catlakGmUiPolish.openManagement());
+              await page.waitForSelector('[data-cc-mrv2-char="c1"]');
+              const before=await page.evaluate(()=>({
+                main:document.querySelector('#app main'),
+                card:document.querySelector('[data-cc-mrv2-char="c1"]'),
+                html:document.querySelector('#app main').innerHTML
+              }));
+              await page.locator('[data-cc-mrv2-action="invite"]').click();
+              await page.waitForSelector('[data-cc-mrv2-char="c1"] .cc-mrv2-invite input');
+              const out=await page.evaluate(()=>({
+                sameMain:window.__sameMain=(document.querySelector('#app main')!==null),
+                loading:document.querySelector('#app main').textContent.includes('Karakterler yükleniyor'),
+                value:document.querySelector('[data-cc-mrv2-char="c1"] .cc-mrv2-invite input')?.value||'',
+                cards:document.querySelectorAll('[data-cc-mrv2-char]').length
+              }));
+              const link=out.value;
+              if(out.loading||out.cards!==1||!link.includes('?join=TEST-TOKEN-123'))throw new Error('INVITE_RESET_REGRESSION '+JSON.stringify(out));
+              console.log('INVITE_NO_RESET_OK',JSON.stringify(out));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node invite-no-reset-smoke.cjs
