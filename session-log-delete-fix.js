@@ -63,7 +63,12 @@ window.addEventListener('click',e=>{
  const d=e.target?.closest?.('[data-sldf-delete]');if(d){stop(e);if(confirm('Bu günlük kaydı silinsin mi?'))deleteOne(d.dataset.sldfDelete).catch(x=>toast('Silinemedi: '+(x?.message||String(x))));return}
  const c=e.target?.closest?.('[data-gmt-log-clear]');if(c){stop(e);if(confirm('Oturum günlüğü tamamen temizlensin mi?'))clearAll().catch(x=>toast('Günlük temizlenemedi: '+(x?.message||String(x))));return}
 },true);
-new MutationObserver(()=>schedule(70)).observe(APP,{childList:true,subtree:true});
+new MutationObserver(rs=>{
+ if(!logsOpen())return;
+ const main=APP.querySelector('main');
+ const relevant=rs.some(r=>r.target===main||[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.gmt-log,[data-gmt-log-clear]')||n.querySelector?.('.gmt-log,[data-gmt-log-clear]'))));
+ if(relevant)schedule(70);
+}).observe(APP,{childList:true,subtree:true});
 S.channel('sldf-session-log').on('postgres_changes',{event:'*',schema:'public',table:'catlak_session_log'},()=>schedule(100)).subscribe();
 setTimeout(()=>schedule(0),600);
 window.__catlakSessionLogDeleteFix={enhance,clearAll,deleteOne};
