@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV3)return;
-window.__catlakPlayerSheetHardRecoveryV3=true;
+if(window.__catlakPlayerSheetHardRecoveryV4)return;
+window.__catlakPlayerSheetHardRecoveryV4=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -181,13 +181,16 @@ function showWaiting(message){
 }
 async function recover(force=false){
   queued=false;
-  if(!sheetActive()||ready())return ready();
-  if(busy)return false;
-  const now=Date.now();if(!force&&now-lastRun<180)return false;lastRun=now;busy=true;
+  if(!sheetActive())return false;
+  const hadReady=ready();
+  if(hadReady&&!force)return true;
+  if(hadReady&&main()?.dataset.ccHardSheet!=='1')return true;
+  if(busy)return hadReady;
+  const now=Date.now();if(!force&&now-lastRun<180)return hadReady;lastRun=now;busy=true;
   try{
-    const S=await getRuntime();if(!S)return false;
-    const ses=await getSession(S);if(!ses?.user?.id){showWaiting('Oyuncu oturumu henüz hazır değil.');return false}
-    showWaiting('Karakter bilgileri yükleniyor…');
+    const S=await getRuntime();if(!S)return hadReady;
+    const ses=await getSession(S);if(!ses?.user?.id){if(!hadReady)showWaiting('Oyuncu oturumu henüz hazır değil.');return hadReady}
+    if(!hadReady)showWaiting('Karakter bilgileri yükleniyor…');
     let chars=[];
     for(const wait of [0,180,500]){
       if(wait)await new Promise(r=>setTimeout(r,wait));
@@ -195,7 +198,7 @@ async function recover(force=false){
       if(chars.length)break;
       if(!sheetActive())return false;
     }
-    if(!chars.length){showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return false}
+    if(!chars.length){if(!hadReady)showWaiting('Karakter hesabına bağlandı ancak kayıt henüz görünür değil. Sistem otomatik tekrar deneyecek.');setTimeout(()=>schedule(true,0),900);return hadReady}
     if(!sheetActive())return false;
     const m=main();if(!m)return false;
     const base={inv:[],items:[],rolls:[],powers:[],paths:[]};
@@ -232,7 +235,7 @@ document.addEventListener('click',e=>{
   if(b&&isPlayer()){setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
-window.addEventListener('catlak:data-refreshed',()=>{if(sheetActive()&&!ready())schedule(true,30)});
+window.addEventListener('catlak:data-refreshed',()=>{if(sheetActive())schedule(true,30)});
 new MutationObserver(()=>{
   if(!sheetActive()||ready())return;
   const m=main();if(!m)return;
