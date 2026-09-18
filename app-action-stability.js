@@ -29,7 +29,7 @@ function managedViewActive(){
   if(main?.querySelector?.('[data-lcc-board]'))return true;
   return false;
 }
-function holdAction(ms=2600){actionHoldUntil=Math.max(actionHoldUntil,Date.now()+ms)}
+function holdAction(ms=5000){actionHoldUntil=Math.max(actionHoldUntil,Date.now()+ms)}
 window.__catlakShouldPreserveCurrentView=function(){
   if(Date.now()<actionHoldUntil||managedViewActive())return true;
   try{return typeof previousPreserve==='function'?!!previousPreserve():false}catch(_){return false}
@@ -57,8 +57,8 @@ function restore(){
 }
 function queueRestore(){
   clearTimeout(restoreTimer);
-  [0,70,220,520].forEach(ms=>setTimeout(restore,ms));
-  restoreTimer=setTimeout(()=>{snap=null},1900);
+  [0,100,300,700,1500,2800,4500].forEach(ms=>setTimeout(restore,ms));
+  restoreTimer=setTimeout(()=>{snap=null},5200);
 }
 let battleFallback=0;
 function finishBattleEntry(){
