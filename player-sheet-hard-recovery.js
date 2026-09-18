@@ -1,7 +1,7 @@
 (function(){
 'use strict';
-if(window.__catlakPlayerSheetHardRecoveryV13)return;
-window.__catlakPlayerSheetHardRecoveryV13=true;
+if(window.__catlakPlayerSheetHardRecoveryV14)return;
+window.__catlakPlayerSheetHardRecoveryV14=true;
 
 const APP=document.getElementById('app');
 if(!APP)return;
@@ -33,6 +33,12 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy b{display:block;color:#f2d284;font-size:.76rem;letter-spacing:.04em}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
   #app.cc-player-hard-active [data-cc-hard-equipment] .cc-slot-copy span.muted{color:var(--muted)}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-character-stack>section.hero,
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-left{display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right{grid-column:1/-1!important;display:block!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>section:not([data-cc-hard-race]),
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] .cc-hard-right>.card:not([data-cc-hard-race]){display:none!important}
+  #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]{display:block!important;max-width:980px!important;margin:0 auto!important}
   @media(max-width:900px){#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:1fr!important}.cc-hard-left,.cc-hard-right{grid-column:1!important}#app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack>section.hero{grid-column:1!important}#app.cc-player-hard-active [data-cc-hard-equipment]{position:static!important}}
   `;document.head.appendChild(st)
 }
@@ -48,9 +54,23 @@ const signed=x=>num(x)>=0?'+'+num(x):String(num(x));
 const toast=x=>{const t=document.getElementById('toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),3600)};
 const isPlayer=()=>{const r=txt(APP.querySelector('.role'));return !!r&&r!=='GM'};
 const sheetButton=()=>APP.querySelector('.nav [data-tab="sheet"]');
-const sheetActive=()=>isPlayer()&&!!sheetButton()?.classList.contains('on');
+const raceButton=()=>APP.querySelector('.nav [data-cc-hard-race-nav]');
 const main=()=>APP.querySelector('main');
-const ready=()=>!!APP.querySelector('main section.hero [data-a="hp"][data-id]');
+const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main section.hero [data-a="hp"][data-id]');
+const sheetActive=()=>isPlayer()&&(!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
+function ensureRaceNav(){
+  if(!isPlayer())return null;
+  const nav=APP.querySelector('.nav'),sheet=sheetButton();if(!nav||!sheet)return null;
+  let b=raceButton();if(!b){b=document.createElement('button');b.type='button';b.dataset.ccHardRaceNav='1';b.textContent='Irk Becerileri';sheet.after(b)}
+  return b;
+}
+function setRaceView(on){
+  const m=main(),sheet=sheetButton(),race=ensureRaceNav();if(!m||m.dataset.ccHardSheet!=='1'||!race)return false;
+  m.classList.toggle('cc-hard-race-view',!!on);
+  sheet?.classList.toggle('on',!on);
+  race.classList.toggle('on',!!on);
+  return true;
+}
 const previousPreserve=window.__catlakShouldPreserveCurrentView;
 window.__catlakShouldPreserveCurrentView=function(){
   const m=main();
@@ -256,7 +276,7 @@ function charHtml(raw,x){
     ${conditionsHtml(c,x)}
     ${abilitiesHtml(c,x)}
     ${vampHtml(c)}${pathHtml(c,x)}
-    <section class="card" data-cc-hard-race><div class="eyebrow">IRK GÜÇLERİ</div>${powersHtml(c,x)}${embeddedPowers(c)}</section>
+    <section class="card" data-cc-hard-race><div class="eyebrow">IRK BECERİLERİ</div><h2>Irk Güçleri</h2>${powersHtml(c,x)}${embeddedPowers(c)}</section>
   </aside></div>`;
 }
 function applyLayers(){
@@ -392,9 +412,7 @@ async function recover(force=false){
   queued=false;
   if(!sheetActive())return false;
   const hadReady=ready(),hardOwned=main()?.dataset.ccHardSheet==='1';
-  if(hadReady&&hardOwned){if(force)refreshStable('all');return true}
-  if(hadReady&&!force)return true;
-  if(hadReady&&!hardOwned)return true;
+  if(hadReady&&hardOwned){if(force)refreshStable('all');ensureRaceNav();return true}
   if(busy)return hadReady;
   const now=Date.now();if(!force&&now-lastRun<180)return hadReady;lastRun=now;busy=true;
   try{
@@ -418,6 +436,7 @@ async function recover(force=false){
     APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
     delete m.dataset.ccDesk;delete m.dataset.ccPage;delete m.dataset.ccBindFallback;
     m.innerHTML=chars.map(c=>charHtml(c,x)).join('');
+    ensureRaceNav();setRaceView(false);
     applyLayers();release();
     return ready();
   }catch(e){
@@ -431,6 +450,10 @@ function schedule(force=false,delay=0){
   setTimeout(()=>recover(force),Math.max(0,delay));
 }
 document.addEventListener('click',e=>{
+  const raceNav=e.target?.closest?.('[data-cc-hard-race-nav]');
+  if(raceNav&&isPlayer()){e.preventDefault();e.stopImmediatePropagation();setRaceView(true);return}
+  const sheetNav=e.target?.closest?.('#app .nav [data-tab="sheet"]');
+  if(sheetNav&&isPlayer()&&main()?.classList.contains('cc-hard-race-view')){e.preventDefault();e.stopImmediatePropagation();setRaceView(false);return}
   const root=e.target?.closest?.('main[data-cc-hard-sheet="1"]');
   if(root){
     const hp=e.target.closest?.('[data-cc-hard-hp][data-id]');if(hp){e.preventDefault();e.stopImmediatePropagation();hardHp(hp);return}
@@ -443,14 +466,16 @@ document.addEventListener('click',e=>{
   }
   if(e.target?.closest?.('[data-cc-hard-sheet-retry]')){e.preventDefault();e.stopImmediatePropagation();schedule(true,0);return}
   const b=e.target?.closest?.('#app .nav [data-tab="sheet"]');
-  if(b&&isPlayer()){setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
+  if(b&&isPlayer()){ensureRaceNav();setTimeout(()=>schedule(true,0),40);setTimeout(()=>schedule(true,0),300)}
 },true);
 window.addEventListener('catlak:player-fast-ready',()=>schedule(true,0));
 window.addEventListener('catlak:data-refreshed',()=>{if(!sheetActive())return;if(main()?.dataset.ccHardSheet==='1'&&ready())return;schedule(true,30)});
 new MutationObserver(()=>{
+  if(!isPlayer())return;
+  ensureRaceNav();
   if(!sheetActive()||ready())return;
   const m=main();if(!m)return;
-  if(!m.children.length||m.dataset.ccDesk==='1'||m.dataset.ccHardSheet==='waiting')schedule(false,80);
+  schedule(false,60);
 }).observe(APP,{childList:true,subtree:true});
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
@@ -465,10 +490,11 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_combat_state'},()=>sync('combat'))
     .subscribe();
 }
-setTimeout(()=>{if(!ready())schedule(true,0)},180);
+setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},80);
+setTimeout(()=>{ensureRaceNav();if(!ready())schedule(true,0)},180);
 setTimeout(()=>{if(!ready())schedule(true,0)},700);
 setTimeout(()=>{if(!ready())schedule(true,0)},1600);
 setTimeout(()=>{if(!ready())schedule(true,0)},3200);
 realtime();
-window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready};
+window.__catlakPlayerSheetHardRecovery={recover:()=>recover(true),refresh:refreshStable,ready,ensureRaceNav,setRaceView};
 })();
