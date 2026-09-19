@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v55-no-white-scroll-canvas -->
+<!-- clean-gm-runtime-v56-full-map-live-surfaces -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -21,6 +21,29 @@
     #cc-safe-boot h1{margin:0 0 10px;font-size:clamp(2rem,6vw,4rem)}
     #cc-safe-boot p{color:#91a7bb;line-height:1.6}
     #cc-safe-boot button{margin:6px;padding:10px 14px;border:1px solid #36536e;border-radius:8px;background:#10283a;color:#edf6ff;cursor:pointer}
+    html{background:#071019!important}
+    body{background-color:#071019!important;background-image:radial-gradient(circle at 50% 0,#132538 0,#071019 52%,#050a10 100%)!important;background-repeat:no-repeat!important;background-attachment:fixed!important;background-size:100vw 100vh!important}
+    #app{background:transparent!important}
+    #app:has(.nav [data-tab="gm"].on)>main,
+    #app:has(.nav [data-cc-map-tab].on)>main,
+    #app.cc-live-battle-only>main,
+    #app>main[data-cc-simple-live="1"],
+    #app>main[data-cc-map-page="1"]{width:100%!important;max-width:none!important;min-width:0!important;min-height:calc(100vh - 112px)!important;min-height:calc(100dvh - 112px)!important;margin:0 auto!important;padding:16px clamp(16px,2.4vw,42px) 38px!important;box-sizing:border-box!important;background:transparent!important}
+    #app:has(.nav [data-tab="gm"].on)>main [data-lcc-board],
+    #app>main[data-cc-simple-live="1"] [data-lcc-board]{width:100%!important;max-width:none!important;margin:0!important}
+    #app:has(.nav [data-tab="gm"].on)>main .lcc-columns,
+    #app>main[data-cc-simple-live="1"] .lcc-columns{width:100%!important;max-width:none!important}
+    #app:has(.nav [data-cc-map-tab].on)>main>.card,
+    #app>main[data-cc-map-page="1"]>.card{width:100%!important;max-width:none!important}
+    #app:has(.nav [data-cc-map-tab].on)>main .cc-map-gallery,
+    #app>main[data-cc-map-page="1"] .cc-map-gallery{grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr))!important;width:100%!important}
+    @media(max-width:760px){
+      #app:has(.nav [data-tab="gm"].on)>main,
+      #app:has(.nav [data-cc-map-tab].on)>main,
+      #app.cc-live-battle-only>main,
+      #app>main[data-cc-simple-live="1"],
+      #app>main[data-cc-map-page="1"]{padding:10px 10px 28px!important;min-height:calc(100dvh - 104px)!important}
+    }
   </style>
 </head>
 <body>
