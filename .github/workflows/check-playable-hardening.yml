@@ -129,7 +129,7 @@ jobs:
           ok('safety.battle.idempotent.open',"currentMain?.dataset.ccrBattle==='1'" in rooms and "#app .nav button[data-ccr-battle]" in rooms)
           ok('safety.sheet.core.fallback','coreSheetVisible' in sheet and "window.addEventListener('catlak:player-fast-ready'" in sheet)
           ok('safety.sheet.guest.no.loop',"6500,'character owner query'" in sheet and "setTimeout(()=>schedule(true,0),900)" not in sheet and 'data-cc-hard-wait-text' in sheet)
-          ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v43-race-visual-isolation' in html and '8500' in html)
+          ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v44-party-visual-membership' in html and '8500' in html)
           ok('safety.sheet.active.scope',".eq('owner_id',uid).eq('play_status','active')" in sheet)
           ok('safety.sheet.party.access','partyVisual,partyAllowed' in sheet and 'window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed' in sheet)
           ok('safety.sheet.character.derived.refresh',"'[data-cc-hard-stats]'" in sheet and "'[data-cc-hard-path]'" in sheet and "'[data-cc-hard-vampire]'" in sheet and "'[data-cc-hard-race]'" in sheet)
@@ -147,6 +147,8 @@ jobs:
           ok('safety.sheet.race.clean',"m.className=on?'cc-hard-race-view':''" in sheet)
           ok('safety.sheet.race.party.visual.hidden','main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-party-visual]{display:none!important}' in sheet)
           ok('safety.sheet.party.visual.placement',"selector==='[data-cc-hard-party-visual]'" in sheet and "stack.querySelector(':scope > .cc-hard-left')" in sheet)
+          ok('safety.sheet.party.visual.membership',"if(!allowed)return '';" in sheet and "cc_party_member===true" in sheet)
+          ok('safety.sheet.party.visual.legacy.quarantine','function purgeLegacyPartyVisual()' in sheet and '[data-cc-party-visual-card]{display:none!important}' in sheet)
           ok('safety.battle.no.stale.cache','main.replaceChildren()' in rooms and 'window.__catlakBattleRoomV3Test?.restore?.()' not in rooms)
           ok('safety.sheet.complete.details',"[],4500" in sheet and "{},[],4500" in sheet)
           ok('safety.sheet.realtime.no.takeover',"if(!sheetActive()||!(main()?.dataset.ccHardSheet==='1'&&ready()))return" in sheet)
@@ -183,7 +185,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v43-race-visual-isolation' in html)
+          ok('version.sheet','player-hard-recovery-v44-party-visual-membership' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
           ok('version.action','action-stability-v11-no-battle-app-rerender' in html)
 
