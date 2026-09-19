@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- clean-gm-runtime-v59-map-state-follows-nav -->
+<!-- clean-gm-runtime-v60-fast-party-visual -->
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -113,7 +113,7 @@
       document.documentElement.classList.add('cc-player-critical-pending');
       try{
         await Promise.all([
-          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v48-optimistic-party-add','player-hard-recovery'),
+          load('./player-sheet-hard-recovery.js?v=player-hard-recovery-v49-fast-party-visual','player-hard-recovery'),
           load('./room-system-patch.js?v=player-bg-v30-idempotent-battle','rooms'),
           load('./battle-room-v3-patch.js?v=battle-v23-character-bound-hp','battle-room-v3')
         ]);
@@ -203,7 +203,7 @@
     window.addEventListener('error',function(e){if(!started&&String(e&&e.message||'').trim())fail('Başlangıç hatası',e.message)},true);
     window.addEventListener('unhandledrejection',function(e){if(!started){var r=e&&e.reason;fail('Başlangıç hatası',r&&r.message?r.message:String(r||'Bilinmeyen hata'))}});
 
-    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-26-map-state-follows-nav';core.async=false;
+    var core=document.createElement('script');core.src='./browser-app.js?v=recovery-core-27-fast-party-visual-broadcast';core.async=false;
     core.onload=function(){started=true;clearTimeout(bootTimer);loadSafeAddons().catch(function(e){console.warn('CATLAK_ADDON_BOOT_FAILED',e);document.documentElement.classList.remove('cc-player-critical-pending');reveal()});revealFallback=setTimeout(function(){document.documentElement.classList.remove('cc-player-critical-pending');reveal()},6000)};
     core.onerror=function(){fail('Ana uygulama dosyası yüklenemedi','browser-app.js alınamadı. Tarayıcı önbelleğini temizleyip tekrar deneyebilirsin.')};
     document.body.appendChild(core);
