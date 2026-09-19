@@ -4,7 +4,7 @@ if(!GCS_APP)throw new Error('Çatlak Çağı kampanya durum odaları başlatıla
 const GCS_REP_KEY='catlak_cagi_faction_rep_v1';
 const GCS_WORLD_KEY='catlak_cagi_world_state_v1';
 const GCS_SEAL_KEY='ccgm_players';
-const GCS_PLACEHOLDER_ROUTE='campaign';
+const GCS_PLACEHOLDER_ROUTE='campaign'; // legacy route id; current GM center uses reputation/seals directly
 const GCS_ROUTES=[['reputation','İtibar Odası'],['seals','Mühür Odası']];
 const GCS_REPS=[
   ['altin','Altın Düzen','Düzen / kontrol'],
@@ -27,6 +27,7 @@ let gcsDeltaLockUntil=0;
 let gcsSealActionLockUntil=0;
 let gcsSealActionKey='';
 let gcsSealEditingId='';
+let gcsLocalDomUntil=0;
 
 const gcsTxt=e=>String(e?.textContent||'').trim();
 const gcsIsGM=()=>gcsTxt(GCS_APP.querySelector('.role'))==='GM';
@@ -91,8 +92,13 @@ function gcsRenderSealRows(editId=gcsSealEditingId,focus=false){
 }
 function gcsAddPlayer(){
   const input=GCS_APP.querySelector('#gcs-seal-name'),name=String(input?.value||'').trim();if(!name){gcsToast('Karakter adı gerekli.');return}
-  const rows=gcsPlayers(),player={id:gcsId(),name,siper:0,nefes:0,goz:0,gecit:0,esik:0,note:''};rows.push(player);gcsSave(GCS_SEAL_KEY,rows);
-  if(input)input.value='';gcsRenderSealRows('',false);try{input?.focus({preventScroll:true})}catch{input?.focus()}
+  const rows=gcsPlayers(),player={id:gcsId(),name,siper:0,nefes:0,goz:0,gecit:0,esik:0,note:''};rows.push(player);
+  gcsLocalDomUntil=performance.now()+700;gcsSave(GCS_SEAL_KEY,rows);
+  if(input)input.value='';
+  gcsRenderSealRows('',false);
+  gcsSetBarState();
+  try{input?.focus({preventScroll:true})}catch{input?.focus()}
+  gcsToast(name+' Mühür Odası’na eklendi.');
 }
 function gcsEditPlayer(id){if(!gcsPlayers().some(x=>String(x.id)===String(id)))return;gcsRenderSealRows(String(id),true)}
 function gcsSavePlayer(id){
@@ -109,34 +115,61 @@ function gcsDeletePlayer(id){
   gcsSave(GCS_SEAL_KEY,gcsPlayers().filter(x=>String(x.id)!==String(id)));if(String(gcsSealEditingId)===String(id))gcsSealEditingId='';gcsRenderSealRows('',false)
 }
 
+function gcsCenterBar(){return GCS_APP.querySelector('[data-gmc-centerbar],[data-gm2-centerbar]')}
 function gcsSetBarState(){
-  const bar=GCS_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
-  bar.querySelectorAll('[data-gm2-route],[data-gcs-route]').forEach(b=>b.classList.toggle('on',b.dataset.gcsRoute===gcsActive));
+  const bar=gcsCenterBar();if(!bar)return;
+  bar.querySelectorAll('[data-gmc-route],[data-gm2-route],[data-gcs-route]').forEach(b=>{
+    const r=String(b.dataset.gmcRoute||b.dataset.gm2Route||b.dataset.gcsRoute||'');
+    b.classList.toggle('on',r===gcsActive);
+  });
 }
 function gcsEnsureButtons(){
   if(!gcsIsGM())return;
-  const bar=GCS_APP.querySelector('[data-gm2-centerbar]');if(!bar)return;
-  const before=bar.querySelector('[data-gm2-route="characters"]');
-  for(const[route,label]of GCS_ROUTES){let b=bar.querySelector(`[data-gcs-route="${route}"]`);if(!b){b=document.createElement('button');b.type='button';b.dataset.gcsRoute=route;b.textContent=label;if(before)bar.insertBefore(b,before);else bar.appendChild(b)}}
+  const bar=gcsCenterBar();if(!bar)return;
+  for(const[route,label]of GCS_ROUTES){
+    let b=bar.querySelector(`[data-gmc-route="${route}"],[data-gm2-route="${route}"],[data-gcs-route="${route}"]`);
+    if(!b){b=document.createElement('button');b.type='button';b.dataset.gcsRoute=route;b.textContent=label;bar.appendChild(b)}
+  }
   gcsSetBarState();
 }
 function gcsReleaseOtherRooms(){window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();window.__catlakGmTools?.close?.();window.__catlakGmHubV2Test?.release?.()}
 function gcsOpen(route){
   if(!gcsIsGM()||!GCS_ROUTES.some(([k])=>k===route))return false;
-  gcsActive=route;window.__catlakCampaignStateRoom=route;gcsReleaseOtherRooms();window.__catlakGmCenterSelectedRoute=GCS_PLACEHOLDER_ROUTE;
-  const main=GCS_APP.querySelector('main');if(!main)return false;delete main.dataset.gmtTools;delete main.dataset.gmtSub;main.dataset.gcsRoute=route;
-  main.innerHTML=route==='reputation'?gcsRepPage():gcsSealPage();window.__catlakGmHubV2Test?.chrome?.();gcsEnsureButtons();gcsSetBarState();
-  requestAnimationFrame(()=>requestAnimationFrame(gcsSetBarState));setTimeout(gcsSetBarState,80);window.scrollTo({top:0,left:0,behavior:'auto'});return true
+  gcsActive=route;window.__catlakCampaignStateRoom=route;gcsReleaseOtherRooms();window.__catlakGmCenterSelectedRoute=route;
+  const main=GCS_APP.querySelector('main');if(!main)return false;
+  delete main.dataset.gmtTools;delete main.dataset.gmtSub;delete main.dataset.qolCreatureLibrary;main.dataset.gcsRoute=route;
+  main.innerHTML=route==='reputation'?gcsRepPage():gcsSealPage();
+  window.__catlakGmHubV2Test?.chrome?.();gcsEnsureButtons();gcsSetBarState();
+  requestAnimationFrame(()=>requestAnimationFrame(gcsSetBarState));setTimeout(gcsSetBarState,80);
+  window.scrollTo({top:0,left:0,behavior:'auto'});return true
 }
-function gcsClose(){gcsActive='';gcsSealEditingId='';window.__catlakCampaignStateRoom='';if(String(window.__catlakGmCenterSelectedRoute||'')===GCS_PLACEHOLDER_ROUTE)window.__catlakGmCenterSelectedRoute='';const m=GCS_APP.querySelector('main');if(m)delete m.dataset.gcsRoute;gcsEnsureButtons()}
+function gcsClose(){
+  const old=gcsActive;
+  gcsActive='';gcsSealEditingId='';window.__catlakCampaignStateRoom='';
+  if(String(window.__catlakGmCenterSelectedRoute||'')===String(old)||String(window.__catlakGmCenterSelectedRoute||'')===GCS_PLACEHOLDER_ROUTE)window.__catlakGmCenterSelectedRoute='';
+  const m=GCS_APP.querySelector('main');if(m)delete m.dataset.gcsRoute;gcsEnsureButtons()
+}
 
 function gcsMeterElement(kind,key,source){return source?.closest?.('[data-gcs-meter]')||GCS_APP.querySelector(`[data-gcs-meter="${kind}:${key}"]`)}
 function gcsPaintMeter(kind,key,value,source){const next=gcsClamp(value),meter=gcsMeterElement(kind,key,source),score=meter?.querySelector('.gcs-score'),marker=meter?.querySelector('.gcs-marker');if(score){const label=next>0?'+'+next:String(next);if(score.childNodes.length===1&&score.firstChild?.nodeType===3)score.firstChild.nodeValue=label;else score.textContent=label}if(marker)marker.style.left=((next+2)/4*100)+'%'}
 function gcsUpdateMeter(kind,key,delta,source){if(kind!=='rep'&&kind!=='world')return null;const storage=kind==='world'?GCS_WORLD_KEY:GCS_REP_KEY,state=gcsLoad(storage,{}),next=gcsClamp((Number(state[key])||0)+(Number(delta)||0));state[key]=next;gcsSave(storage,state);gcsPaintMeter(kind,key,next,source);return next}
 function gcsReset(kind){const world=kind==='world',label=world?'dünya durumu göstergelerini':'fraksiyon itibarlarını';if(!confirm(`Tüm ${label} 0 yapılsın mı?`))return;const rows=world?GCS_WORLD:GCS_REPS,state={};rows.forEach(([k])=>state[k]=0);gcsSave(world?GCS_WORLD_KEY:GCS_REP_KEY,state);rows.forEach(([k])=>gcsPaintMeter(world?'world':'rep',k,0))}
 
-function gcsMaintain(){if(!gcsIsGM()){gcsClose();return}if(gcsActive){const root=GCS_APP.querySelector(`[data-gcs-page="${gcsActive}"]`),selected=String(window.__catlakGmCenterSelectedRoute||'');if(!root||selected!==GCS_PLACEHOLDER_ROUTE){gcsActive='';gcsSealEditingId='';window.__catlakCampaignStateRoom=''}}gcsEnsureButtons()}
-function gcsQueue(){if(gcsQueued)return;gcsQueued=true;requestAnimationFrame(()=>{gcsQueued=false;gcsMaintain()})}
+function gcsMaintain(){
+  if(!gcsIsGM()){gcsClose();return}
+  if(gcsActive){
+    const root=GCS_APP.querySelector(`[data-gcs-page="${gcsActive}"]`);
+    let selected='';try{selected=String(window.__catlakGmCleanRouter?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){selected=String(window.__catlakGmCenterSelectedRoute||'')}
+    if(!root||selected&&selected!==gcsActive&&selected!==GCS_PLACEHOLDER_ROUTE){
+      gcsActive='';gcsSealEditingId='';window.__catlakCampaignStateRoom=''
+    }else{
+      window.__catlakGmCenterSelectedRoute=gcsActive;
+      gcsSetBarState()
+    }
+  }
+  gcsEnsureButtons()
+}
+function gcsQueue(){if(gcsQueued)return;gcsQueued=true;requestAnimationFrame(()=>{gcsQueued=false;if(performance.now()<gcsLocalDomUntil){gcsSetBarState();return}gcsMaintain()})}
 function gcsConsume(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 function gcsDeltaButton(target){return target?.closest?.('[data-gcs-page="reputation"] [data-gcs-delta]')||null}
 function gcsApplyDelta(button){return gcsUpdateMeter(button.dataset.gcsKind,button.dataset.gcsKey,button.dataset.gcsDelta,button)}
