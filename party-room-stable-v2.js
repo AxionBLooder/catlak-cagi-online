@@ -30,7 +30,22 @@ async function renderPlayer(){if(isGM())return;playerOpen=true;managerOpen=false
 function eat(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 window.addEventListener('click',e=>{const top=e.target?.closest?.('[data-prh-manager]');if(top){eat(e);if(claimGm())renderManager();return}const pr=e.target?.closest?.('[data-prh-party]');if(pr){eat(e);renderPlayer();return}const p=e.target?.closest?.('[data-prsv2-party]');if(p&&managerOpen){eat(e);setFlag(p.dataset.prsv2Party,PKEY,p.dataset.v==='1').catch(x=>toast(x?.message||String(x)));return}const foreign=e.target?.closest?.('.nav button:not([data-prh-manager]):not([data-prh-party]),[data-gmc-route]');if(foreign&&(managerOpen||playerOpen))close()},true);
 function scheduleNav(){if(navQueued)return;navQueued=true;requestAnimationFrame(()=>{navQueued=false;ensureNav()})}
-window.addEventListener('catlak:realtime-sync',e=>{const k=String(e.detail?.kind||'');if(k!=='party'&&k!=='character')return;if(managerOpen)scheduleManagerRefresh(90);else refreshPlayer()});
+window.addEventListener('catlak:realtime-sync',e=>{
+  const d=e.detail||{},k=String(d.kind||'');if(k!=='party'&&k!=='character')return;
+  if(managerOpen){scheduleManagerRefresh(90);return}
+  if(k==='party'){
+    const cid=String(d.characterId||d.character_id||''),mine=owned.find(c=>String(c.id)===cid);
+    if(mine&&(d.inParty===true||d.inParty===false)){
+      mine.data={...(mine.data||{}),[PKEY]:!!d.inParty};
+      playerParty=owned.some(c=>c.data?.[PKEY]===true);
+      if(playerOpen&&!playerParty){playerOpen=false;window.__catlakPartyRoomOwnsMain=false}
+      ensureNav();
+    }
+    setTimeout(()=>refreshPlayer(),420);
+    return
+  }
+  refreshPlayer()
+});
 new MutationObserver(rs=>{if(rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.nav,.role')||n.querySelector?.('.nav,.role')))))scheduleNav()}).observe(APP,{childList:true,subtree:true});
 S.channel('party-room-stable-v2').on('postgres_changes',{event:'*',schema:'public',table:'catlak_characters'},()=>{if(managerOpen)scheduleManagerRefresh(140);else refreshPlayer()}).subscribe();
 setTimeout(()=>{ensureNav();refreshPlayer()},250);
