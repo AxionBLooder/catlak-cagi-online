@@ -66,6 +66,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active [data-cc-hard-party-visual]{overflow:hidden!important;border-color:#6e5b2f!important;background:linear-gradient(135deg,#151a20,#17131c)!important}
   #app.cc-player-hard-active [data-cc-hard-party-visual] .cc-hard-party-frame{display:flex;align-items:center;justify-content:center;min-height:180px;border:1px solid var(--line);border-radius:12px;background:#050b14;padding:8px;margin-top:10px}
   #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block;width:auto;height:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px}
+  #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-party-visual-card]{display:none!important}
 
   @media(min-width:1181px){
     #app.cc-player-hard-active main[data-cc-hard-sheet="1"] .cc-character-stack{grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr)!important;gap:14px!important;max-width:1280px!important}
@@ -319,7 +320,7 @@ function vampHtml(c){
 }
 function partyVisualHtml(c,x){
   const p=x?.partyVisual,allowed=c?.data?.cc_party_member===true&&p?.image_url;
-  if(!allowed)return '<section class="card" data-cc-hard-party-visual hidden></section>';
+  if(!allowed)return '';
   const kind=p.kind==='npc'?'NPC':p.kind==='map'?'HARİTA':'PARTİ GÖRSELİ';
   return `<section class="card cc-party-show" data-cc-hard-party-visual>
     <div class="eyebrow">GM • ${kind}</div><h2>${esc(p.title||'Partiye Yansıtılan Görsel')}</h2>
@@ -360,8 +361,16 @@ function charHtml(raw,x){
     ${abilitiesHtml(c,x)}
   </aside></div>`;
 }
+function purgeLegacyPartyVisual(){
+  const m=main();if(!m||m.dataset.ccHardSheet!=='1')return 0;
+  const legacy=[...m.querySelectorAll('[data-cc-party-visual-card]')];
+  legacy.forEach(x=>x.remove());
+  return legacy.length;
+}
 function applyLayers(){
+  purgeLegacyPartyVisual();
   try{window.__catlakLiveGameEntryGuard?.repairPlayerSheet?.()}catch(_){}
+  purgeLegacyPartyVisual();
 }
 function freshStack(c,x){
   const box=document.createElement('div');box.innerHTML=charHtml(c,x).trim();return box.firstElementChild;
@@ -400,6 +409,7 @@ function patchStable(chars,x,kinds){
     selectors.forEach(sel=>replaceStableSection(stack,fresh,sel));
   }
   APP.querySelectorAll('.cc-desk-intro').forEach(x=>x.remove());
+  purgeLegacyPartyVisual();
   cacheSheet();
   window.scrollTo(sx,sy);requestAnimationFrame(()=>window.scrollTo(sx,sy));
 }
@@ -661,6 +671,7 @@ new MutationObserver(rs=>{
   ensureRaceNav();
   const m=main();
   if(m?.dataset.ccHardSheet!=='1'||!ready())return;
+  purgeLegacyPartyVisual();
   if(raceWanted&&!m.classList.contains('cc-hard-race-view'))setRaceView(true);
 }).observe(APP,{childList:true,subtree:true});
 let syncTimer=0,syncNeedsRecover=false;
