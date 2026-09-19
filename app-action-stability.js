@@ -7,7 +7,7 @@ const APP=document.getElementById('app');
 if(!APP)return;
 const txt=e=>String(e?.textContent||'').replace(/\s+/g,' ').trim();
 const role=()=>txt(APP.querySelector('.role'));
-let snap=null,restoreTimer=0,actionHoldUntil=0,stableActionUntil=0,allowAppRenderUntil=0;
+let snap=null,restoreTimer=0,restoreTimers=[],navigationEpoch=0,actionHoldUntil=0,stableActionUntil=0,allowAppRenderUntil=0;
 const previousPreserve=window.__catlakShouldPreserveCurrentView;
 
 function isNavigationButton(b){
@@ -24,11 +24,21 @@ function isStableAction(el){
   return b;
 }
 function isCommitButton(el){return isStableAction(el)}
+function navigationIntent(el){
+  return el?.closest?.('#app .nav button,#app [data-tab],#app [data-gmc-open],#app [data-gmc-route],#app [data-gmt-open],#app [data-gmt-route],#app [data-cc-management-room],#app [data-prh-manager],#app [data-prh-party],#app [data-ccr-battle],#app [data-ccr-hub],#app [data-ccr-hub-tab],#app [data-cc-hard-race-nav],#app [data-a="logout"],#app [data-a="auth"]')||null;
+}
 function isIntentionalAppExit(el){
-  const b=el?.closest?.('#app .nav button,#app [data-a="logout"],#app [data-a="auth"]');
+  const b=navigationIntent(el);
   if(!b)return false;
   if(b.matches?.('button[data-ccr-battle]'))return false;
   return true;
+}
+function cancelRestore(){
+  navigationEpoch++;
+  snap=null;
+  clearTimeout(restoreTimer);
+  restoreTimers.forEach(clearTimeout);
+  restoreTimers=[];
 }
 function permitAppRender(ms=1800){allowAppRenderUntil=Math.max(allowAppRenderUntil,Date.now()+ms)}
 function managedViewActive(){
@@ -74,10 +84,10 @@ function activeNav(){
 function take(){
   let gmRoute='';
   try{gmRoute=String(window.__catlakGmCleanRouter?.current?.()||window.__catlakGmCenterRouterCore?.current?.()||window.__catlakGmCenterSelectedRoute||'')}catch(_){}
-  snap={at:Date.now(),role:role(),gmRoute,nav:activeNav(),x:window.scrollX,y:window.scrollY};
+  snap={at:Date.now(),epoch:navigationEpoch,role:role(),gmRoute,nav:activeNav(),x:window.scrollX,y:window.scrollY};
 }
 function restore(){
-  if(!snap||Date.now()-snap.at>9500)return;
+  if(!snap||snap.epoch!==navigationEpoch||Date.now()-snap.at>9500)return;
   const s=snap;
   if(s.role==='GM'&&s.gmRoute){
     let current='';
@@ -93,8 +103,9 @@ function restore(){
 }
 function queueRestore(){
   clearTimeout(restoreTimer);
-  [0,40,120,280,600,1100,1900,3200,5200,7600].forEach(ms=>setTimeout(restore,ms));
-  restoreTimer=setTimeout(()=>{snap=null},9600);
+  restoreTimers.forEach(clearTimeout);
+  restoreTimers=[0,40,120,280,600,1100,1900,3200,5200,7600].map(ms=>setTimeout(restore,ms));
+  restoreTimer=setTimeout(()=>{snap=null;restoreTimers=[]},9600);
 }
 let battleFallback=0;
 function finishBattleEntry(){
@@ -102,11 +113,11 @@ function finishBattleEntry(){
 }
 window.addEventListener('pointerdown',e=>{
   if(e.button!=null&&e.button!==0)return;
-  if(isIntentionalAppExit(e.target))permitAppRender();
+  if(navigationIntent(e.target)){cancelRestore();permitAppRender()}
   if(isStableAction(e.target)){holdAction();take()}
 },true);
 window.addEventListener('click',e=>{
-  if(isIntentionalAppExit(e.target))permitAppRender();
+  if(navigationIntent(e.target)){cancelRestore();permitAppRender()}
   if(isStableAction(e.target)){holdAction();if(!snap)take();queueRestore()}
 },true);
 window.addEventListener('submit',e=>{
@@ -119,5 +130,5 @@ window.addEventListener('submit',e=>{
 },true);
 
 installAppRenderGuard();
-window.__catlakActionStability={snapshot:take,restore,finishBattleEntry,hold:holdAction,preserve:managedViewActive,isStableAction,permitAppRender,blockedAppRenders:()=>Number(window.__catlakActionAppRenderBlocked)||0};
+window.__catlakActionStability={snapshot:take,restore,cancelRestore,finishBattleEntry,hold:holdAction,preserve:managedViewActive,isStableAction,permitAppRender,blockedAppRenders:()=>Number(window.__catlakActionAppRenderBlocked)||0};
 })();
