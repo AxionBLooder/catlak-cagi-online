@@ -5,7 +5,7 @@ const GCS_REP_KEY='catlak_cagi_faction_rep_v1';
 const GCS_WORLD_KEY='catlak_cagi_world_state_v1';
 const GCS_SEAL_KEY='ccgm_players';
 const GCS_PLACEHOLDER_ROUTE='campaign'; // legacy route id; current GM center uses reputation/seals directly
-const GCS_ROUTES=[['reputation','İtibar Odası'],['seals','Mühür Odası']];
+const GCS_ROUTES=[['reputation','İtibar Odası']];
 const GCS_REPS=[
   ['altin','Altın Düzen','Düzen / kontrol'],
   ['meclis','İki Dünya Meclisi','Diplomasi / birlik'],
