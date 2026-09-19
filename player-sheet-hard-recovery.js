@@ -700,14 +700,16 @@ async function applyPartyMembershipSignal(detail){
 }
 window.addEventListener('catlak:realtime-sync',e=>{
   const kind=String(e?.detail?.kind||'');
-  if(kind!=='party')return;
+  if(kind!=='party'&&kind!=='party-fast')return;
   const detail=e.detail||{};
   window.__catlakPlayerPartyAllowedEarly=undefined;
   applyPartyMembershipSignal(detail).catch(err=>console.warn('CATLAK_PARTY_SIGNAL_APPLY',err));
   try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
   if(sheetActive()&&main()?.dataset.ccHardSheet==='1'&&ready()){
-    setTimeout(()=>queueSheetSync('character'),420);
-    setTimeout(()=>checkPartyMembershipLive(),700);
+    if(kind==='party'){
+      setTimeout(()=>queueSheetSync('character'),180);
+      setTimeout(()=>checkPartyMembershipLive(),320);
+    }
     return
   }
   if(sheetActive())schedule(false,40);
