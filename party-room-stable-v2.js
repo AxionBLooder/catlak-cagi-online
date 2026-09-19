@@ -24,16 +24,37 @@ function syncManagerSection(section,chars){const grid=section.querySelector('.pr
 async function renderManager(){if(!managerOpen||!isGM())return false;const token=++renderToken,main=APP.querySelector('main');if(!main)return false;let host=main.querySelector('[data-prsv2-page]');if(!host){main.innerHTML=`<div data-prsv2-page><section class="card"><div class="eyebrow">GM • PARTİ ODASI</div><h1>Parti Yönetimi</h1><p class="muted">Karakterleri aktif partiye al. Savaş başlatıldığında canlı parti üyeleri otomatik olarak savaşa eklenir.</p></section><section class="card"><div class="prsv2-loading">Karakterler yükleniyor…</div></section></div>`;host=main.querySelector('[data-prsv2-page]')}try{const chars=await getChars();if(!managerOpen||token!==renderToken||APP.querySelector('main')!==main)return false;host=main.querySelector('[data-prsv2-page]');if(!host)return false;const section=host.lastElementChild;if(!section)return false;syncManagerSection(section,chars);return true}catch(e){if(token===renderToken&&managerOpen){const l=main.querySelector('.prsv2-loading');if(l)l.textContent='Parti verisi alınamadı: '+(e?.message||String(e));toast('Parti Odası yüklenemedi: '+(e?.message||String(e)))}return false}}
 function applyPartyUi(id,value){const c=[...APP.querySelectorAll('[data-prsv2-char]')].find(n=>String(n.dataset.prsv2Char||'')===String(id));if(!c)return;const flag=c.querySelector('[data-prsv2-party-flag]')||c.querySelector('.prsv2-flags .prsv2-flag'),b=c.querySelector('[data-prsv2-party]');if(flag){flag.classList.toggle('on',!!value);flag.textContent=value?'✓ PARTİDE':'PARTİ DIŞI'}if(b){b.dataset.v=value?'0':'1';b.classList.toggle('danger',!!value);b.classList.toggle('primary',!value);b.textContent=value?'Partiden Çıkar':'Partiye Al'}}
 function scheduleManagerRefresh(ms=140){clearTimeout(managerRefreshTimer);managerRefreshTimer=setTimeout(()=>{if(managerOpen)renderManager().catch(e=>console.warn('PARTY_SOFT_REFRESH',e))},ms)}
-async function setFlag(id,key,value){if(busy)return;busy=true;const before=!value;applyPartyUi(id,value);try{const q=await S.from('catlak_characters').select('id,data').eq('id',id).maybeSingle();if(q.error)throw q.error;if(!q.data)throw new Error('Karakter bulunamadı.');const data={...(q.data.data||{}),[key]:value};const u=await S.from('catlak_characters').update({data}).eq('id',id);if(u.error)throw u.error;window.dispatchEvent(new CustomEvent('catlak:party-membership-changed',{detail:{characterId:String(id),inParty:!!value}}));window.__catlakRealtimeSync?.emit?.('party',{action:value?'add':'remove',characterId:String(id),inParty:!!value});toast(value?'Karakter partiye alındı.':'Karakter partiden çıkarıldı.')}catch(e){applyPartyUi(id,before);throw e}finally{busy=false}}
+async function setFlag(id,key,value){
+  if(busy)return;
+  busy=true;
+  const before=!value,payload={action:value?'add':'remove',characterId:String(id),inParty:!!value};
+  applyPartyUi(id,value);
+  // Player-facing optimistic signal: instant UI, without waking combat/room DB guards early.
+  window.__catlakRealtimeSync?.emit?.('party-fast',{...payload,optimistic:true});
+  try{
+    const q=await S.from('catlak_characters').select('id,data').eq('id',id).maybeSingle();
+    if(q.error)throw q.error;if(!q.data)throw new Error('Karakter bulunamadı.');
+    const data={...(q.data.data||{}),[key]:value};
+    const u=await S.from('catlak_characters').update({data}).eq('id',id);
+    if(u.error)throw u.error;
+    window.dispatchEvent(new CustomEvent('catlak:party-membership-changed',{detail:{characterId:String(id),inParty:!!value}}));
+    window.__catlakRealtimeSync?.emit?.('party',{...payload,optimistic:false});
+    toast(value?'Karakter partiye alındı.':'Karakter partiden çıkarıldı.');
+  }catch(e){
+    applyPartyUi(id,before);
+    window.__catlakRealtimeSync?.emit?.('party-fast',{action:before?'add':'remove',characterId:String(id),inParty:before,optimistic:false,rollback:true});
+    throw e
+  }finally{busy=false}
+}
 async function refreshPlayer(){if(isGM())return;try{const gs=await S.auth.getSession(),uid=gs.data?.session?.user?.id;if(!uid){owned=[];playerParty=false;ensureNav();return}const r=await S.from('catlak_characters').select('id,name,class_name,level,hp_current,hp_max,base_ac,data,owner_id,play_status').eq('owner_id',uid).eq('play_status','active');if(r.error)throw r.error;owned=r.data||[];playerParty=owned.some(c=>c.data?.[PKEY]===true);ensureNav()}catch(e){console.warn('PARTY_PLAYER_ACCESS',e)}}
 async function renderPlayer(){if(isGM())return;playerOpen=true;managerOpen=false;await refreshPlayer();if(!playerParty){playerOpen=false;ensureNav();return}const nav=APP.querySelector('.nav');nav?.querySelectorAll('button.on').forEach(x=>x.classList.remove('on'));ensureNav();const main=APP.querySelector('main');if(!main)return;main.innerHTML='<div data-prsv2-page><section class="card"><div class="eyebrow">◆ PARTİ ODASI</div><h1>Aktif Parti</h1></section><section class="card"><div class="prsv2-loading">Parti yükleniyor…</div></section></div>';try{const chars=(await getChars()).filter(c=>c.data?.[PKEY]===true),mine=new Set(owned.map(c=>String(c.id))),host=main.querySelector('[data-prsv2-page]');if(!host||!playerOpen)return;host.lastElementChild.innerHTML=`<div class="prsv2-grid">${chars.map(c=>`<article class="prsv2-card"><div class="eyebrow">${mine.has(String(c.id))?'SENİN KARAKTERİN':'PARTİ ÜYESİ'}</div><h3>${esc(c.name)}</h3><div class="muted">${esc(c.class_name||'')} • Seviye ${Number(c.level||1)}</div><div class="prsv2-flags"><span class="prsv2-flag on">HP ${Number(c.hp_current||0)}/${Number(c.hp_max||0)}</span><span class="prsv2-flag">AC ${Number(c.base_ac||0)}</span></div></article>`).join('')}</div>`}catch(e){toast('Parti Odası yüklenemedi: '+(e?.message||String(e)))}}
 function eat(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
 window.addEventListener('click',e=>{const top=e.target?.closest?.('[data-prh-manager]');if(top){eat(e);if(claimGm())renderManager();return}const pr=e.target?.closest?.('[data-prh-party]');if(pr){eat(e);renderPlayer();return}const p=e.target?.closest?.('[data-prsv2-party]');if(p&&managerOpen){eat(e);setFlag(p.dataset.prsv2Party,PKEY,p.dataset.v==='1').catch(x=>toast(x?.message||String(x)));return}const foreign=e.target?.closest?.('.nav button:not([data-prh-manager]):not([data-prh-party]),[data-gmc-route]');if(foreign&&(managerOpen||playerOpen))close()},true);
 function scheduleNav(){if(navQueued)return;navQueued=true;requestAnimationFrame(()=>{navQueued=false;ensureNav()})}
 window.addEventListener('catlak:realtime-sync',e=>{
-  const d=e.detail||{},k=String(d.kind||'');if(k!=='party'&&k!=='character')return;
+  const d=e.detail||{},k=String(d.kind||'');if(k!=='party'&&k!=='party-fast'&&k!=='character')return;
   if(managerOpen){scheduleManagerRefresh(90);return}
-  if(k==='party'){
+  if(k==='party'||k==='party-fast'){
     const cid=String(d.characterId||d.character_id||''),mine=owned.find(c=>String(c.id)===cid);
     if(mine&&(d.inParty===true||d.inParty===false)){
       mine.data={...(mine.data||{}),[PKEY]:!!d.inParty};
@@ -41,7 +62,7 @@ window.addEventListener('catlak:realtime-sync',e=>{
       if(playerOpen&&!playerParty){playerOpen=false;window.__catlakPartyRoomOwnsMain=false}
       ensureNav();
     }
-    setTimeout(()=>refreshPlayer(),420);
+    if(k==='party')setTimeout(()=>refreshPlayer(),180);
     return
   }
   refreshPlayer()
