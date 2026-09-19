@@ -63,9 +63,8 @@ if(!document.getElementById('cc-player-hard-ui-style')){
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]>.grid,
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-abilities]>.grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
   #app.cc-player-hard-active main.cc-hard-race-view[data-cc-hard-sheet="1"] [data-cc-hard-race]>article.power{margin-top:10px!important}
-  #app.cc-player-hard-active [data-cc-hard-party-visual]{overflow:hidden!important;border-color:#6e5b2f!important;background:linear-gradient(135deg,#151a20,#17131c)!important}
-  #app.cc-player-hard-active [data-cc-hard-party-visual] .cc-hard-party-frame{display:flex;align-items:center;justify-content:center;min-height:180px;border:1px solid var(--line);border-radius:12px;background:#050b14;padding:8px;margin-top:10px}
-  #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block;width:auto;height:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px}
+  #app.cc-player-hard-active [data-cc-hard-party-visual]{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+  #app.cc-player-hard-active [data-cc-hard-party-visual] img{display:block!important;width:auto!important;height:auto!important;max-width:100%!important;max-height:72vh!important;object-fit:contain!important;border-radius:10px!important;background:#03070c!important;margin:0 auto!important}
   #app.cc-player-hard-active main[data-cc-hard-sheet="1"] [data-cc-party-visual-card]{display:none!important}
 
   @media(min-width:1181px){
@@ -85,6 +84,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
 let busy=false,queued=false,lastRun=0,realtimeStarted=false,stableBusy=false,stableAgain=false;
 let cachedSheetHtml='',cachedSheetAt=0;
+let membershipWatchBusy=false,lastPartyMembershipSig='';
 const stableKinds=new Set();
 
 const txt=e=>String(e?.textContent||'').trim();
@@ -102,6 +102,13 @@ const blankPlayerSurface=()=>{const m=main();if(!m)return true;return !ready()&&
 const ready=()=>main()?.dataset.ccHardSheet==='1'&&!!APP.querySelector('main .cc-character-stack[data-cc-hard-stack] section.hero');
 let sheetWantedUntil=0;
 const sheetActive=()=>isPlayer()&&(Date.now()<sheetWantedUntil||!!sheetButton()?.classList.contains('on')||!!raceButton()?.classList.contains('on'));
+function partyMembershipSig(chars){
+  return (chars||[]).map(c=>String(c.id||'')+':'+(c?.data?.cc_party_member===true?'1':'0')).sort().join('|');
+}
+function rememberPartyMembership(chars){
+  lastPartyMembershipSig=partyMembershipSig(chars);
+  window.__catlakPlayerPartyAllowedEarly=(chars||[]).some(c=>c?.data?.cc_party_member===true);
+}
 function ensureRaceNav(){
   if(!isPlayer())return null;
   const nav=APP.querySelector('.nav'),sheet=sheetButton();if(!nav||!sheet)return null;
@@ -321,12 +328,7 @@ function vampHtml(c){
 function partyVisualHtml(c,x){
   const p=x?.partyVisual,allowed=c?.data?.cc_party_member===true&&p?.image_url;
   if(!allowed)return '';
-  const kind=p.kind==='npc'?'NPC':p.kind==='map'?'HARİTA':'PARTİ GÖRSELİ';
-  return `<section class="card cc-party-show" data-cc-hard-party-visual>
-    <div class="eyebrow">GM • ${kind}</div><h2>${esc(p.title||'Partiye Yansıtılan Görsel')}</h2>
-    <div class="cc-hard-party-frame"><img src="${esc(p.image_url)}" alt="${esc(p.title||'Parti görseli')}" loading="lazy"></div>
-    ${p.note?`<p class="muted">${esc(p.note)}</p>`:''}
-  </section>`;
+  return `<div data-cc-hard-party-visual><img src="${esc(p.image_url)}" alt="${esc(p.title||'Parti görseli')}" loading="eager" decoding="async"></div>`;
 }
 function equipmentHtml(c,x){
   const itemMap=new Map((x.items||[]).map(i=>[String(i.id),i]));
@@ -423,6 +425,7 @@ async function refreshStable(kind='all'){
     const S=await getRuntime();if(!S)return false;
     const ses=await getSession(S);if(!ses?.user?.id)return false;
     const chars=await ownedRows(S,ses.user.id);if(!chars.length)return false;
+    rememberPartyMembership(chars);
     const x=await extras(S,chars);if(!sheetActive()||main()?.dataset.ccHardSheet!=='1')return false;
     patchStable(chars,x,kinds);
     return true;
@@ -584,6 +587,7 @@ async function recover(force=false){
     // Keep a working core sheet visible. Only show one stable loading card when the surface is truly blank.
     if(!hadReady&&!coreSheetVisible())showWaiting('Karakter bilgileri yükleniyor…');
     const chars=await ownedRows(S,ses.user.id);
+    rememberPartyMembership(chars);
     if(!chars.length){
       if(!hadReady&&!coreSheetVisible())showWaiting('Karakter bağlantısı bulunamadı. Tekrar Dene ile yeniden yükleyebilirsin.');
       return hadReady||coreSheetVisible();
@@ -704,6 +708,28 @@ function queueSheetSync(kind){
     refreshStable('');
   },120);
 }
+async function checkPartyMembershipLive(){
+  if(membershipWatchBusy||!isPlayer()||!sheetActive()||document.visibilityState==='hidden')return false;
+  membershipWatchBusy=true;
+  try{
+    const S=await getRuntime();if(!S)return false;
+    const ses=await getSession(S),uid=ses?.user?.id;if(!uid)return false;
+    const r=await S.from('catlak_characters').select('id,data').eq('owner_id',uid).eq('play_status','active').order('created_at',{ascending:true});
+    if(r.error)throw r.error;
+    const rows=r.data||[],sig=partyMembershipSig(rows);
+    if(!lastPartyMembershipSig){rememberPartyMembership(rows);return false}
+    if(sig===lastPartyMembershipSig)return false;
+    rememberPartyMembership(rows);
+    try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
+    if(main()?.dataset.ccHardSheet==='1'&&ready())await refreshStable('character');
+    else schedule(false,20);
+    window.dispatchEvent(new CustomEvent('catlak:player-party-membership-live',{detail:{inParty:rows.some(c=>c?.data?.cc_party_member===true)}}));
+    return true;
+  }catch(e){console.warn('CATLAK_PARTY_MEMBERSHIP_WATCH',e);return false}
+  finally{membershipWatchBusy=false}
+}
+setInterval(()=>{checkPartyMembershipLive()},1200);
+window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(checkPartyMembershipLive,80)});
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
   S.channel('cc-player-hard-sheet-v3')
