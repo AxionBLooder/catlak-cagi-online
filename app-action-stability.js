@@ -20,7 +20,7 @@ function isNavigationButton(b){
 function isStableAction(el){
   const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b)||isNavigationButton(b))return null;
   if(b.closest('main[data-ccr-battle="1"],main.ccr-battle-surface'))return null;
-  if(b.matches('[data-cc-party-push],[data-cc-party-clear],[data-vamf-party],[data-ccq-party-other],[data-sw-party]'))return null;
+  if(b.matches('[data-cc-party-push],[data-cc-party-clear],[data-vamf-party],[data-ccq-party-other],[data-sw-party],[data-gcs-add-player],[data-gcs-edit-player],[data-gcs-save-player],[data-gcs-cancel-player],[data-gcs-delete-player],[data-gcs-delta],[data-gcs-reset]'))return null;
   // Managed battle and map-sharing actions preserve their own DOM/viewport.
   return b;
 }
