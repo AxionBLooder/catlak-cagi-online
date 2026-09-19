@@ -20,7 +20,8 @@ function isNavigationButton(b){
 function isStableAction(el){
   const b=el?.closest?.('button,[role="button"]');if(!b||!APP.contains(b)||isNavigationButton(b))return null;
   if(b.closest('main[data-ccr-battle="1"],main.ccr-battle-surface'))return null;
-  // Managed battle actions already preserve their own DOM and viewport.
+  if(b.matches('[data-cc-party-push],[data-cc-party-clear],[data-vamf-party],[data-ccq-party-other],[data-sw-party]'))return null;
+  // Managed battle and map-sharing actions preserve their own DOM/viewport.
   return b;
 }
 function isCommitButton(el){return isStableAction(el)}
@@ -121,6 +122,11 @@ window.addEventListener('pointerdown',e=>{
 window.addEventListener('click',e=>{
   if(navigationIntent(e.target)){cancelRestore();permitAppRender()}
   if(isStableAction(e.target)){holdAction();if(!snap)take();queueRestore()}
+},true);
+window.addEventListener('wheel',()=>{if(snap||restoreTimers.length)cancelRestore()},{capture:true,passive:true});
+window.addEventListener('touchmove',()=>{if(snap||restoreTimers.length)cancelRestore()},{capture:true,passive:true});
+window.addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(e.key)&&(snap||restoreTimers.length))cancelRestore();
 },true);
 window.addEventListener('submit',e=>{
   const form=e.target;
