@@ -31,7 +31,7 @@ jobs:
           rooms=Path('room-system-patch.js').read_text(encoding='utf-8')
 
           checks={
-            'sheet version':'player-hard-recovery-v42-sheet-audit' in html,
+            'sheet version':'player-hard-recovery-v43-race-visual-isolation' in html,
             'active character scope':".eq('owner_id',uid).eq('play_status','active')" in sheet,
             'party access carried':'partyVisual,partyAllowed' in sheet,
             'character derived refresh':"'[data-cc-hard-stats]'" in sheet and "'[data-cc-hard-path]'" in sheet and "'[data-cc-hard-vampire]'" in sheet and "'[data-cc-hard-race]'" in sheet,
