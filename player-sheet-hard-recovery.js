@@ -84,7 +84,7 @@ if(!document.getElementById('cc-player-hard-ui-style')){
 const STATS=['STR','DEX','CON','INT','WIS','CHA'];
 let busy=false,queued=false,lastRun=0,realtimeStarted=false,stableBusy=false,stableAgain=false;
 let cachedSheetHtml='',cachedSheetAt=0;
-let membershipWatchBusy=false,lastPartyMembershipSig='';
+let membershipWatchBusy=false,lastPartyMembershipSig='',partyMemberIds=new Set();
 const stableKinds=new Set();
 
 const txt=e=>String(e?.textContent||'').trim();
@@ -107,7 +107,8 @@ function partyMembershipSig(chars){
 }
 function rememberPartyMembership(chars){
   lastPartyMembershipSig=partyMembershipSig(chars);
-  window.__catlakPlayerPartyAllowedEarly=(chars||[]).some(c=>c?.data?.cc_party_member===true);
+  partyMemberIds=new Set((chars||[]).filter(c=>c?.data?.cc_party_member===true).map(c=>String(c.id||'')));
+  window.__catlakPlayerPartyAllowedEarly=partyMemberIds.size>0;
 }
 function ensureRaceNav(){
   if(!isPlayer())return null;
@@ -670,6 +671,34 @@ window.addEventListener('catlak:data-refreshed',e=>{
   }
   schedule(false,100);
 });
+function applyPartyVisualFast(visual){
+  if(!isPlayer()||!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return false;
+  const show=!!visual?.image_url;
+  APP.querySelectorAll('main[data-cc-hard-sheet="1"] .cc-character-stack[data-cc-hard-stack]').forEach(stack=>{
+    const cid=String(stack.dataset.ccHardStack||''),allowed=partyMemberIds.has(cid);
+    const old=stack.querySelector('[data-cc-hard-party-visual]');
+    if(!show||!allowed){old?.remove();return}
+    const holder=document.createElement('div');
+    holder.innerHTML=partyVisualHtml({data:{cc_party_member:true}},{partyVisual:visual}).trim();
+    const next=holder.firstElementChild;if(!next)return;
+    const img=next.querySelector('img');if(img){img.loading='eager';img.decoding='async';try{img.fetchPriority='high'}catch(_){}}
+    if(old)old.replaceWith(next);
+    else stack.querySelector(':scope > .cc-hard-left')?.appendChild(next);
+  });
+  purgeLegacyPartyVisual();cacheSheet();
+  return true;
+}
+async function refreshPartyVisualOnly(payload){
+  if(!isPlayer())return false;
+  const event=String(payload?.eventType||payload?.event||'').toUpperCase();
+  const row=payload?.new&&typeof payload.new==='object'?payload.new:null;
+  if(event==='DELETE')return applyPartyVisualFast(null);
+  if(row&&('image_url'in row))return applyPartyVisualFast(row);
+  const S=await getRuntime();if(!S)return false;
+  const vr=await S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle();
+  if(vr.error)throw vr.error;
+  return applyPartyVisualFast(vr.data||null);
+}
 async function applyPartyMembershipSignal(detail){
   const cid=String(detail?.characterId||detail?.character_id||'');
   const inParty=detail?.inParty===true||detail?.in_party===true||String(detail?.action||'')==='add';
@@ -677,10 +706,12 @@ async function applyPartyMembershipSignal(detail){
   const stack=APP.querySelector(`main[data-cc-hard-sheet="1"] .cc-character-stack[data-cc-hard-stack="${CSS.escape(cid)}"]`);
   if(!stack)return false;
   if(!inParty){
+    partyMemberIds.delete(cid);
     stack.querySelector('[data-cc-hard-party-visual]')?.remove();
     purgeLegacyPartyVisual();cacheSheet();
     return true;
   }
+  partyMemberIds.add(cid);
   const S=await getRuntime();if(!S)return false;
   const vr=await S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle();
   if(vr.error)throw vr.error;
@@ -700,8 +731,12 @@ async function applyPartyMembershipSignal(detail){
 }
 window.addEventListener('catlak:realtime-sync',e=>{
   const kind=String(e?.detail?.kind||'');
-  if(kind!=='party'&&kind!=='party-fast')return;
   const detail=e.detail||{};
+  if(kind==='visual'||kind==='party-visual'){
+    applyPartyVisualFast(detail.visual||null);
+    return
+  }
+  if(kind!=='party'&&kind!=='party-fast')return;
   window.__catlakPlayerPartyAllowedEarly=undefined;
   applyPartyMembershipSignal(detail).catch(err=>console.warn('CATLAK_PARTY_SIGNAL_APPLY',err));
   try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
@@ -768,7 +803,7 @@ async function realtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_conditions'},()=>queueSheetSync('conditions'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_character_abilities'},()=>queueSheetSync('abilities'))
     .on('postgres_changes',{event:'*',schema:'public',table:'catlak_abilities'},()=>queueSheetSync('abilities'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},()=>queueSheetSync('visual'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'catlak_party_visual'},payload=>{refreshPartyVisualOnly(payload).catch(err=>{console.warn('CATLAK_PARTY_VISUAL_FAST',err);queueSheetSync('visual')})})
     .subscribe();
 }
 setTimeout(()=>{
