@@ -36,6 +36,8 @@ function isIntentionalAppExit(el){
 function cancelRestore(){
   navigationEpoch++;
   snap=null;
+  actionHoldUntil=0;
+  stableActionUntil=0;
   clearTimeout(restoreTimer);
   restoreTimers.forEach(clearTimeout);
   restoreTimers=[];
