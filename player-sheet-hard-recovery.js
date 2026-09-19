@@ -670,16 +670,44 @@ window.addEventListener('catlak:data-refreshed',e=>{
   }
   schedule(false,100);
 });
+async function applyPartyMembershipSignal(detail){
+  const cid=String(detail?.characterId||detail?.character_id||'');
+  const inParty=detail?.inParty===true||detail?.in_party===true||String(detail?.action||'')==='add';
+  if(!cid||!sheetActive()||main()?.dataset.ccHardSheet!=='1'||!ready())return false;
+  const stack=APP.querySelector(`main[data-cc-hard-sheet="1"] .cc-character-stack[data-cc-hard-stack="${CSS.escape(cid)}"]`);
+  if(!stack)return false;
+  if(!inParty){
+    stack.querySelector('[data-cc-hard-party-visual]')?.remove();
+    purgeLegacyPartyVisual();cacheSheet();
+    return true;
+  }
+  const S=await getRuntime();if(!S)return false;
+  const vr=await S.from('catlak_party_visual').select('*').eq('singleton',true).maybeSingle();
+  if(vr.error)throw vr.error;
+  const visual=vr.data;
+  if(!visual?.image_url)return true;
+  const holder=document.createElement('div');
+  holder.innerHTML=partyVisualHtml({data:{cc_party_member:true}},{partyVisual:visual}).trim();
+  const next=holder.firstElementChild;if(!next)return true;
+  const old=stack.querySelector('[data-cc-hard-party-visual]');
+  if(old)old.replaceWith(next);
+  else{
+    const left=stack.querySelector(':scope > .cc-hard-left');
+    if(left)left.appendChild(next);
+  }
+  purgeLegacyPartyVisual();cacheSheet();
+  return true;
+}
 window.addEventListener('catlak:realtime-sync',e=>{
   const kind=String(e?.detail?.kind||'');
   if(kind!=='party')return;
-  // GM party add/remove is broadcast after the DB update completes.
-  // Refresh the live player sheet directly instead of waiting for postgres_changes/F5.
+  const detail=e.detail||{};
   window.__catlakPlayerPartyAllowedEarly=undefined;
+  applyPartyMembershipSignal(detail).catch(err=>console.warn('CATLAK_PARTY_SIGNAL_APPLY',err));
   try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
   if(sheetActive()&&main()?.dataset.ccHardSheet==='1'&&ready()){
-    queueSheetSync('character');
-    setTimeout(()=>queueSheetSync('character'),180);
+    setTimeout(()=>queueSheetSync('character'),420);
+    setTimeout(()=>checkPartyMembershipLive(),700);
     return
   }
   if(sheetActive())schedule(false,40);
