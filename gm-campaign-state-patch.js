@@ -34,7 +34,7 @@ const gcsIsGM=()=>gcsTxt(GCS_APP.querySelector('.role'))==='GM';
 const gcsEsc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const gcsToast=x=>{const t=document.querySelector('#toast');if(!t)return;t.textContent=String(x);t.classList.remove('hidden');clearTimeout(gcsToast.t);gcsToast.t=setTimeout(()=>t.classList.add('hidden'),3200)};
 function gcsLoad(key,fallback){try{const raw=localStorage.getItem(key);return raw==null?fallback:JSON.parse(raw)}catch{return fallback}}
-function gcsSave(key,value){localStorage.setItem(key,JSON.stringify(value))}
+function gcsSave(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch(e){console.error('CATLAK_GCS_SAVE',e);gcsToast('Mühür kaydı tarayıcıya yazılamadı.');return false}}
 function gcsId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function gcsClamp(v){return Math.max(-2,Math.min(2,Number(v)||0))}
 function gcsClampSeal(v){return Math.max(0,Math.min(3,Number(v)||0))}
@@ -91,14 +91,18 @@ function gcsRenderSealRows(editId=gcsSealEditingId,focus=false){
   return true;
 }
 function gcsAddPlayer(){
-  const input=GCS_APP.querySelector('#gcs-seal-name'),name=String(input?.value||'').trim();if(!name){gcsToast('Karakter adı gerekli.');return}
+  const page=GCS_APP.querySelector('[data-gcs-page="seals"]');if(!page)return false;
+  const input=page.querySelector('#gcs-seal-name'),name=String(input?.value||'').trim();if(!name){gcsToast('Karakter adı gerekli.');return false}
   const rows=gcsPlayers(),player={id:gcsId(),name,siper:0,nefes:0,goz:0,gecit:0,esik:0,note:''};rows.push(player);
-  gcsLocalDomUntil=performance.now()+700;gcsSave(GCS_SEAL_KEY,rows);
+  gcsLocalDomUntil=performance.now()+1200;
+  if(!gcsSave(GCS_SEAL_KEY,rows))return false;
   if(input)input.value='';
-  gcsRenderSealRows('',false);
+  const ok=gcsRenderSealRows('',false);
+  gcsActive='seals';window.__catlakCampaignStateRoom='seals';window.__catlakGmCenterSelectedRoute='seals';
   gcsSetBarState();
   try{input?.focus({preventScroll:true})}catch{input?.focus()}
   gcsToast(name+' Mühür Odası’na eklendi.');
+  return ok
 }
 function gcsEditPlayer(id){if(!gcsPlayers().some(x=>String(x.id)===String(id)))return;gcsRenderSealRows(String(id),true)}
 function gcsSavePlayer(id){
@@ -132,16 +136,18 @@ function gcsEnsureButtons(){
   }
   gcsSetBarState();
 }
-function gcsReleaseOtherRooms(){window.__catlakQualityOfLifeTest?.closeCreatureLibrary?.();window.__catlakGmTools?.close?.();window.__catlakGmHubV2Test?.release?.()}
 function gcsOpen(route){
   if(!gcsIsGM()||!GCS_ROUTES.some(([k])=>k===route))return false;
-  gcsActive=route;window.__catlakCampaignStateRoom=route;gcsReleaseOtherRooms();window.__catlakGmCenterSelectedRoute=route;
   const main=GCS_APP.querySelector('main');if(!main)return false;
-  delete main.dataset.gmtTools;delete main.dataset.gmtSub;delete main.dataset.qolCreatureLibrary;main.dataset.gcsRoute=route;
+  if(gcsActive===route&&main.querySelector(`[data-gcs-page="${route}"]`)){
+    window.__catlakCampaignStateRoom=route;window.__catlakGmCenterSelectedRoute=route;gcsEnsureButtons();gcsSetBarState();return true
+  }
+  gcsActive=route;window.__catlakCampaignStateRoom=route;window.__catlakGmCenterSelectedRoute=route;
+  delete main.dataset.gmtTools;delete main.dataset.gmtSub;delete main.dataset.qolCreatureLibrary;delete main.dataset.ccManagementV2;main.dataset.gcsRoute=route;
   main.innerHTML=route==='reputation'?gcsRepPage():gcsSealPage();
-  window.__catlakGmHubV2Test?.chrome?.();gcsEnsureButtons();gcsSetBarState();
+  gcsEnsureButtons();gcsSetBarState();
   requestAnimationFrame(()=>requestAnimationFrame(gcsSetBarState));setTimeout(gcsSetBarState,80);
-  window.scrollTo({top:0,left:0,behavior:'auto'});return true
+  return true
 }
 function gcsClose(){
   const old=gcsActive;
