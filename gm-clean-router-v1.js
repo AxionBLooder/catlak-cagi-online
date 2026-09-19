@@ -18,12 +18,17 @@ let ability={editId:'',cache:{abilities:[],chars:[],assignments:[]},cacheAt:0,lo
 let characterCache=[],characterCacheAt=0,characterLoading=null,characterLocalUntil=0;
 const GMC_CACHE_MS=15000;
 const inviteLinks=new Map();
+const GMC_SEAL_KEY='ccgm_players';
+const GMC_SEALS=[['siper','Siper'],['nefes','Nefes'],['goz','Göz'],['gecit','Geçit'],['esik','Eşik']];
+let sealEditId='';
+
 
 if(!document.querySelector('#gmc-style')){const s=document.createElement('style');s.id='gmc-style';s.textContent=`
 #app.gmc-gm .nav [data-tab="items"],#app.gmc-gm .nav [data-tab="races"],#app.gmc-gm .nav [data-tab="builder"],#app.gmc-gm .nav [data-tab="characters"],#app.gmc-gm .nav [data-tab="rules"],#app.gmc-gm .nav [data-tab="account"],#app.gmc-gm .nav [data-cc-stats-tab],#app.gmc-gm .nav [data-gmt-open]{display:none!important}
 #app.gmc-gm .nav [data-gmc-open].on{border-color:var(--gold)!important;color:var(--gold)!important;background:#101e33!important}
 .gmc-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 auto 14px;max-width:1540px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:#08121dcc;position:relative;z-index:4}.gmc-label{font-size:.7rem;letter-spacing:.12em;font-weight:900;color:var(--gold);margin-right:4px}.gmc-bar button.on{border-color:var(--gold);color:var(--gold);background:#18170f}
 .gmc-page{max-width:1540px;margin:0 auto}.gmc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.gmc-two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:14px;align-items:start}.gmc-stack{display:flex;flex-direction:column;gap:12px}.gmc-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#081522}.gmc-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.gmc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.gmc-meta{font-size:.82rem;color:var(--muted);line-height:1.45}.gmc-form{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:9px;align-items:end}.gmc-form .wide{grid-column:span 2}.gmc-form textarea{min-height:76px}.gmc-catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:9px}.gmc-pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:.72rem;margin:3px 4px 3px 0}.gmc-assignment{display:flex;justify-content:space-between;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.gmc-invite{margin-top:10px;padding:9px;border:1px solid #496781;border-radius:10px;background:#091827}.gmc-invite input{width:100%;margin-top:6px}.gmc-note textarea{min-height:70px}.gmc-statuses{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.gmc-linked{color:#91d7ff!important;border-color:#367aa0!important;background:#0b2232!important}.gmc-online{color:#a7f3c8!important;border-color:#357a58!important;background:#0c2b20!important}.gmc-offline{color:#aeb8c5!important;border-color:#485563!important;background:#141a22!important}
+.gmc-seal-page{max-width:1540px;margin:0 auto}.gmc-seal-add{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:8px;align-items:end}.gmc-seal-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:13px}.gmc-seal-table{width:100%;border-collapse:collapse;min-width:980px;background:#07131e}.gmc-seal-table th,.gmc-seal-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}.gmc-seal-table th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#d2b86f;background:#0b1722;position:sticky;top:0}.gmc-seal-table select,.gmc-seal-table input{min-width:72px;width:100%}.gmc-seal-table td.ready{background:#26351d}.gmc-seal-actions{display:flex;gap:6px;align-items:center;white-space:nowrap}.gmc-seal-value{display:inline-flex;min-width:30px;min-height:30px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;font-weight:900}.gmc-seal-empty{padding:28px;text-align:center;color:var(--muted)}
 @media(max-width:900px){.gmc-two{grid-template-columns:1fr}.gmc-form{grid-template-columns:1fr 1fr}.gmc-form .wide{grid-column:span 2}}@media(max-width:620px){.gmc-form{grid-template-columns:1fr}.gmc-form .wide{grid-column:auto}.gmc-bar .gmc-label{width:100%}.gmc-bar button{flex:1 1 calc(50% - 6px)}}
 `;document.head.appendChild(s)}
 
@@ -88,6 +93,67 @@ async function loadCharacters(force=false){if(!force&&characterCacheAt&&Date.now
 async function renderManagement(force=false){const token=++renderToken,main=APP.querySelector('main');if(!main)return;const cached=!force&&characterCacheAt&&Date.now()-characterCacheAt<GMC_CACHE_MS;if(cached&&characterCache){const rows=characterCache,active=rows.filter(x=>x.play_status==='active'),prepared=rows.filter(x=>x.play_status==='prepared'),ordered=[...active,...prepared,...rows.filter(x=>!['active','prepared'].includes(String(x.play_status||'')))];main.innerHTML=`<div class="gmc-page" data-gmc-owned="characters"><section class="card"><div class="eyebrow">GM • YÖNETİM ODASI</div><h1>Karakter Yönetimi</h1><p class="muted">Oluşturduğun bütün karakterler burada görünür. Hazır karaktere Oyuncu Daveti, bağlı karaktere Yeniden Bağlama Linki üret.</p><div class="actions"><button type="button" class="primary" data-gmc-action="open-builder">+ Yeni Karakter</button></div></section><section class="card"><div class="section-title"><div><div class="eyebrow">KARAKTERLER</div><h2>${rows.length} Karakter</h2></div></div>${ordered.length?`<div class="gmc-grid">${ordered.map(managementCard).join('')}</div>`:'<div class="empty">Henüz karakter yok.</div>'}</section></div>`;gmViewReady();setTimeout(()=>renderManagement(true),0);return}try{const rows=await loadCharacters(force);if(token!==renderToken||route!=='characters')return;const active=rows.filter(x=>x.play_status==='active'),prepared=rows.filter(x=>x.play_status==='prepared'),ordered=[...active,...prepared,...rows.filter(x=>!['active','prepared'].includes(String(x.play_status||'')))];main.innerHTML=`<div class="gmc-page" data-gmc-owned="characters"><section class="card"><div class="eyebrow">GM • YÖNETİM ODASI</div><h1>Karakter Yönetimi</h1><p class="muted">Oluşturduğun bütün karakterler burada görünür. Hazır karaktere Oyuncu Daveti, bağlı karaktere Yeniden Bağlama Linki üret.</p><div class="actions"><button type="button" class="primary" data-gmc-action="open-builder">+ Yeni Karakter</button></div></section><section class="card"><div class="section-title"><div><div class="eyebrow">KARAKTERLER</div><h2>${rows.length} Karakter</h2></div></div>${ordered.length?`<div class="gmc-grid">${ordered.map(managementCard).join('')}</div>`:'<div class="empty">Henüz karakter yok.</div>'}</section></div>`;gmViewReady()}catch(e){if(token===renderToken)main.innerHTML=`<section class="card"><h2>Karakter Yönetimi açılamadı</h2><p class="muted">${esc(e?.message||String(e))}</p></section>`;gmViewReady()}}
 async function characterAction(type,b){if(busy)return;busy=true;try{const id=b.dataset.id;if(type==='open-builder'){routeTo('builder');return}if(type==='char-level'){const q=await S.from('catlak_characters').select('id,level').eq('id',id).maybeSingle();if(q.error)throw q.error;const level=Math.max(1,Math.min(20,num(q.data?.level)+num(b.dataset.d)));characterLocalUntil=Date.now()+900;const r=await S.rpc('catlak_set_character_level',{p_character_id:id,p_level:level});if(r.error)throw r.error;const row=characterCache.find(x=>String(x.id)===String(id));if(row)row.level=level;characterCacheAt=Date.now();const readout=APP.querySelector(`[data-gmc-level-readout="${CSS.escape(String(id))}"]`);if(readout)readout.textContent=String(level);toast(`Seviye ${level} oldu.`);return}if(type==='char-hp'){const q=await S.from('catlak_characters').select('id,hp_current,hp_max').eq('id',id).maybeSingle();if(q.error)throw q.error;const hp=Math.max(0,Math.min(num(q.data?.hp_max),num(q.data?.hp_current)+num(b.dataset.d)));characterLocalUntil=Date.now()+900;const r=await S.from('catlak_characters').update({hp_current:hp}).eq('id',id);if(r.error)throw r.error;const row=characterCache.find(x=>String(x.id)===String(id));if(row)row.hp_current=hp;characterCacheAt=Date.now();const readout=APP.querySelector(`[data-gmc-hp-readout="${CSS.escape(String(id))}"]`);if(readout)readout.textContent=`HP ${hp}/${num(q.data?.hp_max)}`;toast(`HP ${hp}/${num(q.data?.hp_max)}`);return}if(type==='char-note'){const q=await S.from('catlak_characters').select('id,data').eq('id',id).maybeSingle();if(q.error)throw q.error;const note=APP.querySelector(`[data-gmc-note="${CSS.escape(String(id))}"]`)?.value||'',data={...(q.data?.data||{}),gm_note:note};const r=await S.from('catlak_characters').update({data}).eq('id',id);if(r.error)throw r.error;toast('Karakter notu kaydedildi.');return}if(type==='char-delete'){if(!confirm(`${b.dataset.name||'Karakter'} kalıcı olarak silinsin mi?`))return;const r=await S.from('catlak_characters').delete().eq('id',id);if(r.error)throw r.error;inviteLinks.delete(String(id));toast('Karakter silindi.');characterCacheAt=0;await renderManagement(true);return}if(type==='char-invite'){const owned=b.dataset.owned==='1',fn=owned?'catlak_generate_character_reconnect':'catlak_generate_character_claim';let r=await S.rpc(fn,{p_character_id:id});if(r.error)throw r.error;const raw=r.data?.token??r.data?.code??r.data?.invite??r.data;if(raw==null||String(raw).trim()==='')throw new Error('Davet anahtarı üretilemedi.');const link=PAGES_BASE+'?join='+encodeURIComponent(String(raw));inviteLinks.set(String(id),link);try{await navigator.clipboard.writeText(link)}catch(_){}toast((owned?'Yeniden bağlama':'Karakter davet')+' linki oluşturuldu.');characterCacheAt=0;await renderManagement(true);return}if(type==='copy-link'){const link=inviteLinks.get(String(id));if(!link)throw new Error('Önce bağlantı oluştur.');try{await navigator.clipboard.writeText(link);toast('Link kopyalandı.')}catch(_){prompt('Bağlantı:',link)}return}}catch(e){toast(e?.message||String(e))}finally{busy=false}}
 
+function sealLoad(){
+  try{const raw=localStorage.getItem(GMC_SEAL_KEY),v=raw?JSON.parse(raw):[];return Array.isArray(v)?v:[]}catch(_){return[]}
+}
+function sealSave(rows){
+  try{localStorage.setItem(GMC_SEAL_KEY,JSON.stringify(rows));return true}
+  catch(e){console.error('CATLAK_GMC_SEAL_SAVE',e);toast('Mühür kaydı tarayıcıya yazılamadı.');return false}
+}
+function sealId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function sealClamp(v){return Math.max(0,Math.min(3,num(v)))}
+function sealOptions(v){return [0,1,2,3].map(n=>`<option value="${n}" ${num(v)===n?'selected':''}>${n}</option>`).join('')}
+function sealRow(p){
+  const id=esc(p.id),editing=String(p.id)===String(sealEditId);
+  const name=editing?`<input data-gmc-seal-name="${id}" value="${esc(p.name||'')}" aria-label="Karakter adı">`:`<strong>${esc(p.name||'')}</strong>`;
+  const scores=GMC_SEALS.map(([k])=>{const v=sealClamp(p[k]);return editing?`<td class="${v===3?'ready':''}"><select data-gmc-seal-score="${k}" data-id="${id}">${sealOptions(v)}</select></td>`:`<td class="${v===3?'ready':''}"><span class="gmc-seal-value">${v}</span></td>`}).join('');
+  const note=editing?`<input data-gmc-seal-note="${id}" value="${esc(p.note||'')}" placeholder="Son seçim / bedel">`:`<span class="${p.note?'':'muted'}">${esc(p.note||'—')}</span>`;
+  const actions=editing?`<div class="gmc-seal-actions"><button type="button" class="primary small" data-gmc-action="seal-save" data-id="${id}">Kaydet</button><button type="button" class="small" data-gmc-action="seal-cancel" data-id="${id}">İptal</button></div>`:`<div class="gmc-seal-actions"><button type="button" class="small" data-gmc-action="seal-edit" data-id="${id}">Düzenle</button><button type="button" class="danger small" data-gmc-action="seal-delete" data-id="${id}" data-name="${esc(p.name||'Karakter')}">Sil</button></div>`;
+  return `<tr data-gmc-seal-row="${id}"><td>${name}</td>${scores}<td>${note}</td><td>${actions}</td></tr>`;
+}
+function sealRowsHtml(rows){return rows.length?rows.map(sealRow).join(''):'<tr><td colspan="8"><div class="gmc-seal-empty">Henüz karakter eklenmedi.</div></td></tr>'}
+function sealPage(){
+  const rows=sealLoad();sealEditId='';
+  return `<div class="gmc-seal-page" data-gmc-seal-page="1"><section class="card"><div class="eyebrow">GİZLİ GM TAKİBİ</div><h1>Mühür Odası</h1><p class="muted">Mühür Adaylık Takibi • 0 = veri yok, 1 = ilk güçlü işaret, 2 = ilke tekrarlandı, 3 = tekrar + bedel + dönüşüm tamamlandı; sınamaya hazır.</p></section><section class="card"><div class="gmc-seal-add"><label>Oyuncu / karakter adı<input id="gmc-seal-add-name" placeholder="Örn. Lorian"></label><button type="button" class="primary" data-gmc-action="seal-add">Karakter Ekle</button></div></section><section class="card"><div class="section-title"><div><div class="eyebrow">ADAYLIK TABLOSU</div><h2><span data-gmc-seal-count>${rows.length}</span> Karakter</h2></div></div><div class="gmc-seal-table-wrap"><table class="gmc-seal-table"><thead><tr><th>Karakter</th>${GMC_SEALS.map(([,n])=>`<th>${n}</th>`).join('')}<th>Son Not</th><th>İşlem</th></tr></thead><tbody data-gmc-seal-body>${sealRowsHtml(rows)}</tbody></table></div></section></div>`
+}
+function paintSealRows(focus=false){
+  if(!open||route!=='seals')return false;
+  const main=APP.querySelector('main'),page=main?.querySelector('[data-gmc-seal-page="1"]'),body=page?.querySelector('[data-gmc-seal-body]');if(!page||!body)return false;
+  const wrap=body.closest('.gmc-seal-table-wrap'),top=wrap?.scrollTop||0,left=wrap?.scrollLeft||0,rows=sealLoad();
+  body.innerHTML=sealRowsHtml(rows);
+  const count=page.querySelector('[data-gmc-seal-count]');if(count)count.textContent=String(rows.length);
+  if(wrap){wrap.scrollTop=top;wrap.scrollLeft=left}
+  if(focus&&sealEditId){const input=body.querySelector(`[data-gmc-seal-row="${CSS.escape(String(sealEditId))}"] [data-gmc-seal-name]`);try{input?.focus({preventScroll:true});input?.select()}catch(_){input?.focus()}}
+  ensureBar();markTop();return true
+}
+function renderSealRoom(){
+  if(!open||route!=='seals')return false;
+  const main=APP.querySelector('main');if(!main)return false;
+  if(main.querySelector('[data-gmc-seal-page="1"]')){ensureBar();markTop();gmViewReady();return true}
+  sealEditId='';main.dataset.gmcSealRoom='1';main.innerHTML=sealPage();ensureBar();markTop();gmViewReady();return true
+}
+function sealAction(type,b){
+  if(!open||route!=='seals')return false;
+  const page=APP.querySelector('main [data-gmc-seal-page="1"]');if(!page)return false;
+  if(type==='seal-add'){
+    const input=page.querySelector('#gmc-seal-add-name'),name=String(input?.value||'').trim();if(!name){toast('Karakter adı gerekli.');return false}
+    const rows=sealLoad();rows.push({id:sealId(),name,siper:0,nefes:0,goz:0,gecit:0,esik:0,note:''});if(!sealSave(rows))return false;
+    sealEditId='';if(input)input.value='';paintSealRows(false);try{input?.focus({preventScroll:true})}catch(_){input?.focus()}toast(name+' Mühür Odası’na eklendi.');return true
+  }
+  const id=String(b?.dataset?.id||'');if(!id)return false;
+  if(type==='seal-edit'){if(!sealLoad().some(x=>String(x.id)===id))return false;sealEditId=id;paintSealRows(true);return true}
+  if(type==='seal-cancel'){sealEditId='';paintSealRows(false);return true}
+  if(type==='seal-delete'){const rows=sealLoad(),p=rows.find(x=>String(x.id)===id);if(!p)return false;if(!confirm(`${p.name||'Bu karakter'} mühür takibinden silinsin mi?`))return false;if(!sealSave(rows.filter(x=>String(x.id)!==id)))return false;if(sealEditId===id)sealEditId='';paintSealRows(false);toast('Mühür kaydı silindi.');return true}
+  if(type==='seal-save'){
+    const row=page.querySelector(`[data-gmc-seal-row="${CSS.escape(id)}"]`);if(!row)return false;
+    const name=String(row.querySelector('[data-gmc-seal-name]')?.value||'').trim();if(!name){toast('Karakter adı boş bırakılamaz.');return false}
+    const rows=sealLoad(),p=rows.find(x=>String(x.id)===id);if(!p)return false;
+    p.name=name;for(const[k]of GMC_SEALS)p[k]=sealClamp(row.querySelector(`[data-gmc-seal-score="${k}"]`)?.value);p.note=String(row.querySelector('[data-gmc-seal-note]')?.value||'');
+    if(!sealSave(rows))return false;sealEditId='';paintSealRows(false);toast('Mühür kaydı güncellendi.');return true
+  }
+  return false
+}
+
 function openCampaignRoom(r,attempt=0){
   if(!open||route!==r)return false;
   const fn=window.__catlakCampaignStateTest?.open;
@@ -120,13 +186,15 @@ function routeTo(r){
     setRoute(r);requestAnimationFrame(()=>{setRoute(r);requestAnimationFrame(()=>gmViewReady())});setTimeout(()=>{setRoute(r);gmViewReady()},80);return true
   }
   if(r==='creatures'){const fn=window.__catlakQualityOfLifeTest?.openCreatureLibrary;if(typeof fn!=='function'){toast('Yaratık Kütüphanesi hazır değil.');gmViewReady();return false}fn();setRoute(r);requestAnimationFrame(()=>gmViewReady());return true}
-  if(r==='reputation'||r==='seals')return openCampaignRoom(r,0)
+  if(r==='seals')return renderSealRoom()
+  if(r==='reputation')return openCampaignRoom(r,0)
   return false
 }
 function openCenter(){if(!isGM())return false;return routeTo(route||'ability')}
-async function action(b){const type=b?.dataset?.gmcAction||'';if(type.startsWith('ability-'))return abilityAction(type,b.dataset.id);if(type.startsWith('char-')||type==='copy-link'||type==='open-builder')return characterAction(type,b)}
+async function action(b){const type=b?.dataset?.gmcAction||'';if(type.startsWith('seal-'))return sealAction(type,b);if(type.startsWith('ability-'))return abilityAction(type,b.dataset.id);if(type.startsWith('char-')||type==='copy-link'||type==='open-builder')return characterAction(type,b)}
 function handle(kind,b){if(kind==='open')return openCenter();if(kind==='route')return routeTo(b.dataset.gmcRoute);if(kind==='action')return action(b)}
 
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target?.id==='gmc-seal-add-name'&&open&&route==='seals'){e.preventDefault();action({dataset:{gmcAction:'seal-add'}})}},true);
 new MutationObserver(rs=>{if(rs.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.nav,.role')||n.querySelector?.('.nav,.role')))))queueMaintain()}).observe(APP,{childList:true,subtree:true});
 window.addEventListener('catlak:presence-changed',()=>{if(open&&route==='characters')updateManagementPresence()});
 window.addEventListener('catlak:realtime-sync',e=>{const k=String(e.detail?.kind||'');if(k==='ability'){ability.cacheAt=0;if(open&&route==='ability')renderAbility(true)}else if(k==='character'||k==='party'){characterCacheAt=0;ability.cacheAt=0;if(open&&route==='characters')renderManagement(true)}});
