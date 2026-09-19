@@ -666,6 +666,25 @@ window.addEventListener('catlak:data-refreshed',e=>{
   }
   schedule(false,100);
 });
+window.addEventListener('catlak:realtime-sync',e=>{
+  const kind=String(e?.detail?.kind||'');
+  if(kind!=='party')return;
+  // GM party add/remove is broadcast after the DB update completes.
+  // Refresh the live player sheet directly instead of waiting for postgres_changes/F5.
+  window.__catlakPlayerPartyAllowedEarly=undefined;
+  try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
+  if(sheetActive()&&main()?.dataset.ccHardSheet==='1'&&ready()){
+    queueSheetSync('character');
+    setTimeout(()=>queueSheetSync('character'),180);
+    return
+  }
+  if(sheetActive())schedule(false,40);
+});
+window.addEventListener('catlak:party-membership-changed',()=>{
+  window.__catlakPlayerPartyAllowedEarly=undefined;
+  try{window.__catlakRoomSystemTest?.refreshPartyAccess?.(true)}catch(_){}
+  if(sheetActive()&&main()?.dataset.ccHardSheet==='1'&&ready())queueSheetSync('character');
+});
 new MutationObserver(rs=>{
   if(!isPlayer())return;
   ensureRaceNav();
