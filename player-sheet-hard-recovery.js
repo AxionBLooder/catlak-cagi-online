@@ -756,8 +756,8 @@ async function checkPartyMembershipLive(){
   }catch(e){console.warn('CATLAK_PARTY_MEMBERSHIP_WATCH',e);return false}
   finally{membershipWatchBusy=false}
 }
-setInterval(()=>{checkPartyMembershipLive()},1200);
 window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(checkPartyMembershipLive,80)});
+window.addEventListener('pageshow',()=>{setTimeout(checkPartyMembershipLive,100)});
 async function realtime(){
   if(realtimeStarted)return;const S=await getRuntime();if(!S||realtimeStarted)return;realtimeStarted=true;
   S.channel('cc-player-hard-sheet-v3')
