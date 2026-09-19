@@ -131,7 +131,7 @@ jobs:
           ok('safety.battle.idempotent.open',"currentMain?.dataset.ccrBattle==='1'" in rooms and "#app .nav button[data-ccr-battle]" in rooms)
           ok('safety.sheet.core.fallback','coreSheetVisible' in sheet and "window.addEventListener('catlak:player-fast-ready'" in sheet)
           ok('safety.sheet.guest.no.loop',"6500,'character owner query'" in sheet and "setTimeout(()=>schedule(true,0),900)" not in sheet and 'data-cc-hard-wait-text' in sheet)
-          ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v47-instant-party-add' in html and '8500' in html)
+          ok('safety.sheet.canonical.advanced',"m?.dataset.ccHardSheet==='1'&&ready()" in sheet and 'player-hard-recovery-v48-optimistic-party-add' in html and '8500' in html)
           ok('safety.sheet.active.scope',".eq('owner_id',uid).eq('play_status','active')" in sheet)
           ok('safety.sheet.party.access','partyVisual,partyAllowed' in sheet and 'window.__catlakPlayerPartyAllowedEarly=!!x.partyAllowed' in sheet)
           ok('safety.sheet.character.derived.refresh',"'[data-cc-hard-stats]'" in sheet and "'[data-cc-hard-path]'" in sheet and "'[data-cc-hard-vampire]'" in sheet and "'[data-cc-hard-race]'" in sheet)
@@ -153,8 +153,10 @@ jobs:
           ok('safety.sheet.party.visual.legacy.quarantine','function purgeLegacyPartyVisual()' in sheet and '[data-cc-party-visual-card]{display:none!important}' in sheet)
           ok('safety.sheet.party.membership.live',"catlak:realtime-sync" in sheet and "if(kind!=='party')return;" in sheet and "queueSheetSync('character')" in sheet)
           ok('safety.party.broadcast.exact',"characterId:String(id),inParty:!!value" in partyroom)
+          ok('safety.party.broadcast.optimistic',"'party-fast'" in partyroom and 'optimistic:true' in partyroom and 'rollback:true' in partyroom)
           ok('safety.party.player.access.immediate',"mine.data={...(mine.data||{}),[PKEY]:!!d.inParty}" in partyroom and 'setTimeout(()=>refreshPlayer(),420)' in partyroom)
           ok('safety.sheet.party.add.immediate','function applyPartyMembershipSignal(detail)' in sheet and "partyVisualHtml({data:{cc_party_member:true}}" in sheet)
+          ok('safety.sheet.party.fast.signal',"kind!=='party'&&kind!=='party-fast'" in sheet)
           ok('ux.sheet.party.visual.direct','<div data-cc-hard-party-visual><img' in sheet and 'max-height:72vh!important' in sheet)
           ok('safety.sheet.party.membership.eventdriven','function checkPartyMembershipLive()' in sheet and "window.addEventListener('visibilitychange'" in sheet and 'setInterval(' not in sheet)
           ok('safety.battle.no.stale.cache','main.replaceChildren()' in rooms and 'window.__catlakBattleRoomV3Test?.restore?.()' not in rooms)
@@ -193,7 +195,7 @@ jobs:
           ok('ownership.registry','__catlakRuntimeOwnership' in health and "claim('player-sheet','player-sheet-hard-recovery')" in sheet and "claim('player-battle','battle-room-v3')" in battle and "claim('gm-center','gm-clean-router')" in gm and "claim('gm-live-table','live-combat-center')" in live)
 
           # 10. Stable build identifiers.
-          ok('version.sheet','player-hard-recovery-v47-instant-party-add' in html)
+          ok('version.sheet','player-hard-recovery-v48-optimistic-party-add' in html)
           ok('version.health','runtime-health-v6-fast-first-action' in html)
           ok('version.action','action-stability-v11-no-battle-app-rerender' in html)
 
